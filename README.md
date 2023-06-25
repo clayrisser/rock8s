@@ -2,6 +2,8 @@
 
 > a kubernetes cluster powered by Rancher, OLM and Kops
 
+![](./rock8t.jpg)
+
 **rock8s** stands for . . .
 
 * R - Rancher
