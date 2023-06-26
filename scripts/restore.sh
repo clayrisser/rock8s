@@ -15,9 +15,24 @@ _prepare() {
 }
 
 _restore_namespace() {
-    if kubectl get secret postgres-postgres-secret -n "$NAMESPACE" >/dev/null 2>/dev/null; then
+    SECRETS="$(kubectl get secrets -n $NAMESPACE 2>/dev/null)"
+    DEPLOYMENTS="$(kubectl get deployments -n $NAMESPACE 2>/dev/null)"
+    if echo "$SECRETS" | grep -q postgres-postgres-secret; then
         echo "restoring namespace $NAMESPACE"
         sh ./scripts/restore/postgres.sh $@
+        echo "restore completed for namespace $NAMESPACE"
+    elif (echo "$DEPLOYMENTS" | grep -q release-gunicorn) && \
+        (echo "$DEPLOYMENTS" | grep -q release-worker-d) && \
+        (echo "$DEPLOYMENTS" | grep -q release-worker-l) && \
+        (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
+        mkdir -p $BACKUP_DIR
+        echo "restoring up namespace $NAMESPACE"
+        sh ./scripts/restore/erpnext.sh $@
+        echo "restore completed for namespace $NAMESPACE"
+    elif (echo "$SECRETS" | grep -q openldap); then
+        mkdir -p $BACKUP_DIR
+        echo "restoring up namespace $NAMESPACE"
+        sh ./scripts/restore/openldap.sh $@
         echo "restore completed for namespace $NAMESPACE"
     else
         echo "no restore scripts for namespace $NAMESPACE" >&2
