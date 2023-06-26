@@ -17,7 +17,7 @@ _prepare() {
 _restore_namespace() {
     if kubectl get secret postgres-postgres-secret -n "$NAMESPACE" >/dev/null 2>/dev/null; then
         echo "restoring namespace $NAMESPACE"
-        sh ./scripts/k8s/restore/postgres.sh $@
+        sh ./scripts/restore/postgres.sh $@
         echo "restore completed for namespace $NAMESPACE"
     else
         echo "no restore scripts for namespace $NAMESPACE" >&2
@@ -28,9 +28,9 @@ _restore_namespace() {
 while test $# -gt 0; do
     case "$1" in
         -h|--help)
-            echo "data backup k8s - backup k8s data"
+            echo "rock8s restore - restore rock8s data"
             echo " "
-            echo "data backup k8s [options]"
+            echo "rock8s restore [options]"
             echo " "
             echo "options:"
             echo "    -h, --help         show brief help"

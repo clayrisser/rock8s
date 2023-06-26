@@ -23,10 +23,25 @@ _backup_all_namespaces() {
 }
 
 _backup_namespace() {
-    if kubectl get secret postgres-postgres-secret -n "$NAMESPACE" >/dev/null 2>/dev/null; then
+    SECRETS="$(kubectl get secrets -n $NAMESPACE)"
+    DEPLOYMENTS="$(kubectl get deployments -n $NAMESPACE)"
+    if echo "$SECRETS" | grep -q postgres-postgres-secret; then
         mkdir -p $BACKUP_DIR
         echo "backing up namespace $NAMESPACE"
-        sh ./scripts/k8s/backup/postgres.sh $@
+        sh ./scripts/backup/postgres.sh $@
+        echo "backup completed for namespace $NAMESPACE"
+    elif (echo "$DEPLOYMENTS" | grep -q release-gunicorn) && \
+        (echo "$DEPLOYMENTS" | grep -q release-worker-d) && \
+        (echo "$DEPLOYMENTS" | grep -q release-worker-l) && \
+        (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
+        mkdir -p $BACKUP_DIR
+        echo "backing up namespace $NAMESPACE"
+        sh ./scripts/backup/erpnext.sh $@
+        echo "backup completed for namespace $NAMESPACE"
+    elif (echo "$SECRETS" | grep -q openldap); then
+        mkdir -p $BACKUP_DIR
+        echo "backing up namespace $NAMESPACE"
+        sh ./scripts/backup/openldap.sh $@
         echo "backup completed for namespace $NAMESPACE"
     else
         echo "no backup scripts for namespace $NAMESPACE" >&2
@@ -37,9 +52,9 @@ _backup_namespace() {
 while test $# -gt 0; do
     case "$1" in
         -h|--help)
-            echo "data backup k8s - backup k8s data"
+            echo "rock8s backup - backup rock8s data"
             echo " "
-            echo "data backup k8s [options]"
+            echo "rock8s backup [options]"
             echo " "
             echo "options:"
             echo "    -h, --help         show brief help"
