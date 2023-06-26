@@ -23,8 +23,8 @@ _backup_all_namespaces() {
 }
 
 _backup_namespace() {
-    SECRETS="$(kubectl get secrets -n $NAMESPACE)"
-    DEPLOYMENTS="$(kubectl get deployments -n $NAMESPACE)"
+    SECRETS="$(kubectl get secrets -n $NAMESPACE 2>/dev/null)"
+    DEPLOYMENTS="$(kubectl get deployments -n $NAMESPACE 2>/dev/null)"
     if echo "$SECRETS" | grep -q postgres-postgres-secret; then
         mkdir -p $BACKUP_DIR
         echo "backing up namespace $NAMESPACE"
