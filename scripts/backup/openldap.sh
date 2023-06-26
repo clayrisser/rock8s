@@ -7,7 +7,7 @@ $(kubectl get secret openldap -o json -n "$NAMESPACE")
 "
 RELEASE_NAME=$(echo $STATEFULSET_NAME | sed 's|-release$||g')
 
-LDAP_ROOT=$(kubectl get configmap $RELEASE_NAME-release-env -o json | jq -r '.data.LDAP_ROOT')
+LDAP_ROOT=$(kubectl get configmap $RELEASE_NAME-release-env -o json -n "$NAMESPACE" | jq -r '.data.LDAP_ROOT')
 BIND_ID="cn=admin,$LDAP_ROOT"
 BIND_PASSWORD="$(echo "$SECRET_RESOURCE" | jq -r '.data.LDAP_ADMIN_PASSWORD' | openssl base64 -d)"
 
