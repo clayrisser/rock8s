@@ -25,6 +25,9 @@ _backup_all_namespaces() {
 _backup_namespace() {
     SECRETS="$(kubectl get secrets -n $NAMESPACE 2>/dev/null)"
     DEPLOYMENTS="$(kubectl get deployments -n $NAMESPACE 2>/dev/null)"
+    _backup_app
+    _backup_configmaps
+    _backup_secrets
     if echo "$SECRETS" | grep -q postgres-postgres-secret; then
         mkdir -p $BACKUP_DIR
         echo "backing up namespace $NAMESPACE"
@@ -45,8 +48,37 @@ _backup_namespace() {
         echo "backup completed for namespace $NAMESPACE"
     else
         echo "no backup scripts for namespace $NAMESPACE" >&2
-        exit 1
     fi
+}
+
+_backup_secrets() {
+    mkdir -p $BACKUP_DIR/secrets
+    for i in $(kubectl get secrets -n $NAMESPACE | tail -n +2 | sed 's| \+|:|g'); do
+        n=$(echo $i | cut -d':' -f1)
+        t=$(echo $i | cut -d':' -f2)
+        if [ "$t" != "helm.sh/release.v1" ]; then
+            echo "backing up secret $NAMESPACE/$n"
+            kubectl get -o yaml secret $n -n $NAMESPACE | \
+                yq ' .data |= map_values(@base64d) | .stringData = .data | del(.data, .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.selfLink, .metadata.uid, .status)' \
+                > $BACKUP_DIR/secrets/$n.yaml
+        fi
+    done
+}
+
+_backup_configmaps() {
+    mkdir -p $BACKUP_DIR/configmaps
+    for n in $(kubectl get configmaps -n $NAMESPACE | tail -n +2 | cut -d' ' -f1); do
+        echo "backing up configmap $NAMESPACE/$n"
+        kubectl get -o yaml configmap $n -n $NAMESPACE > $BACKUP_DIR/configmaps/$n.yaml
+    done
+}
+
+_backup_app() {
+    mkdir -p $BACKUP_DIR/apps
+    for n in $(kubectl get apps.catalog.cattle.io -n $NAMESPACE | tail -n +2 | cut -d' ' -f1); do
+        echo "backing up app $NAMESPACE/$n"
+        kubectl get -o yaml apps.catalog.cattle.io $n -n $NAMESPACE > $BACKUP_DIR/apps/$n.yaml
+    done
 }
 
 while test $# -gt 0; do
