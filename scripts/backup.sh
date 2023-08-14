@@ -35,24 +35,22 @@ _backup_namespace() {
         mkdir -p $BACKUP_DIR
         echo "backing up namespace $NAMESPACE"
         sh ./scripts/backup/postgres.sh $@
-        echo "backup completed for namespace $NAMESPACE"
     elif (echo "$DEPLOYMENTS" | grep -q release-gunicorn) && \
         (echo "$DEPLOYMENTS" | grep -q release-worker-d) && \
         (echo "$DEPLOYMENTS" | grep -q release-worker-l) && \
         (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
-        mkdir -p $BACKUP_DIR
+        mkdir -p "$BACKUP_DIR"
         echo "backing up namespace $NAMESPACE"
         sh ./scripts/backup/erpnext.sh $@
-        echo "backup completed for namespace $NAMESPACE"
     elif (echo "$SECRETS" | grep -q openldap); then
-        mkdir -p $BACKUP_DIR
+        mkdir -p "$BACKUP_DIR"
         echo "backing up namespace $NAMESPACE"
         sh ./scripts/backup/openldap.sh $@
-        echo "backup completed for namespace $NAMESPACE"
     else
         echo "no backup scripts for namespace $NAMESPACE" >&2
     fi
-    tar -xzvf "$BACKUP_DIR.tar.gz" -C "$BACKUP_DIR"
+    (cd "$BACKUP_DIR" && tar -czvf "$BACKUP_DIR.tar.gz" .)
+    echo "backup completed for namespace $NAMESPACE"
 }
 
 _backup_secrets() {
