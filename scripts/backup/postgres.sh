@@ -1,7 +1,13 @@
 #!/bin/sh
 
+set -e
+
 DEPLOYMENT_NAME="postgres"
 POD_NAME=$(kubectl get pods -l deployment-name=$DEPLOYMENT_NAME -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+if [ -z "$POD_NAME" ]; then
+    echo "no pod found"
+    exit 1
+fi
 SECRET_RESOURCE="
 $(kubectl get secret postgres-postgres-secret -o json -n "$NAMESPACE")
 "

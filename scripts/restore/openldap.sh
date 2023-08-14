@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 STATEFULSET_NAME=$(kubectl get statefulset -n "$NAMESPACE" | grep release | cut -d' ' -f1)
 POD_NAME=$(kubectl get pods -l app.kubernetes.io/instance=$STATEFULSET_NAME -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
 SECRET_RESOURCE="
