@@ -46,6 +46,7 @@ fi
 for sm in $SITE_MAP; do
     SITE="$(echo "$sm" | cut -d':' -f1)"
     BACKUP="$(echo "$sm" | cut -d':' -f2)"
+    _SITE_PATH="/home/frappe/frappe-bench/sites/$SITE"
     if [ -z "$SITE" ] || [ -z "$BACKUP" ]; then
         echo "invalid site map: $sm"
         exit 1
@@ -89,17 +90,16 @@ for sm in $SITE_MAP; do
             _SITE_CONFIG_FILENAME="$f"
         fi
     done
-    SITE_PATH="/home/frappe/frappe-bench/sites/$SITE"
-    kubectl cp "$BACKUP_DIR/$_BACKUP_FILENAME" "$NAMESPACE/$POD_NAME:$SITE_PATH/private/backups/$_BACKUP_FILENAME"
-    kubectl cp "$BACKUP_DIR/$_PRIVATE_FILES_FILENAME" "$NAMESPACE/$POD_NAME:$SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME"
-    kubectl cp "$BACKUP_DIR/$_FILES_FILENAME" "$NAMESPACE/$POD_NAME:$SITE_PATH/private/backups/$_FILES_FILENAME"
-    kubectl cp "$BACKUP_DIR/$_SITE_CONFIG_FILENAME" "$NAMESPACE/$POD_NAME:$SITE_PATH/private/backups/$_SITE_CONFIG_FILENAME"
+    kubectl cp --retries="$RETRIES" "$BACKUP_DIR/$_BACKUP_FILENAME" "$NAMESPACE/$POD_NAME:$_SITE_PATH/private/backups/$_BACKUP_FILENAME"
+    kubectl cp --retries="$RETRIES" "$BACKUP_DIR/$_PRIVATE_FILES_FILENAME" "$NAMESPACE/$POD_NAME:$_SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME"
+    kubectl cp --retries="$RETRIES" "$BACKUP_DIR/$_FILES_FILENAME" "$NAMESPACE/$POD_NAME:$_SITE_PATH/private/backups/$_FILES_FILENAME"
+    kubectl cp --retries="$RETRIES" "$BACKUP_DIR/$_SITE_CONFIG_FILENAME" "$NAMESPACE/$POD_NAME:$_SITE_PATH/private/backups/$_SITE_CONFIG_FILENAME"
     kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-        "echo \"$MYSQL_ROOT_PASSWORD\" | bench --site \"$SITE\" restore \"$SITE_PATH/private/backups/$_BACKUP_FILENAME\" \
-            --with-public-files \"$SITE_PATH/private/backups/$_FILES_FILENAME\" \
-            --with-private-files \"$SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME\""
-    rm -rf "$SITE_PATH/private/backups/$_BACKUP_FILENAME" \
-        "$SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME" \
-        "$SITE_PATH/private/backups/$_FILES_FILENAME" \
-        "$SITE_PATH/private/backups/$_SITE_CONFIG_FILENAME"
+        "echo \"$MYSQL_ROOT_PASSWORD\" | bench --site \"$SITE\" restore \"$_SITE_PATH/private/backups/$_BACKUP_FILENAME\" \
+            --with-public-files \"$_SITE_PATH/private/backups/$_FILES_FILENAME\" \
+            --with-private-files \"$_SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME\""
+    rm -rf "$_SITE_PATH/private/backups/$_BACKUP_FILENAME" \
+        "$_SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME" \
+        "$_SITE_PATH/private/backups/$_FILES_FILENAME" \
+        "$_SITE_PATH/private/backups/$_SITE_CONFIG_FILENAME"
 done
