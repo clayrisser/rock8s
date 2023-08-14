@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 main() {
     _prepare
     _restore_namespace $@
@@ -26,12 +28,12 @@ _restore_namespace() {
         (echo "$DEPLOYMENTS" | grep -q release-worker-l) && \
         (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
         mkdir -p $BACKUP_DIR
-        echo "restoring up namespace $NAMESPACE"
+        echo "restoring namespace $NAMESPACE"
         sh ./scripts/restore/erpnext.sh $@
         echo "restore completed for namespace $NAMESPACE"
     elif (echo "$SECRETS" | grep -q openldap); then
         mkdir -p $BACKUP_DIR
-        echo "restoring up namespace $NAMESPACE"
+        echo "restoring namespace $NAMESPACE"
         sh ./scripts/restore/openldap.sh $@
         echo "restore completed for namespace $NAMESPACE"
     else

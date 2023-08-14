@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 SECRET_RESOURCE="
 $(kubectl get secret postgres-postgres-secret -o json -n "$NAMESPACE")
 "

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 main() {
     _prepare
     if [ "$_ALL" = "1" ]; then
@@ -10,8 +12,9 @@ main() {
 }
 
 _prepare() {
-    export NAMESPACE=${_NAMESPACE:-$(kubectl config view --minify --output 'jsonpath={..namespace}')}
-    export BACKUP_DIR=$(pwd)/backups/$NAMESPACE/$(date +'%s')_$(date +'%Y-%m-%d_%H-%M-%S')
+    export NAMESPACE="${_NAMESPACE:-$(kubectl config view --minify --output 'jsonpath={..namespace}')}"
+    export BACKUP_NAME="$(date +'%s')_$(date +'%Y-%m-%d_%H-%M-%S')"
+    export BACKUP_DIR="$(pwd)/backups/$NAMESPACE/$BACKUP_NAME"
 }
 
 _backup_all_namespaces() {
@@ -49,6 +52,7 @@ _backup_namespace() {
     else
         echo "no backup scripts for namespace $NAMESPACE" >&2
     fi
+    tar -xzvf "$BACKUP_DIR.tar.gz" -C "$BACKUP_DIR"
 }
 
 _backup_secrets() {
