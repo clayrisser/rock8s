@@ -28,5 +28,15 @@ if [ -z "$POSTGRES_USER" ]; then
 fi
 POSTGRES_PORT="5432"
 
-kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-    "PGPASSWORD='$POSTGRES_PASSWORD' pg_dumpall --no-owner --no-acl -p '$POSTGRES_PORT' -U '$POSTGRES_USER'" > "$BACKUP_DIR/dump.sql"
+DATABASES=$(kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
+    "PGPASSWORD='$POSTGRES_PASSWORD' psql -p '$POSTGRES_PORT' -U '$POSTGRES_USER' -t -c 'SELECT datname FROM pg_database WHERE datistemplate = false;'")
+if [ -z "$DATABASES" ]; then
+    echo "no databases found to dump" >&2
+    exit 1
+fi
+
+for d in $DATABASES; do
+    echo backing up database $d
+    kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
+        "PGPASSWORD='$POSTGRES_PASSWORD' pg_dump --no-owner --no-acl -p '$POSTGRES_PORT' -U '$POSTGRES_USER' $d" > "$BACKUP_DIR/$d.sql"
+done
