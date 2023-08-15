@@ -102,4 +102,6 @@ for sm in $SITE_MAP; do
         "$_SITE_PATH/private/backups/$_PRIVATE_FILES_FILENAME" \
         "$_SITE_PATH/private/backups/$_FILES_FILENAME" \
         "$_SITE_PATH/private/backups/$_SITE_CONFIG_FILENAME"
+    kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c \
+        "bench --site \"$SITE\" migrate"
 done
