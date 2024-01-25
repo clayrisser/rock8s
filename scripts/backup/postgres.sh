@@ -38,5 +38,8 @@ fi
 for d in $DATABASES; do
     echo backing up database $d
     kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-        "PGPASSWORD='$POSTGRES_PASSWORD' pg_dump --no-owner --no-acl -p '$POSTGRES_PORT' -U '$POSTGRES_USER' $d" > "$BACKUP_DIR/$d.sql"
+        "PGPASSWORD='$POSTGRES_PASSWORD' pg_dump --no-owner --no-acl -p '$POSTGRES_PORT' -U '$POSTGRES_USER' $d > /tmp/$d.sql"
+    kubectl cp --retries="$RETRIES" "$NAMESPACE/$POD_NAME:/tmp/$d.sql" "$BACKUP_DIR/$d.sql"
+    kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
+        "rm /tmp/$d.sql"
 done
