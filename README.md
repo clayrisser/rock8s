@@ -1,6 +1,12 @@
 # yams (you are my sunbeam)
 
-> scripts to deploy microstack sunbeam
+> scripts to deploy sunbeam microstack
+
+While sunbeam microstack does a great job at deploying openstack, it still
+expects certain prerequisites to be configured, such as the networking.
+
+These scripts prepare the requirements and then proceed to install openstack
+with sunbeam microstack.
 
 ## Install
 
@@ -9,6 +15,8 @@ $(curl --version >/dev/null 2>/dev/null && echo curl -L || echo wget -O-) https:
 ```
 
 ## Observe
+
+_To observe progress, run each command in a new session_
 
 ```sh
 watch snap list
