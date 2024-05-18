@@ -3,9 +3,12 @@
 OPENSTACK_VERSION=2023.2
 
 sudo true
-if ! which yq >/dev/null 2>&1; then
-    sudo snap install yq
-fi
+sudo apt update
+sudo apt install -y \
+    git \
+    snapd \
+    vim
+sudo snap install yq
 NETCFG_PATH="/etc/netplan/$(ls /etc/netplan 2>/dev/null)"
 if [ "$NETCFG_PATH" = "/etc/netplan/" ]; then
     echo "netplan required" 1>&2
@@ -53,7 +56,7 @@ sudo netplan apply
 sudo snap install openstack --channel "$OPENSTACK_VERSION"
 sunbeam prepare-node-script | bash -x
 newgrp snap_daemon
-printf "To observe, run each command in a new session:\n\n"
+printf "To observe progress, run each command in a new session:\n\n"
 printf "    \e[32mwatch snap list\e[0m\n\n"
 printf "    \e[32mwatch --color -- juju status --color -m openstack\e[0m\n\n"
 printf "    \e[32msudo watch microk8s.kubectl get all -A\e[0m\n\n"
