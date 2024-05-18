@@ -16,7 +16,6 @@ if [ "$NIC" = "" ]; then
     echo "no nic found" 1>&2
     exit 1
 fi
-
 cat <<EOF > netcfg-0.yaml
 network:
   vlans:
@@ -52,8 +51,8 @@ cat netcfg-1.yaml | sudo tee "$NETCFG_PATH"
 rm netcfg-0.yaml netcfg-1.yaml
 sudo netplan apply
 sudo snap install openstack --channel "$OPENSTACK_VERSION"
-sunbeam prepare-node-script
-bash -x && newgrp snap_daemon
+sunbeam prepare-node-script | bash -x
+newgrp snap_daemon
 printf "To observe, run each command in a new session:\n\n"
 printf "    \e[32mwatch --color -- juju status --color -m openstack\e[0m\n"
 printf "    \e[32mwatch sudo minikube.kubectl get all -A\e[0m\n\n"
