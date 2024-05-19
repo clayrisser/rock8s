@@ -60,4 +60,4 @@ printf "To observe progress, run each command in a new session:\n\n"
 printf "    \e[32mwatch snap list\e[0m\n\n"
 printf "    \e[32mwatch --color -- juju status --color -m openstack\e[0m\n\n"
 printf "    \e[32msudo watch microk8s.kubectl get all -A\e[0m\n\n"
-sunbeam cluster bootstrap --role control --role compute --role storage
+echo sunbeam cluster bootstrap --role control --role compute --role storage
