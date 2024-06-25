@@ -3,7 +3,6 @@
 PROXMOX_VERSION=8.2-1
 PROXMOX_ISO="https://enterprise.proxmox.com/iso/proxmox-ve_${PROXMOX_VERSION}.iso"
 DRIVE_INTERFACE="nvme"
-
 SUDO=
 if which sudo >/dev/null 2>&1; then
     SUDO=sudo
