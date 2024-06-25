@@ -10,7 +10,9 @@ SSH into a recovery machine as root and run the following command to boot up the
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/01_boot-installer.sh 2>/dev/null | sh
+    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/01_boot-installer.sh 2>/dev/null > 01_boot-installer.sh
+sh 01_boot-installer.sh
+rm 01_boot-installer.sh
 ```
 
 ### II. Install Proxmox
@@ -24,7 +26,9 @@ Run the following command from the recovery machine to boot into the newly insta
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/02_boot.sh 2>/dev/null | sh
+    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/02_boot.sh > 02_boot.sh
+sh 02_boot.sh
+rm 02_boot.sh
 ```
 
 ### IV. Login
@@ -33,7 +37,9 @@ SSH into a new session of the recovery machine as root and run the following com
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/03_login.sh 2>/dev/null | sh
+    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/03_login.sh > 03_login.sh
+sh 03_login.sh
+rm 03_login.sh
 ```
 
 ### V. Post Install
@@ -43,7 +49,9 @@ sure to provide a password for the admin account.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/04_post-install.sh 2>/dev/null | sh
+    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/04_post-install.sh > 04_post-install.sh
+sh 04_post-install.sh
+rm 04_post-install.sh
 ```
 
 ### VI. Reboot
@@ -57,5 +65,7 @@ SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/05_setup.sh 2>/dev/null | sh
+    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/05_setup.sh > 05_setup.sh
+sh 05_setup.sh
+rm 05_setup.sh
 ```

@@ -1,5 +1,6 @@
 #!/bin/sh
 
+DRIVE_INTERFACE="nvme"
 DRIVES="$(lsblk -dn -o NAME | grep "$DRIVE_INTERFACE")"
 DRIVE_ARGS=""
 for DRIVE in $DRIVES; do
