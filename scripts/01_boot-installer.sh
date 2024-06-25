@@ -9,9 +9,11 @@ if which sudo >/dev/null 2>&1; then
     SUDO=sudo
 fi
 $SUDO true
-if ! which curl >/dev/null 2>&1; then
-    $SUDO apt-get update && $SUDO apt-get install -y curl
-fi
+export DEBIAN_FRONTEND=noninteractive
+$SUDO apt-get update
+$SUDO apt-get install -y \
+    curl \
+    qemu-system-x86
 if [ ! -f pve.iso ]; then
     curl -Lo pve.iso "$PROXMOX_ISO"
 fi
