@@ -1,7 +1,7 @@
 #!/bin/sh
 
 IMAGES="
-https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
+https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.5.0-amd64-netinst.iso
 "
 sudo true
 export DEBIAN_FRONTEND=noninteractive

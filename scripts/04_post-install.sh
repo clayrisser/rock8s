@@ -2,6 +2,7 @@
 
 . $HOME/.env
 cat $HOME/.env
+rm $HOME/.env
 SUDO=
 if which sudo >/dev/null 2>&1; then
     SUDO=sudo
@@ -79,3 +80,4 @@ fi
 $SUDO passwd admin
 $SUDO ifreload -a || true
 $SUDO systemctl restart sshd
+$SUDO systemctl poweroff
