@@ -12,11 +12,12 @@ export DEBIAN_FRONTEND=noninteractive
 $SUDO apt-get update
 $SUDO apt-get install -y \
     curl \
+    ovmf \
     qemu-system-x86
 if [ ! -f pve.iso ]; then
     curl -Lo pve.iso "$PROXMOX_ISO"
 fi
-DRIVES="$(lsblk -dn -o NAME | grep "$DRIVE_INTERFACE")"
+DRIVES="$(lsblk -dn -o NAME | grep "$DRIVE_INTERFACE" | sort)"
 DRIVE_ARGS=""
 for DRIVE in $DRIVES; do
     DRIVE_ARGS="$DRIVE_ARGS -drive file=/dev/$DRIVE,format=raw,media=disk,if=virtio"
