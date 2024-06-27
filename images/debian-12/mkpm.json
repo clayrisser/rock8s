@@ -1,0 +1,10 @@
+{
+  "packages": {
+    "default": {
+      "dotenv": "0.1.8"
+    }
+  },
+  "repos": {
+    "default": "https://gitlab.com/bitspur/mkpm/packages.git"
+  }
+}
