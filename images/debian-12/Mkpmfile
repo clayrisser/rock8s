@@ -1,0 +1,13 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+include $(PROJECT_ROOT)/variables.mk
+
+PACKER ?= packer
+
+.PHONY: init
+init:
+	@$(PACKER) init $(VARS) .
+
+.PHONY: build
+build:
+	@$(PACKER) build $(VARS) .

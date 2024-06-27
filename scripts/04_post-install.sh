@@ -77,6 +77,11 @@ if [ ! -f /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js.bak ]; then
         /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
     $SUDO systemctl restart pveproxy.service
 fi
+cat <<EOF | $SUDO tee /etc/resolv.conf >/dev/null
+nameserver 8.8.8.8
+nameserver 4.4.4.4
+nameserver 1.1.1.1
+EOF
 $SUDO passwd admin
 $SUDO ifreload -a || true
 $SUDO systemctl restart sshd

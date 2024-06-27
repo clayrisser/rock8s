@@ -1,0 +1,10 @@
+# app
+.env
+
+# mkpm
+.mkpm/mkpm
+
+# packer
+*.box
+crash.log
+packer_cache/
