@@ -76,6 +76,29 @@ apt-get install -y \
 EOF
     ]
   }
+  provisioner "shell" {
+    inline = [
+      "export DEBIAN_FRONTEND=noninteractive",
+      "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -",
+      "echo 'deb https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list",
+      "apt-get update",
+      <<EOF
+apt-get install -y \
+  containerd.io \
+  docker-ce \
+  docker-ce-cli \
+  docker-compose-plugin
+EOF
+      ,
+      "mkdir -p /etc/docker",
+      <<EOF
+echo '{
+  "metrics-addr": "127.0.0.1:9323",
+  "experimental": true
+}' > /etc/docker/daemon.json
+EOF
+    ]
+  }
   provisioner "file" {
     destination = "/etc/cloud/cloud.cfg"
     source      = "http/cloud.cfg"

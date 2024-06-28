@@ -8,6 +8,10 @@ sudo true
 export DEBIAN_FRONTEND=noninteractive
 sudo apt install -y \
     cloud-init \
+    git \
+    git-lfs \
+    jq \
+    make \
     software-properties-common \
     systemd-timesyncd
 wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ceph.gpg >/dev/null
@@ -28,4 +32,13 @@ sudo sed -i 's|^#*\s*INTERFACESv4=.*|INTERFACESv4="vmbr2"|' /etc/default/isc-dhc
 sudo systemctl restart isc-dhcp-server
 for IMAGE in $IMAGES; do
     (cd /var/lib/vz/template/iso && sudo curl -LO "$IMAGE")
+done
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-get update
+sudo apt-get install -y \
+    packer
+git clone https://gitlab.com/bitspur/rock8s/yams.git
+for d in $(ls images); do
+    (cd images/$d && make build)
 done
