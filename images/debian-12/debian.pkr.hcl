@@ -54,28 +54,58 @@ source "proxmox-iso" "debian-12" {
 
 build {
   sources = ["source.proxmox-iso.debian-12"]
-
   provisioner "shell" {
     inline = [
-      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done",
-      "sudo rm /etc/ssh/ssh_host_*",
-      "sudo truncate -s 0 /etc/machine-id",
-      "sudo apt -y autoremove --purge",
-      "sudo apt -y clean",
-      "sudo apt -y autoclean",
-      "sudo cloud-init clean",
-      "sudo rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg",
-      "sudo sync"
+      "export DEBIAN_FRONTEND=noninteractive",
+      "apt-get update",
+      <<EOF
+apt-get install -y \
+  apt-transport-https \
+  ca-certificates \
+  cloud-init \
+  curl \
+  gnupg-agent \
+  htop \
+  linux-headers-amd64 \
+  linux-image-amd64 \
+  ncdu \
+  software-properties-common \
+  sudo \
+  tmux \
+  unattended-upgrades \
+  wget
+EOF
     ]
   }
-
-  provisioner "file" {
-    source      = "http/cloud.cfg"
-    destination = "/etc/cloud/cloud.cfg"
+  provisioner "shell" {
+    inline = [
+      "export DEBIAN_FRONTEND=noninteractive",
+      "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -",
+      "echo 'deb https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list",
+      "apt-get update",
+      <<EOF
+apt-get install -y \
+  containerd.io \
+  docker-ce \
+  docker-ce-cli \
+  docker-compose-plugin
+EOF
+      ,
+      "mkdir -p /etc/docker",
+      <<EOF
+echo '{
+  "metrics-addr": "127.0.0.1:9323",
+  "experimental": true
+}' > /etc/docker/daemon.json
+EOF
+    ]
   }
-
   provisioner "file" {
-    source      = "http/99-pve.cfg"
+    destination = "/etc/cloud/cloud.cfg"
+    source      = "http/cloud.cfg"
+  }
+  provisioner "file" {
     destination = "/etc/cloud/cloud.cfg.d/99-pve.cfg"
+    source      = "http/99-pve.cfg"
   }
 }
