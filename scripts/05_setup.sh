@@ -41,14 +41,16 @@ sudo apt-get install -y \
 if [ ! -d yams ]; then
     git clone https://gitlab.com/bitspur/rock8s/yams.git
 fi
+set -- $(sudo pveum user token add root@pam "$(tr -dc 'a-z' < /dev/urandom | head -c 8)" --privsep 0 -o json | \
+    jq -r '([.["full-tokenid"],.value]) | @tsv')
+PROXMOX_TOKEN_ID="$1"
+PROXMOX_TOKEN_SECRET="$2"
 for d in $(ls yams/images); do
     cp yams/images/$d/.env.example yams/images/$d/.env
-    set -- $(sudo pveum user token add root@pam "$(tr -dc 'a-z' < /dev/urandom | head -c 8)" --privsep 0 -o json | \
-        jq -r '([.["full-tokenid"],.value]) | @tsv')
-    PROXMOX_TOKEN_ID="$1"
-    PROXMOX_TOKEN_SECRET="$2"
     sed -i "s|^PROXMOX_HOST=.*|PROXMOX_HOST=localhost:8006|" yams/images/$d/.env
     sed -i "s|^PROXMOX_NODE=.*|PROXMOX_NODE=$(hostname)|" yams/images/$d/.env
     sed -i "s|^PROXMOX_TOKEN_ID=.*|PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_ID|" yams/images/$d/.env
     sed -i "s|^PROXMOX_TOKEN_SECRET=.*|PROXMOX_TOKEN_SECRET=$PROXMOX_TOKEN_SECRET|" yams/images/$d/.env
+    (cd yams/images/$d && make build)
 done
+sudo pveum user token remove "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f1)" "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f2)"
