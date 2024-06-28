@@ -34,11 +34,21 @@ for IMAGE in $IMAGES; do
     (cd /var/lib/vz/template/iso && sudo curl -LO "$IMAGE")
 done
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 sudo apt-get update
 sudo apt-get install -y \
     packer
-git clone https://gitlab.com/bitspur/rock8s/yams.git
-for d in $(ls images); do
-    (cd images/$d && make build)
+if [ ! -d yams ]; then
+    git clone https://gitlab.com/bitspur/rock8s/yams.git
+fi
+for d in $(ls yams/images); do
+    cp yams/images/$d/.env.example yams/images/$d/.env
+    set -- $(sudo pveum user token add root@pam "$(tr -dc 'a-z' < /dev/urandom | head -c 8)" --privsep 0 -o json | \
+        jq -r '([.["full-tokenid"],.value]) | @tsv')
+    PROXMOX_TOKEN_ID="$1"
+    PROXMOX_TOKEN_SECRET="$2"
+    sed -i "s|^PROXMOX_HOST=.*|PROXMOX_HOST=localhost:8006|" yams/images/$d/.env
+    sed -i "s|^PROXMOX_NODE=.*|PROXMOX_NODE=$(hostname)|" yams/images/$d/.env
+    sed -i "s|^PROXMOX_TOKEN_ID=.*|PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_ID|" yams/images/$d/.env
+    sed -i "s|^PROXMOX_TOKEN_SECRET=.*|PROXMOX_TOKEN_SECRET=$PROXMOX_TOKEN_SECRET|" yams/images/$d/.env
 done
