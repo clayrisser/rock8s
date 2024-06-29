@@ -16,15 +16,10 @@ if [ -f $HOME/.env ]; then
     rm $HOME/.env
 else
     GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
-    INTERFACE="$(ip route | grep default | sed -e "s/^.*dev.//" -e "s/ .*//")"
+    INTERFACE="$(ip route | awk '/default via/ {print $5}')"
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show $INTERFACE | grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
     if [ "$INTERFACE" = "vmbr0" ]; then
         INTERFACE="$(ip addr | grep "vmbr0 state UP" | sed 's|^[0-9]*:\s*||g' | cut -d':' -f1)"
-    else
-        _INTERFACE="$(ip addr show $INTERFACE | grep -E "^ *altname" | awk '{ print $2 }' | head -n1)"
-        if [ "$_INTERFACE" != "" ]; then
-            INTERFACE="$_INTERFACE"
-        fi
     fi
 fi
 PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
