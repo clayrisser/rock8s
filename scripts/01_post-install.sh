@@ -155,4 +155,3 @@ done
 if [ "$_ADDED_USER" = "1" ]; then
     $SUDO passwd admin
 fi
-$SUDO ifreload -a || true
