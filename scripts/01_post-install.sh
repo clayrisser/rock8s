@@ -5,6 +5,15 @@ GUEST_SUBNETS="
 172.16.0.0/16
 172.17.0.0/16
 "
+ADDITIONAL_IPS="
+172.17.0.0
+172.17.0.1
+"
+SUDO=
+if which sudo >/dev/null 2>&1; then
+    SUDO=sudo
+fi
+$SUDO true
 if [ -f $HOME/.env ]; then
     . $HOME/.env
     cat $HOME/.env
@@ -12,25 +21,27 @@ if [ -f $HOME/.env ]; then
 else
     GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
     INTERFACE="$(ip route | grep default | sed -e "s/^.*dev.//" -e "s/ .*//")"
-    INTERFACE_ALTNAME="$(ip addr show $INTERFACE | grep -E "^ *altname" | awk '{ print $2 }' | head -n1)"
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show $INTERFACE | grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
+    if [ "$INTERFACE" = "vmbr0" ]; then
+        INTERFACE="$(ip addr | grep "vmbr0 state UP" | sed 's|^[0-9]*:\s*||g' | cut -d':' -f1)"
+    else
+        _INTERFACE="$(ip addr show $INTERFACE | grep -E "^ *altname" | awk '{ print $2 }' | head -n1)"
+        if [ "$_INTERFACE" != "" ]; then
+            INTERFACE="$_INTERFACE"
+        fi
+    fi
 fi
-PUBLIC_IP_ADDRESS="$(echo $IP_ADDRESS_CIDR | cut -d/ -f1)"
+PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
 _NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')
 if [ "$_NUMBER" = "" ] || [ "$_NUMBER" -gt 245 ]; then
     echo "Error: Host number must be between 1 and 245." >&2
     exit 1
 fi
 PRIVATE_IP_ADDRESS="$(echo $PRIVATE_IP_NETWORK | cut -d. -f1-3).$(($_NUMBER + 9))"
-if curl -L --insecure "https://$PRIVATE_IP_ADDRESS:8006" >/dev/null 2>&1; then
+if ping -c 1 -W 1 "$PRIVATE_IP_ADDRESS" >/dev/null 2>&1; then
     echo "Error: Proxmox is already installed on IP address $PRIVATE_IP_ADDRESS." >&2
     exit 1
 fi
-SUDO=
-if which sudo >/dev/null 2>&1; then
-    SUDO=sudo
-fi
-$SUDO true
 export DEBIAN_FRONTEND=noninteractive
 $SUDO curl -Lo /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg \
     http://download.proxmox.com/debian/proxmox-release-bookworm.gpg
@@ -66,6 +77,7 @@ $SUDO apt-get install -y \
     vim
 if ! id -u admin >/dev/null 2>&1; then
     $SUDO adduser --disabled-password --gecos "" admin
+    _ADDED_USER=1
 fi
 $SUDO usermod -aG sudo admin
 $SUDO sed -i 's|^\%sudo.*|\%sudo	ALL=(ALL:ALL) NOPASSWD:ALL|' /etc/sudoers
@@ -79,6 +91,9 @@ if [ ! -f /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js.bak ]; then
         /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
     $SUDO systemctl restart pveproxy.service
 fi
+if ! cat /etc/modules | grep -q nf_conntrack; then
+    echo nf_conntrack | $SUDO tee -a /etc/modules
+fi
 cat <<EOF | $SUDO tee /etc/resolv.conf >/dev/null
 nameserver 8.8.8.8
 nameserver 4.4.4.4
@@ -87,61 +102,46 @@ EOF
 $SUDO sed -i 's|^#*\s*net.ipv4.ip_forward\s*=\s*.*|net.ipv4.ip_forward=1|' /etc/sysctl.conf
 $SUDO sed -i 's|^#*\s*net.ipv6.conf.all.forwarding\s*=\s*.*|net.ipv6.conf.all.forwarding=1|' /etc/sysctl.conf
 $SUDO sysctl -p
-VMBR2_CIDR="192.168.192.5/18"
-ADDITIONAL_IPS="
-198.51.100.30
-"
-cat <<EOF > /etc/network/interfaces
+cat <<EOF | $SUDO tee /etc/network/interfaces >/dev/null
 auto lo
 iface lo inet loopback
 iface lo inet6 loopback
 
-auto $INTERFACE_ALTNAME
-iface $INTERFACE_ALTNAME inet manual
-
-auto $INTERFACE_ALTNAME.4000
-iface $INTERFACE_ALTNAME.4000 inet manual
-
-auto $INTERFACE_ALTNAME.4000
-iface $INTERFACE_ALTNAME.4000 inet manual
+auto $INTERFACE
+iface $INTERFACE inet manual
 
 auto vmbr0
 iface vmbr0 inet static
-    address      $IP_ADDRESS/32
+    address      $PUBLIC_IP_ADDRESS_CIDR
     gateway      $GATEWAY
-    bridge-ports $INTERFACE_ALTNAME
+    bridge-ports $INTERFACE
     bridge-stp   off
     bridge-fd    0
-$(echo "$ADDITIONAL_IPS" | tr -d '[:space:]' | sed 's|\(.*\)|    up ip route add \1/32 dev vmbr0|')
+$(echo "$ADDITIONAL_IPS" | sed '/^$/d; s|\(.*\)|    up ip route add \1/32 dev vmbr0|')
+
+auto $INTERFACE.4000
+iface $INTERFACE.4000 inet manual
 
 auto vmbr1
 iface vmbr1 inet static
     address      $PRIVATE_IP_ADDRESS/$(echo $PRIVATE_IP_NETWORK | cut -d/ -f2)
-    bridge_ports $INTERFACE_ALTNAME.4000
+    bridge_ports $INTERFACE.4000
     bridge_stp   off
     bridge_fd    0
     mtu          1400
-
-# auto vmbr2
-# iface vmbr2 inet static
-#     address      $VMBR2_CIDR
-#     bridge-ports $INTERFACE_ALTNAME.4001
-#     bridge-stp   off
-#     bridge-fd    0
-#     mtu          1400
-#     post-up      iptables -t nat -A POSTROUTING -s '$VMBR2_CIDR' -o vmbr0 -j MASQUERADE
-#     post-down    iptables -t nat -D POSTROUTING -s '$VMBR2_CIDR' -o vmbr0 -j MASQUERADE
-#     post-up      iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-#     post-down    iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
 EOF
 i=1
 for GUEST_SUBNET in $GUEST_SUBNETS; do
 GUEST_CIDR="$(echo $GUEST_SUBNET | cut -d/ -f1)/$(echo $GUEST_SUBNET | cut -d/ -f2)"
 cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
-auto vmbr$((i + 1)).$((i + 4000))
-iface vmbr$((i + 1)).$((i + 4000)) inet static
+
+auto $INTERFACE.$((i + 4000))
+iface $INTERFACE.$((i + 4000)) inet manual
+
+auto vmbr$((i + 1))
+iface vmbr$((i + 1)) inet static
     address      $GUEST_CIDR
-    bridge-ports $INTERFACE_ALTNAME.$((i + 4000))
+    bridge-ports $INTERFACE.$((i + 4000))
     bridge-stp   off
     bridge-fd    0
     mtu          1400
@@ -152,10 +152,9 @@ iface vmbr$((i + 1)).$((i + 4000)) inet static
 EOF
 i=$((i + 1))
 done
-if ! cat /etc/modules | grep -q nf_conntrack; then
-    echo nf_conntrack | $SUDO tee -a /etc/modules
+if [ "$_ADDED_USER" = "1" ]; then
+    $SUDO passwd admin
 fi
-$SUDO passwd admin
 $SUDO ifreload -a || true
 $SUDO systemctl restart sshd
 $SUDO systemctl poweroff
