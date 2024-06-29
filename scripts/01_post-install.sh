@@ -3,12 +3,8 @@
 PRIVATE_IP_NETWORK="192.168.50.0/24"
 GUEST_SUBNETS="
 172.16.0.0/16
-172.17.0.0/16
 "
-ADDITIONAL_IPS="
-172.17.0.0
-172.17.0.1
-"
+ADDITIONAL_IPS=""
 SUDO=
 if which sudo >/dev/null 2>&1; then
     SUDO=sudo
