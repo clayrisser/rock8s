@@ -5,9 +5,6 @@ if which sudo >/dev/null 2>&1; then
     SUDO=sudo
 fi
 $SUDO true
-read -p "hostname: " HOSTNAME
-echo "$HOSTNAME" | $SUDO tee /etc/hostname >/dev/null
-$SUDO hostnamectl set-hostname "$HOSTNAME"
 export DEBIAN_FRONTEND=noninteractive
 $SUDO curl -Lo /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg \
     http://download.proxmox.com/debian/proxmox-release-bookworm.gpg
@@ -44,4 +41,3 @@ $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-
     https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
 sh 01_post-install.sh
 rm 01_post-install.sh
-$SUDO systemctl reboot

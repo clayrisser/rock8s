@@ -157,4 +157,3 @@ if [ "$_ADDED_USER" = "1" ]; then
 fi
 $SUDO ifreload -a || true
 $SUDO systemctl restart sshd
-$SUDO systemctl poweroff
