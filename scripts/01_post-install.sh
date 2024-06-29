@@ -121,9 +121,9 @@ iface $INTERFACE.4000 inet manual
 auto vmbr1
 iface vmbr1 inet static
     address      $PRIVATE_IP_ADDRESS/$(echo $PRIVATE_IP_NETWORK | cut -d/ -f2)
-    bridge_ports $INTERFACE.4000
-    bridge_stp   off
-    bridge_fd    0
+    bridge-ports $INTERFACE.4000
+    bridge-stp   off
+    bridge-fd    0
     mtu          1400
 EOF
 i=1
