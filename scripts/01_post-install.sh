@@ -18,7 +18,9 @@ generate_dhcp_config() {
     subnet=$(echo "$cidr" | cut -d '/' -f 1)
     prefix=$(echo "$cidr" | cut -d '/' -f 2)
     subnet_mask=$(cidr2mask "$prefix")
-    IFS=. read -r i1 i2 i3 i4 <<< "$subnet"
+    IFS=. read i1 i2 i3 i4 <<EOF
+$subnet
+EOF
     host_bits=$(( 32 - prefix ))
     num_hosts=$(( 2 ** host_bits - 2 ))
     hosts_per_server=$(( num_hosts / num_servers ))
