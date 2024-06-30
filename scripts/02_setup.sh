@@ -33,7 +33,7 @@ set -- $(sudo pveum user token add root@pam "$(tr -dc 'a-z' < /dev/urandom | hea
     jq -r '([.["full-tokenid"],.value]) | @tsv')
 PROXMOX_TOKEN_ID="$1"
 PROXMOX_TOKEN_SECRET="$2"
-export STORAGE_POOL="$((sudo pvesm status | grep -q local-zfs) && echo local-zfs || ( (sudo pvesm status | grep -q local-lvm) && echo local-lvm || echo local))"
+export STORAGE_POOL="$( (sudo pvesm status | grep -q local-zfs) && echo local-zfs || ( (sudo pvesm status | grep -q local-lvm) && echo local-lvm || echo local))"
 for d in $(ls yams/images); do
     cp yams/images/$d/.env.example yams/images/$d/.env
     sed -i "s|^PROXMOX_HOST=.*|PROXMOX_HOST=localhost:8006|" yams/images/$d/.env
