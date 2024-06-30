@@ -141,6 +141,7 @@ fi
 if ! cat /etc/modules | grep -q nf_conntrack; then
     echo nf_conntrack | $SUDO tee -a /etc/modules
 fi
+$SUDO sed -i "s|.*[0-9]\s*\($(hostname).*\)|$PRIVATE_IP_ADDRESS \1|g" /etc/hosts
 cat <<EOF | $SUDO tee /etc/resolv.conf >/dev/null
 nameserver 8.8.8.8
 nameserver 4.4.4.4
