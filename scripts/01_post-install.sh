@@ -210,7 +210,7 @@ if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
     done
 fi
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
-$SUDO systemctl restart isc-dhcp-server
 if [ "$_ADDED_USER" = "1" ]; then
     $SUDO passwd admin
 fi
+echo "Please reboot the server"
