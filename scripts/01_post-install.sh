@@ -4,7 +4,61 @@ PRIVATE_IP_NETWORK="192.168.50.0/24"
 GUEST_SUBNETS="
 172.16.0.0/16
 "
+MAX_SERVERS="64"
 ADDITIONAL_IPS=""
+
+generate_dhcp_config() {
+    cidr="$1"
+    num_servers="$2"
+    server_index="$3"
+    if [ $((num_servers % 2)) -ne 0 ]; then
+        echo "Error: Number of servers must be an even number." >&2
+        exit 1
+    fi
+    subnet=$(echo "$cidr" | cut -d '/' -f 1)
+    prefix=$(echo "$cidr" | cut -d '/' -f 2)
+    subnet_mask=$(cidr2mask "$prefix")
+    IFS=. read -r i1 i2 i3 i4 <<< "$subnet"
+    host_bits=$(( 32 - prefix ))
+    num_hosts=$(( 2 ** host_bits - 2 ))
+    hosts_per_server=$(( num_hosts / num_servers ))
+    range_start_ip=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + (hosts_per_server * (server_index - 1)) + (server_index - 1) ))
+    range_end_ip=$(( range_start_ip + hosts_per_server ))
+    if [ "$server_index" -eq 1 ]; then
+        range_start_ip=$(( range_start_ip + 2 ))
+    fi
+    if [ "$server_index" -eq "$num_servers" ]; then
+        range_end_ip=$(( range_end_ip - 1 ))
+    fi
+    range_start=$(printf "%d.%d.%d.%d" \
+                  $(( (range_start_ip >> 24) & 255 )) \
+                  $(( (range_start_ip >> 16) & 255 )) \
+                  $(( (range_start_ip >> 8) & 255 )) \
+                  $(( range_start_ip & 255 )))
+    range_end=$(printf "%d.%d.%d.%d" \
+                $(( (range_end_ip >> 24) & 255 )) \
+                $(( (range_end_ip >> 16) & 255 )) \
+                $(( (range_end_ip >> 8) & 255 )) \
+                $(( range_end_ip & 255 )))
+    echo "subnet $subnet netmask $subnet_mask {"
+    echo "    range $range_start $range_end;"
+    echo "    option routers $(echo "$subnet" | awk -F. '{print $1"."$2"."$3".1"}');"
+    echo "    option subnet-mask $subnet_mask;"
+    echo "    option domain-name-servers 8.8.8.8, 4.4.4.4, 1.1.1.1;"
+    echo "}"
+}
+
+cidr2mask() {
+    prefix="$1"
+    shift=$(( 32 - prefix ))
+    mask=$(( (1 << 32) - (1 << shift) ))
+    printf "%d.%d.%d.%d\n" \
+           $(( (mask >> 24) & 255 )) \
+           $(( (mask >> 16) & 255 )) \
+           $(( (mask >> 8) & 255 )) \
+           $(( mask & 255 ))
+}
+
 SUDO=
 if which sudo >/dev/null 2>&1; then
     SUDO=sudo
@@ -23,12 +77,12 @@ else
     fi
 fi
 PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
-_NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')
-if [ "$_NUMBER" = "" ] || [ "$_NUMBER" -gt 245 ]; then
+HOST_NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')
+if [ "$HOST_NUMBER" = "" ] || [ "$HOST_NUMBER" -gt 245 ]; then
     echo "Error: Host number must be between 1 and 245." >&2
     exit 1
 fi
-PRIVATE_IP_ADDRESS="$(echo $PRIVATE_IP_NETWORK | cut -d. -f1-3).$(($_NUMBER + 9))"
+PRIVATE_IP_ADDRESS="$(echo $PRIVATE_IP_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 9))"
 if ping -c 1 -W 1 "$PRIVATE_IP_ADDRESS" >/dev/null 2>&1; then
     echo "Error: Proxmox is already installed on IP address $PRIVATE_IP_ADDRESS." >&2
     exit 1
@@ -64,6 +118,7 @@ $SUDO apt-get install -y \
     bind9-host \
     curl \
     iputils-ping \
+    isc-dhcp-server \
     sudo \
     vim
 if ! id -u admin >/dev/null 2>&1; then
@@ -124,6 +179,11 @@ EOF
 i=1
 for GUEST_SUBNET in $GUEST_SUBNETS; do
 GUEST_CIDR="$(echo $GUEST_SUBNET | cut -d/ -f1)/$(echo $GUEST_SUBNET | cut -d/ -f2)"
+if [ "$DHCP_INTERFACES" = "" ]; then
+    DHCP_INTERFACES="vmbr$((i + 1))"
+else
+    DHCP_INTERFACES="$DHCP_INTERFACES vmbr$((i + 1))"
+fi
 cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 
 auto $INTERFACE.$((i + 4000))
@@ -143,6 +203,14 @@ iface vmbr$((i + 1)) inet static
 EOF
 i=$((i + 1))
 done
+if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
+    for GUEST_SUBNET in $GUEST_SUBNETS; do
+        generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
+            $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+    done
+fi
+$SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
+$SUDO systemctl restart isc-dhcp-server
 if [ "$_ADDED_USER" = "1" ]; then
     $SUDO passwd admin
 fi
