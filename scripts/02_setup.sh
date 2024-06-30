@@ -14,6 +14,7 @@ sudo apt install -y \
     make \
     software-properties-common \
     systemd-timesyncd
+git lfs install
 wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ceph.gpg >/dev/null
 sudo apt-add-repository -y "deb https://download.ceph.com/debian-reef/ $(lsb_release -cs) main"
 sudo systemctl mask rpcbind

@@ -37,7 +37,3 @@ EOF
 $SUDO apt-get update
 $SUDO apt-get upgrade -y
 $SUDO apt-get dist-upgrade -y
-$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
-sh 01_post-install.sh
-rm 01_post-install.sh
