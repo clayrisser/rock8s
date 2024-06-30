@@ -179,7 +179,6 @@ iface vmbr1 inet static
 EOF
 i=1
 for GUEST_SUBNET in $GUEST_SUBNETS; do
-GUEST_CIDR="$(echo $GUEST_SUBNET | cut -d/ -f1)/$(echo $GUEST_SUBNET | cut -d/ -f2)"
 if [ "$DHCP_INTERFACES" = "" ]; then
     DHCP_INTERFACES="vmbr$((i + 1))"
 else
@@ -192,13 +191,13 @@ iface $INTERFACE.$((i + 4000)) inet manual
 
 auto vmbr$((i + 1))
 iface vmbr$((i + 1)) inet static
-    address      $GUEST_CIDR
+    address      $(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.1/\3|g')
     bridge-ports $INTERFACE.$((i + 4000))
     bridge-stp   off
     bridge-fd    0
     mtu          1400
-    post-up      iptables -t nat -A POSTROUTING -s '$GUEST_CIDR' -o vmbr0 -j MASQUERADE
-    post-down    iptables -t nat -D POSTROUTING -s '$GUEST_CIDR' -o vmbr0 -j MASQUERADE
+    post-up      iptables -t nat -A POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
+    post-down    iptables -t nat -D POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
     post-up      iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
     post-down    iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
 EOF
