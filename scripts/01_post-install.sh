@@ -6,7 +6,6 @@ GUEST_SUBNETS="
 "
 MAX_SERVERS="64"
 ADDITIONAL_IPS=""
-
 generate_dhcp_config() {
     cidr="$1"
     num_servers="$2"
@@ -22,7 +21,7 @@ generate_dhcp_config() {
 $subnet
 EOF
     host_bits=$(( 32 - prefix ))
-    num_hosts=$(( 2 ** host_bits - 2 ))
+    num_hosts=$(( (1 << host_bits) - 2 ))
     hosts_per_server=$(( num_hosts / num_servers ))
     range_start_ip=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + (hosts_per_server * (server_index - 1)) + (server_index - 1) ))
     range_end_ip=$(( range_start_ip + hosts_per_server ))
