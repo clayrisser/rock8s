@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PROXMOX_VERSION=8.1-2
+PROXMOX_VERSION=8.2-1
 PROXMOX_ISO="http://download.proxmox.com/iso/proxmox-ve_${PROXMOX_VERSION}.iso"
 DRIVE_INTERFACE="nvme"
 SUDO=
