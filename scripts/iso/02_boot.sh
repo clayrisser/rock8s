@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DRIVE_INTERFACE="nvme"
-DRIVES="$(lsblk -dn -o NAME | grep "$DRIVE_INTERFACE" | sort)"
+DRIVES="$(lsblk -dn -o NAME | grep "$DRIVE_INTERFACE" | sort | head -n2)"
 DRIVE_ARGS=""
 for DRIVE in $DRIVES; do
     DRIVE_ARGS="$DRIVE_ARGS -drive file=/dev/$DRIVE,format=raw,media=disk,if=virtio"
