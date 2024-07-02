@@ -19,13 +19,13 @@ resource "proxmox_vm_qemu" "vm" {
   os_type     = "cloud-init"
   cores       = var.vm_max_vcpus
   # vcpus       = var.vm_vcpus
-  sockets  = var.vm_sockets
-  cpu      = var.vm_cpu_type
-  memory   = var.vm_memory_mb
-  bootdisk = "virtio0"
-  scsihw   = "virtio-scsi-pci" # virtio-scsi-pci or virtio-scsi-single
-  hotplug  = "network,disk,usb,memory,cpu"
-  # numa             = true
+  sockets          = var.vm_sockets
+  cpu              = var.vm_cpu_type
+  memory           = var.vm_memory_mb
+  bootdisk         = "virtio0"
+  scsihw           = "virtio-scsi-pci" # virtio-scsi-pci or virtio-scsi-single
+  hotplug          = "network,disk,usb,memory,cpu"
+  numa             = true
   automatic_reboot = false
   tags             = var.vm_tags
   disks {
