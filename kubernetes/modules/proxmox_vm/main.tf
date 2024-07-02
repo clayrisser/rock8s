@@ -23,7 +23,7 @@ resource "proxmox_vm_qemu" "vm" {
   cpu              = var.vm_cpu_type
   memory           = var.vm_memory_mb
   bootdisk         = "virtio0"
-  scsihw           = "virtio-scsi-single"
+  scsihw           = "virtio-scsi-pci" # virtio-scsi-pci or virtio-scsi-single
   hotplug          = "network,disk,usb,memory,cpu"
   numa             = true
   automatic_reboot = false
@@ -59,3 +59,4 @@ resource "proxmox_vm_qemu" "vm" {
     ]
   }
 }
+
