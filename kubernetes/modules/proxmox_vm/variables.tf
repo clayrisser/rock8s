@@ -68,10 +68,6 @@ variable "vm_clone" {
   default = "template-debian-12"
 }
 
-variable "vm_host_number" {
-  type = number
-}
-
 variable "worker_node_data_disk_storage" {
   default = ""
 }

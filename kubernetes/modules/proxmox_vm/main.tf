@@ -9,21 +9,21 @@ terraform {
 }
 
 resource "proxmox_vm_qemu" "vm" {
-  count       = var.node_count
-  target_node = var.pm_host
-  clone       = var.vm_clone
-  qemu_os     = "l26"
-  name        = "${var.vm_name_prefix}-${format("%02d", count.index + 1)}"
-  agent       = 1
-  onboot      = var.vm_onboot
-  os_type     = "cloud-init"
-  cores       = var.vm_max_vcpus
-  # vcpus       = var.vm_vcpus
+  count            = var.node_count
+  target_node      = var.pm_host
+  clone            = var.vm_clone
+  qemu_os          = "l26"
+  name             = "${var.vm_name_prefix}-${format("%02d", count.index + 1)}"
+  agent            = 1
+  onboot           = var.vm_onboot
+  os_type          = "cloud-init"
+  cores            = var.vm_max_vcpus
+  vcpus            = var.vm_vcpus
   sockets          = var.vm_sockets
   cpu              = var.vm_cpu_type
   memory           = var.vm_memory_mb
   bootdisk         = "virtio0"
-  scsihw           = "virtio-scsi-pci" # virtio-scsi-pci or virtio-scsi-single
+  scsihw           = "virtio-scsi-single"
   hotplug          = "network,disk,usb,memory,cpu"
   numa             = true
   automatic_reboot = false
