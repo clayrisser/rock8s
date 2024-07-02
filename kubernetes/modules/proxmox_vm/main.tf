@@ -38,12 +38,19 @@ resource "proxmox_vm_qemu" "vm" {
         }
       }
     }
+    ide {
+      ide0 {
+        cloudinit {
+          storage = var.vm_os_disk_storage
+        }
+      }
+    }
   }
   network {
     model  = "virtio"
     bridge = var.vm_net_name
   }
-  ipconfig0 = "ip=${cidrhost(var.vm_net_subnet_cidr, var.vm_host_number + count.index)}${local.vm_net_subnet_mask},gw=${local.vm_net_default_gw}"
+  ipconfig0 = "ip=dhcp"
   ciuser    = var.vm_user
   sshkeys   = base64decode(var.ssh_public_keys_b64)
   lifecycle {
