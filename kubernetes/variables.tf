@@ -75,12 +75,6 @@ variable "vm_os_disk_storage" {
   default = "local-zfs"
 }
 
-# variable "add_worker_node_data_disk" {
-#   type        = bool
-#   description = "Whether to add a data disk to each worker node of the cluster"
-#   default     = false
-# }
-
 # variable "worker_node_data_disk_storage" {
 #   type        = string
 #   description = "The storage pool where the data disk is placed"

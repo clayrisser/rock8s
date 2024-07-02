@@ -72,10 +72,6 @@ variable "vm_host_number" {
   type = number
 }
 
-variable "add_worker_node_data_disk" {
-  default = false
-}
-
 variable "worker_node_data_disk_storage" {
   default = ""
 }
