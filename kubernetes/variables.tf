@@ -105,19 +105,13 @@ variable "vm_clone" {
 #   default     = 22
 # }
 
-# # Kuberentes VM specifications for Kubernetes nodes
-# ########################################################################
-# variable "vm_k8s_control_plane" {
-#   type        = object({ node_count = number, vcpus = number, memory = number, disk_size = number })
-#   description = "Control Plane VM specification"
-#   default     = { node_count = 1, vcpus = 2, memory = 1536, disk_size = 20 }
-# }
+variable "vm_k8s_control_plane" {
+  default = { node_count = 1, vcpus = 2, memory = 1536, disk_size = 20 }
+}
 
-# variable "vm_k8s_worker" {
-#   type        = object({ node_count = number, vcpus = number, memory = number, disk_size = number })
-#   description = "Worker VM specification"
-#   default     = { node_count = 2, vcpus = 2, memory = 2048, disk_size = 20 }
-# }
+variable "vm_k8s_worker" {
+  default = { node_count = 2, vcpus = 2, memory = 2048, disk_size = 20 }
+}
 
 variable "create_kubespray_host" {
   default = true
