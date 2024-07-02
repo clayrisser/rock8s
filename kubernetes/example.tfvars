@@ -1,4 +1,4 @@
-env_name                 = "demo"
+cluster_prefix           = "demo"
 iteration                = "0"
 cluster_domain           = "local"
 pm_api_url               = "https://localhost:8006/api"
