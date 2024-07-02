@@ -44,7 +44,7 @@ resource "proxmox_vm_qemu" "vm" {
           storage = var.vm_os_disk_storage
         }
       }
-      ide1 {
+      ide2 {
         cdrom {}
       }
     }
