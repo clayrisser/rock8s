@@ -34,7 +34,7 @@ resource "proxmox_vm_qemu" "vm" {
         disk {
           storage  = var.vm_os_disk_storage
           size     = "${var.vm_os_disk_size_gb}G"
-          iothread = 1
+          iothread = true
         }
       }
     }
