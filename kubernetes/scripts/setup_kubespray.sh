@@ -1,5 +1,5 @@
 #!/bin/bash
-kubespray_data_dir=${kubespray_data_dir}
+kubespray_data_dir="${kubespray_data_dir}"
 apt_lock_max_wait_time=600
 apt_retry_interval=10
 
