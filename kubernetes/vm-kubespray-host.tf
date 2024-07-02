@@ -55,10 +55,9 @@ module "kubespray_host" {
   vm_cpu_type         = var.vm_cpu_type
   vm_memory_mb        = 2048
   vm_os_disk_storage  = var.vm_os_disk_storage
-  vm_os_disk_size_gb  = 10
+  vm_os_disk_size_gb  = 20
   vm_net_name         = var.internal_net_name
   vm_net_subnet_cidr  = var.internal_net_subnet_cidr
-  vm_host_number      = 10
   vm_user             = var.vm_user
   vm_tags             = "${var.cluster_prefix};terraform;kubespray"
   ssh_public_keys_b64 = var.ssh_public_keys_b64
