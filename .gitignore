@@ -1,0 +1,12 @@
+# terraform
+.terraform
+*.tfstate
+*.tfstate.*
+*.tfplan
+cloud.tf
+tmp
+
+# os
+Icon*
+.DS_Store
+.env*
