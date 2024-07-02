@@ -50,17 +50,17 @@ module "kubespray_host" {
   vm_clone            = var.vm_clone
   vm_name_prefix      = "vm-${local.cluster_name}-kubespray"
   vm_max_vcpus        = var.vm_max_vcpus
-  vm_vcpus            = var.vm_k8s_control_plane["vcpus"]
+  vm_vcpus            = 2
   vm_sockets          = var.vm_sockets
   vm_cpu_type         = var.vm_cpu_type
-  vm_memory_mb        = var.vm_k8s_control_plane["memory"]
+  vm_memory_mb        = 2048
   vm_os_disk_storage  = var.vm_os_disk_storage
-  vm_os_disk_size_gb  = var.vm_k8s_control_plane["disk_size"]
+  vm_os_disk_size_gb  = 10
   vm_net_name         = var.internal_net_name
   vm_net_subnet_cidr  = var.internal_net_subnet_cidr
   vm_host_number      = 10
   vm_user             = var.vm_user
-  vm_tags             = "${var.cluster_prefix};terraform;k8s_control_plane"
+  vm_tags             = "${var.cluster_prefix};terraform;kubespray"
   ssh_public_keys_b64 = var.ssh_public_keys_b64
 }
 
