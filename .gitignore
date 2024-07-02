@@ -1,12 +1,15 @@
 # terraform
-.terraform
+*.tfplan
 *.tfstate
 *.tfstate.*
-*.tfplan
+.terraform
 cloud.tf
 tmp
 
 # os
 Icon*
 .DS_Store
-.env*
+.env
+
+# app
+*.iso
