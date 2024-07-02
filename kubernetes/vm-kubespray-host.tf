@@ -13,36 +13,35 @@ locals {
       kubespray_docker_image = var.kubespray_docker_image
     }
   )
-  # kubespray_inventory_content = templatefile(
-  #   "${path.module}/kubespray/inventory.ini",
-  #   {
-  #     cp_nodes     = join("\n", [for host in module.k8s_control_plane_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])])
-  #     worker_nodes = join("\n", [for host in module.k8s_worker_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])])
-  #     bastion      = "" # var.bastion_ssh_ip != "" ? "[bastion]\nbastion ansible_host=${var.bastion_ssh_ip} ansible_port=${var.bastion_ssh_port} ansible_user=${var.bastion_ssh_user}" : ""
-  #   }
-  # )
-  # kubespray_k8s_config_content = templatefile(
-  #   "${path.module}/kubespray/k8s-cluster.yaml",
-  #   {
-  #     kube_version               = var.kube_version
-  #     kube_network_plugin        = var.kube_network_plugin
-  #     cluster_name               = local.cluster_fqdn
-  #     enable_nodelocaldns        = var.enable_nodelocaldns
-  #     podsecuritypolicy_enabled  = var.podsecuritypolicy_enabled
-  #     persistent_volumes_enabled = var.persistent_volumes_enabled
-  #   }
-  # )
-  # kubespray_addon_config_content = templatefile(
-  #   "${path.module}/kubespray/addons.yaml",
-  #   {
-  #     helm_enabled          = var.helm_enabled
-  #     ingress_nginx_enabled = var.ingress_nginx_enabled
-  #     argocd_enabled        = var.argocd_enabled
-  #     argocd_version        = var.argocd_version
-  #   }
-  # )
+  kubespray_inventory_content = templatefile(
+    "${path.module}/kubespray/inventory.ini",
+    {
+      cp_nodes     = join("\n", [for host in module.k8s_control_plane_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])])
+      worker_nodes = join("\n", [for host in module.k8s_worker_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])])
+      bastion      = "" # var.bastion_ssh_ip != "" ? "[bastion]\nbastion ansible_host=${var.bastion_ssh_ip} ansible_port=${var.bastion_ssh_port} ansible_user=${var.bastion_ssh_user}" : ""
+    }
+  )
+  kubespray_k8s_config_content = templatefile(
+    "${path.module}/kubespray/k8s-cluster.yaml",
+    {
+      kube_version               = var.kube_version
+      kube_network_plugin        = var.kube_network_plugin
+      cluster_name               = local.cluster_fqdn
+      enable_nodelocaldns        = var.enable_nodelocaldns
+      podsecuritypolicy_enabled  = var.podsecuritypolicy_enabled
+      persistent_volumes_enabled = var.persistent_volumes_enabled
+    }
+  )
+  kubespray_addon_config_content = templatefile(
+    "${path.module}/kubespray/addons.yaml",
+    {
+      helm_enabled          = var.helm_enabled
+      ingress_nginx_enabled = var.ingress_nginx_enabled
+      argocd_enabled        = var.argocd_enabled
+      argocd_version        = var.argocd_version
+    }
+  )
 }
-
 
 module "kubespray_host" {
   source              = "./modules/proxmox_vm"

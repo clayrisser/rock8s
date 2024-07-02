@@ -40,11 +40,11 @@ variable "pm_timeout" {
 }
 
 variable "internal_net_name" {
-  default = "vmbr3"
+  type = string
 }
 
 variable "internal_net_subnet_cidr" {
-  default = "10.0.1.0/24"
+  type = string
 }
 
 variable "ssh_private_key_b64" {
@@ -75,17 +75,13 @@ variable "vm_os_disk_storage" {
   default = "local-zfs"
 }
 
-# variable "worker_node_data_disk_storage" {
-#   type        = string
-#   description = "The storage pool where the data disk is placed"
-#   default     = ""
-# }
+variable "worker_node_data_disk_storage" {
+  default = "local-zfs"
+}
 
-# variable "worker_node_data_disk_size" {
-#   type        = string
-#   description = "The size of worker node data disk in Gigabyte"
-#   default     = 10
-# }
+variable "worker_node_data_disk_size" {
+  default = 10
+}
 
 variable "vm_clone" {
   default = "template-debian-12"
@@ -131,49 +127,38 @@ variable "kubespray_docker_image" {
   default = "khanhphhub/kubespray:v2.22.0"
 }
 
-# variable "kube_version" {
-#   type        = string
-#   description = "Kubernetes version"
-#   default     = "v1.24.6"
-# }
-# variable "kube_network_plugin" {
-#   type        = string
-#   description = "The network plugin to be installed on your cluster. Example: `cilium`, `calico`, `kube-ovn`, `weave` or `flannel`"
-#   default     = "calico"
-# }
+variable "kube_version" {
+  default = "v1.24.6"
+}
 
-# variable "enable_nodelocaldns" {
-#   type        = bool
-#   description = "Whether to enable nodelocal dns cache on your cluster"
-#   default     = false
-# }
-# variable "podsecuritypolicy_enabled" {
-#   type        = bool
-#   description = "Whether to enable pod security policy on your cluster (RBAC must be enabled either by having 'RBAC' in authorization_modes or kubeadm enabled)"
-#   default     = false
-# }
-# variable "persistent_volumes_enabled" {
-#   type        = bool
-#   description = "Whether to add Persistent Volumes Storage Class for corresponding cloud provider (supported: in-tree OpenStack, Cinder CSI, AWS EBS CSI, Azure Disk CSI, GCP Persistent Disk CSI)"
-#   default     = false
-# }
-# variable "helm_enabled" {
-#   type        = bool
-#   description = "Whether to enable Helm on your cluster"
-#   default     = false
-# }
-# variable "ingress_nginx_enabled" {
-#   type        = bool
-#   description = "Whether to enable Nginx ingress on your cluster"
-#   default     = false
-# }
-# variable "argocd_enabled" {
-#   type        = bool
-#   description = "Whether to enable ArgoCD on your cluster"
-#   default     = false
-# }
-# variable "argocd_version" {
-#   type        = string
-#   description = "The ArgoCD version to be installed"
-#   default     = "v2.4.12"
-# }
+variable "kube_network_plugin" {
+  default = "calico"
+}
+
+variable "enable_nodelocaldns" {
+  default = false
+}
+
+variable "podsecuritypolicy_enabled" {
+  default = false
+}
+
+variable "persistent_volumes_enabled" {
+  default = false
+}
+
+variable "helm_enabled" {
+  default = false
+}
+
+variable "ingress_nginx_enabled" {
+  default = false
+}
+
+variable "argocd_enabled" {
+  default = false
+}
+
+variable "argocd_version" {
+  default = "v2.4.12"
+}
