@@ -1,6 +1,6 @@
-# yams
+# yaps
 
-> scripts to deploy proxmox
+> yet another proxmox script
 
 ## ISO Install
 
@@ -10,7 +10,7 @@ SSH into a recovery machine as root and run the following command to boot up the
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/iso/01_boot-installer.sh 2>/dev/null > 01_boot-installer.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/iso/01_boot-installer.sh 2>/dev/null > 01_boot-installer.sh
 sh 01_boot-installer.sh
 rm 01_boot-installer.sh
 ```
@@ -26,7 +26,7 @@ Run the following command from the recovery machine to boot into the newly insta
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/iso/02_boot.sh > 02_boot.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/iso/02_boot.sh > 02_boot.sh
 sh 02_boot.sh
 rm 02_boot.sh
 ```
@@ -37,7 +37,7 @@ SSH into a new session of the recovery machine as root and run the following com
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/iso/03_login.sh > 03_login.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/iso/03_login.sh > 03_login.sh
 sh 03_login.sh
 rm 03_login.sh
 ```
@@ -49,7 +49,7 @@ sure to provide a password for the admin account.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
 sh 01_post-install.sh
 rm 01_post-install.sh
 ```
@@ -65,7 +65,7 @@ SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/02_setup.sh > 02_setup.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/02_setup.sh > 02_setup.sh
 sh 02_setup.sh
 rm 02_setup.sh
 ```
@@ -82,7 +82,7 @@ Run the following command to install proxmox.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/debian/01_install.sh > 01_install.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/debian/01_install.sh > 01_install.sh
 sh 01_install.sh
 rm 01_install.sh
 ```
@@ -94,7 +94,7 @@ sure to provide a password for the admin account.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
 sh 01_post-install.sh
 rm 01_post-install.sh
 ```
@@ -110,7 +110,7 @@ SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yams/-/raw/main/scripts/02_setup.sh > 02_setup.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/02_setup.sh > 02_setup.sh
 sh 02_setup.sh
 rm 02_setup.sh
 ```
