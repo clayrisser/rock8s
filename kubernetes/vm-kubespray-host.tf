@@ -63,53 +63,52 @@ module "kubespray_host" {
   ssh_public_keys_b64 = var.ssh_public_keys_b64
 }
 
-# resource "null_resource" "setup_kubespray" {
-#   count = var.create_kubespray_host ? 1 : 0
-#   provisioner "remote-exec" {
-#     inline = [
-#       local.setup_kubespray_script_content,
-#       "echo ${var.ssh_private_key} | base64 -d > ${local.kubespray_data_dir}/id_rsa",
-#       <<-EOT
-#       cat <<EOF > ${local.kubespray_data_dir}/inventory.ini
-#       ${local.kubespray_inventory_content}
-#       EOF
-#       EOT
-#       ,
-#       <<-EOT
-#       cat <<EOF > ${local.kubespray_data_dir}/k8s-cluster.yml
-#       ${local.kubespray_k8s_config_content}
-#       EOF
-#       EOT
-#       ,
-#       <<-EOT
-#       cat <<EOF > ${local.kubespray_data_dir}/addons.yml
-#       ${local.kubespray_addon_config_content}
-#       EOF
-#       EOT
-#       ,
-#       "chmod 600 ${local.kubespray_data_dir}/*",
-#       local.install_kubernetes_script_content
-#     ]
-#   }
-#   connection {
-#     type         = "ssh"
-#     user         = var.vm_user
-#     private_key  = base64decode(var.ssh_private_key)
-#     host         = module.kubespray_host.vm_list[0].ip0
-#     port         = 22
-#     bastion_host = var.bastion_ssh_ip
-#     bastion_user = var.bastion_ssh_user
-#     bastion_port = var.bastion_ssh_port
-#   }
-#   triggers = {
-#     always_run = timestamp()
-#   }
-#   depends_on = [
-#     module.kubespray_host,
-#     module.k8s_control_plane_nodes,
-#     module.k8s_worker_nodes
-#   ]
-# }
+resource "null_resource" "setup_kubespray" {
+  provisioner "remote-exec" {
+    inline = [
+      local.setup_kubespray_script_content,
+      "echo ${var.ssh_private_key_b64} | base64 -d > ${local.kubespray_data_dir}/id_rsa",
+      <<-EOT
+      cat <<EOF > ${local.kubespray_data_dir}/inventory.ini
+      ${local.kubespray_inventory_content}
+      EOF
+      EOT
+      ,
+      <<-EOT
+      cat <<EOF > ${local.kubespray_data_dir}/k8s-cluster.yml
+      ${local.kubespray_k8s_config_content}
+      EOF
+      EOT
+      ,
+      <<-EOT
+      cat <<EOF > ${local.kubespray_data_dir}/addons.yml
+      ${local.kubespray_addon_config_content}
+      EOF
+      EOT
+      ,
+      "chmod 600 ${local.kubespray_data_dir}/*",
+      local.install_kubernetes_script_content
+    ]
+  }
+  connection {
+    type        = "ssh"
+    user        = var.vm_user
+    private_key = base64decode(var.ssh_private_key_b64)
+    host        = module.kubespray_host.vm_list[0].ip0
+    port        = 22
+    # bastion_host = var.bastion_ssh_ip
+    # bastion_user = var.bastion_ssh_user
+    # bastion_port = var.bastion_ssh_port
+  }
+  triggers = {
+    always_run = timestamp()
+  }
+  depends_on = [
+    module.kubespray_host,
+    module.k8s_control_plane_nodes,
+    module.k8s_worker_nodes
+  ]
+}
 
 output "kubespray_host" {
   value = module.kubespray_host.vm_list
