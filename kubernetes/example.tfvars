@@ -17,17 +17,17 @@ vm_clone                 = "template-debian-12"
 # bastion_ssh_ip           = "192.168.1.131"
 # bastion_ssh_user         = "ubuntu"
 # bastion_ssh_port         = 22
-vm_max_vcpus = 2
+vm_max_vcpus = 4
 vm_k8s_control_plane = {
   node_count = 1
-  vcpus      = 2
-  memory     = 2048
+  vcpus      = 4
+  memory     = 4096
   disk_size  = 20
 }
 vm_k8s_worker = {
   node_count = 3
-  vcpus      = 2
-  memory     = 3072
+  vcpus      = 4
+  memory     = 4096
   disk_size  = 20
 }
 kube_version               = "v1.24.6"
