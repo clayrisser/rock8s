@@ -118,11 +118,11 @@ variable "create_kubespray_host" {
 }
 
 variable "kubespray_docker_image" {
-  default = "khanhphhub/kubespray:v2.22.0"
+  default = "khanhphhub/kubespray:v2.25.0"
 }
 
 variable "kube_version" {
-  default = "v1.24.6"
+  default = "v1.28.0"
 }
 
 variable "kube_network_plugin" {
