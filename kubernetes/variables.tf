@@ -118,7 +118,7 @@ variable "create_kubespray_host" {
 }
 
 variable "kubespray_docker_image" {
-  default = "khanhphhub/kubespray:v2.22.0"
+  default = "registry.gitlab.com/bitspur/rock8s/images/kubespray:2.25.0"
 }
 
 variable "kube_version" {
