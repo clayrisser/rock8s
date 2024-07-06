@@ -26,7 +26,7 @@ resource "proxmox_vm_qemu" "vm" {
   scsihw           = "virtio-scsi-single"
   hotplug          = "network,disk,usb,memory,cpu"
   numa             = true
-  automatic_reboot = false
+  automatic_reboot = true
   tags             = var.vm_tags
   disks {
     scsi {
