@@ -7,7 +7,6 @@ https://download.fedoraproject.org/pub/fedora/linux/releases/40/Workstation/x86_
 sudo true
 export DEBIAN_FRONTEND=noninteractive
 sudo apt install -y \
-    cloud-init \
     git \
     git-lfs \
     jq \
