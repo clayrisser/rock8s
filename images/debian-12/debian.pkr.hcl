@@ -68,6 +68,7 @@ apt-get install -y \
   htop \
   linux-headers-amd64 \
   linux-image-amd64 \
+  python3-jsonschema \
   software-properties-common \
   sudo \
   unattended-upgrades \
