@@ -8,4 +8,5 @@ sudo docker run --rm \
     --mount type=bind,source="$KUBESPRAY_DATA_DIR/k8s-cluster.yml",dst=/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml \
     --mount type=bind,source="$KUBESPRAY_DATA_DIR/id_rsa",dst=/root/.ssh/id_rsa \
     "$KUBESPRAY_DOCKER_IMAGE" sh -c \
-    "ansible-playbook -i /inventory/sample/inventory.ini -u admin -become cluster.yml"
+    "tail -f /dev/null"
+#    "ansible-playbook -i /inventory/sample/inventory.ini -u admin -become cluster.yml"

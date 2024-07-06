@@ -30,7 +30,7 @@ vm_k8s_worker = {
   memory     = 4096
   disk_size  = 20
 }
-kube_version               = "v1.24.6"
+kube_version               = "v1.28.11"
 kube_network_plugin        = "calico"
 enable_nodelocaldns        = false
 podsecuritypolicy_enabled  = false
