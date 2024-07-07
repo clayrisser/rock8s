@@ -1,6 +1,6 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
-include $(PROJECT_ROOT)/variables.mk
+include $(CURDIR)/variables.mk
 
 PACKER ?= packer
 

@@ -1,0 +1,10 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+.PHONY: kubernetes/%
+kubernetes/%:
+	@$(call make,kubernetes) $*
+
+.PHONY: images/%
+images/%:
+	@$(call make,images) $*

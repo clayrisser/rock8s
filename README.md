@@ -70,6 +70,17 @@ sh 02_setup.sh
 rm 02_setup.sh
 ```
 
+### VIII. Deploy Kubernetes
+
+SSH into the proxmox system as admin and run the following setup script.
+
+```sh
+$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/03_deploy_kubernetes.sh > 03_deploy_kubernetes.sh
+sh 03_deploy_kubernetes.sh
+rm 03_deploy_kubernetes.sh
+```
+
 ## Debian Install
 
 ### I. Prepare Debian
@@ -113,4 +124,15 @@ $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-
     https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/02_setup.sh > 02_setup.sh
 sh 02_setup.sh
 rm 02_setup.sh
+```
+
+### VI. Deploy Kubernetes
+
+SSH into the proxmox system as admin and run the following setup script.
+
+```sh
+$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/03_deploy_kubernetes.sh > 03_deploy_kubernetes.sh
+sh 03_deploy_kubernetes.sh
+rm 03_deploy_kubernetes.sh
 ```

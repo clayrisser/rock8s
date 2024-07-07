@@ -1,4 +1,0 @@
-autoclean
-autoremove
-containerd
-ncdu

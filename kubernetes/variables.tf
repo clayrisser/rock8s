@@ -87,38 +87,36 @@ variable "vm_clone" {
   default = "template-debian-12"
 }
 
-# variable "bastion_ssh_ip" {
-#   type        = string
-#   description = "IP of the bastion host, could be either public IP or local network IP of the bastion host"
-#   default     = ""
-# }
-
-# variable "bastion_ssh_user" {
-#   type        = string
-#   description = "The user to authenticate to the bastion host"
-#   default     = "ubuntu"
-# }
-
-# variable "bastion_ssh_port" {
-#   type        = number
-#   description = "The SSH port number on the bastion host"
-#   default     = 22
-# }
-
-variable "vm_k8s_control_plane" {
-  default = { node_count = 1, vcpus = 2, memory = 1536, disk_size = 20 }
+variable "vm_k8s_control_plane_node_count" {
+  default = 1
 }
 
-variable "vm_k8s_worker" {
-  default = { node_count = 2, vcpus = 2, memory = 2048, disk_size = 20 }
+variable "vm_k8s_control_plane_vcpus" {
+  default = 2
 }
 
-variable "create_kubespray_host" {
-  default = true
+variable "vm_k8s_control_plane_memory" {
+  default = 1536
 }
 
-variable "kubespray_docker_image" {
-  default = "registry.gitlab.com/bitspur/rock8s/images/kubespray:2.25.0"
+variable "vm_k8s_control_plane_disk_size" {
+  default = 20
+}
+
+variable "vm_k8s_worker_node_count" {
+  default = 2
+}
+
+variable "vm_k8s_worker_vcpus" {
+  default = 2
+}
+
+variable "vm_k8s_worker_memory" {
+  default = 2048
+}
+
+variable "vm_k8s_worker_disk_size" {
+  default = 20
 }
 
 variable "kube_version" {
