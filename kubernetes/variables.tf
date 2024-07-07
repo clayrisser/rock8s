@@ -10,32 +10,32 @@ variable "cluster_domain" {
   default = "local"
 }
 
-variable "pm_api_url" {
+variable "proxmox_host" {
   type = string
 }
 
-variable "pm_api_token_id" {
+variable "proxmox_token_id" {
   type = string
 }
 
-variable "pm_api_token_secret" {
+variable "proxmox_token_secret" {
   type      = string
   sensitive = true
 }
 
-variable "pm_tls_insecure" {
+variable "proxmox_tls_insecure" {
   type = bool
 }
 
-variable "pm_host" {
+variable "proxmox_node" {
   type = string
 }
 
-variable "pm_parallel" {
+variable "proxmox_parallel" {
   default = 2
 }
 
-variable "pm_timeout" {
+variable "proxmox_timeout" {
   default = 600
 }
 

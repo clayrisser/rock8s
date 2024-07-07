@@ -1,4 +1,4 @@
-variable "pm_host" {
+variable "proxmox_node" {
   default = "pve1"
 }
 
