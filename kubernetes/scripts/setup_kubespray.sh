@@ -1,39 +1,19 @@
 #!/bin/sh
 
+KUBESPRAY_VERSION=2.25.0
 KUBESPRAY_DATA_DIR="${kubespray_data_dir}"
-APT_LOCK_MAX_WAIT_TIME=600
-APT_RETRY_INTERVAL=10
 export DEBIAN_FRONTEND=noninteractive
-is_lock_file_open() {
-  sudo lsof -t "/var/lib/apt/lists/lock" >/dev/null 2>&1 ||
-  sudo lsof -t "/var/lib/dpkg/lock-frontend" >/dev/null 2>&1 ||
-  sudo lsof -t "/var/lib/dpkg/lock" >/dev/null 2>&1
-}
-wait_for_lock_release() {
-  wait_time=0
-  while is_lock_file_open; do
-    if [ "$wait_time" -ge "$APT_LOCK_MAX_WAIT_TIME" ]; then
-      echo "Timeout reached. Lock file is still present."
-      exit 1
-    fi
-    echo "Waiting for apt lock file to be released..."
-    sleep $APT_RETRY_INTERVAL
-    wait_time=$((wait_time + $APT_RETRY_INTERVAL))
-  done
-}
-wait_for_lock_release
-if ! command -v docker &> /dev/null; then
-    if ! curl -fsSL https://get.docker.com -o get-docker.sh; then
-        echo "Error downloading Docker installation script. Exiting." >&2
-        exit 1
-    fi
-    if ! sudo sh get-docker.sh; then
-        echo "Error installing Docker. Exiting." >&2
-        exit 1
-    fi
-    rm -f get-docker.sh
-    sudo usermod -aG docker $USER
-fi
+sudo apt-get update
+sudo apt-get install -y \
+    python3-venv
 mkdir -p "$KUBESPRAY_DATA_DIR"
 rm -rf "$KUBESPRAY_DATA_DIR/*"
 chmod 700 "$KUBESPRAY_DATA_DIR"
+cd "$KUBESPRAY_DATA_DIR"
+curl -Lo kubespray.tar.gz \
+    "https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v${KUBESPRAY_VERSION}.tar.gz"
+tar -xzvf kubespray.tar.gz
+rm kubespray.tar.gz
+mv "kubespray-${KUBESPRAY_VERSION}" kubespray
+python3 -m venv env
+env/bin/pip3 install -r kubespray/requirements.txt

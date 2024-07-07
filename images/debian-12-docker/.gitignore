@@ -1,9 +1,6 @@
 # app
 .env
 
-# mkpm
-.mkpm/mkpm
-
 # packer
 *.box
 crash.log

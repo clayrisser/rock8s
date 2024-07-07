@@ -13,3 +13,7 @@ Icon*
 
 # app
 *.iso
+.env
+
+# mkpm
+.mkpm/mkpm

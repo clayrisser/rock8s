@@ -1,0 +1,7 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+IMAGES := $(shell find . -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
+.PHONY: build
+build:
+	@for image in $^; do $(call make) -C $$image build & done; wait

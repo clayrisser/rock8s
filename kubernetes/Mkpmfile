@@ -1,0 +1,21 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+include $(CURDIR)/variables.mk
+
+TERRAFORM ?= terraform
+
+.PHONY: format
+format:
+	@$(TERRAFORM) fmt --recursive
+
+.PHONY: init
+init:
+	@$(TERRAFORM) init $(VARS) .
+
+.PHONY: apply
+apply: init
+	@$(TERRAFORM) apply $(VARS) .
+
+.PHONY: destroy
+destroy: init
+	@$(TERRAFORM) destroy $(VARS) .
