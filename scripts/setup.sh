@@ -22,13 +22,7 @@ set -- $(sudo pveum user token add root@pam "$(tr -dc 'a-z' < /dev/urandom | hea
 export PROXMOX_TOKEN_ID="$1"
 export PROXMOX_TOKEN_SECRET="$2"
 export STORAGE_POOL="$( (sudo pvesm status | grep -q local-zfs) && echo local-zfs || ( (sudo pvesm status | grep -q local-lvm) && echo local-lvm || echo local))"
+export PROXMOX_NODE="$(hostname)"
+export PROXMOX_HOST="localhost:8006"
 make -sC $HOME/yaps build
-# for d in $(ls yaps/images); do
-#     cp yaps/images/$d/.env.example yaps/images/$d/.env
-#     sed -i "s|^PROXMOX_HOST=.*|PROXMOX_HOST=localhost:8006|" yaps/images/$d/.env
-#     sed -i "s|^PROXMOX_NODE=.*|PROXMOX_NODE=$(hostname)|" yaps/images/$d/.env
-#     sed -i "s|^PROXMOX_TOKEN_ID=.*|PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_ID|" yaps/images/$d/.env
-#     sed -i "s|^PROXMOX_TOKEN_SECRET=.*|PROXMOX_TOKEN_SECRET=$PROXMOX_TOKEN_SECRET|" yaps/images/$d/.env
-#     (cd yaps/images/$d && make build)
-# done
 sudo pveum user token remove "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f1)" "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f2)"
