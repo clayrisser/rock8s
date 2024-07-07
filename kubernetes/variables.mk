@@ -1,6 +1,6 @@
 VARS := \
 		-var argocd_enabled=$(ARGOCD_ENABLED) \
-		-var argocd_version=$(ARGOCD_VERSION)
+		-var argocd_version=$(ARGOCD_VERSION) \
 		-var cluster_domain=$(CLUSTER_DOMAIN) \
 		-var cluster_prefix=$(CLUSTER_PREFIX) \
 		-var enable_nodelocaldns=$(ENABLE_NODELOCALDNS) \
