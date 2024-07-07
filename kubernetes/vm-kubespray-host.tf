@@ -65,30 +65,21 @@ locals {
 
 resource "null_resource" "setup_kubespray" {
   provisioner "local-exec" {
-    command = [
-      local.setup_kubespray_script_content,
-      "echo ${var.ssh_private_key_b64} | base64 -d > ${local.kubespray_data_dir}/id_rsa",
-      <<-EOT
+    command = <<-EOT
+      ${local.setup_kubespray_script_content}
+      echo ${var.ssh_private_key_b64} | base64 -d > ${local.kubespray_data_dir}/id_rsa
       cat <<EOF > ${local.kubespray_data_dir}/inventory.ini
       ${local.kubespray_inventory_content}
       EOF
-      EOT
-      ,
-      <<-EOT
       cat <<EOF > ${local.kubespray_data_dir}/k8s-cluster.yml
       ${local.kubespray_k8s_config_content}
       EOF
-      EOT
-      ,
-      <<-EOT
       cat <<EOF > ${local.kubespray_data_dir}/addons.yml
       ${local.kubespray_addon_config_content}
       EOF
-      EOT
-      ,
-      "chmod 600 ${local.kubespray_data_dir}/*",
-      local.install_kubernetes_script_content
-    ]
+      chmod 600 ${local.kubespray_data_dir}/*
+      ${local.install_kubernetes_script_content}
+    EOT
   }
   # connection {
   #   type        = "ssh"
