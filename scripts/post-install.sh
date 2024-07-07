@@ -118,9 +118,15 @@ $SUDO apt-get dist-upgrade -y
 $SUDO apt-get install -y \
     bind9-host \
     curl \
+    git \
+    git-lfs \
     iputils-ping \
     isc-dhcp-server \
+    jq \
+    make \
+    software-properties-common \
     sudo \
+    systemd-timesyncd \
     vim
 if ! id -u admin >/dev/null 2>&1; then
     $SUDO adduser --disabled-password --gecos "" admin
@@ -211,6 +217,10 @@ if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
     done
 fi
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
+$SUDO -iu admin git lfs install
+if [ ! -d /home/admin/yaps ]; then
+    $SUDO -iu admin git clone https://gitlab.com/bitspur/rock8s/yaps.git /home/admin/yaps
+fi
 if [ "$_ADDED_USER" = "1" ]; then
     $SUDO passwd admin
 fi

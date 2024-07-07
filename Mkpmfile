@@ -1,6 +1,14 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
+.PHONY: setup
+setup:
+	@sh $(PROJECT_ROOT)/scripts/setup.sh
+
+.PHONY: kubernetes
+kubernetes:
+	@sh $(PROJECT_ROOT)/scripts/kubernetes.sh
+
 .PHONY: kubernetes/%
 kubernetes/%:
 	@$(call make,kubernetes) $*
