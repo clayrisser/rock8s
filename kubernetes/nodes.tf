@@ -1,7 +1,7 @@
 module "k8s_control_plane_nodes" {
   source              = "./modules/proxmox_vm"
   node_count          = var.vm_k8s_control_plane["node_count"]
-  pm_host             = var.pm_host
+  proxmox_node        = var.proxmox_node
   vm_clone            = var.vm_clone
   vm_name_prefix      = "vm-${local.cluster_name}-cp"
   vm_max_vcpus        = var.vm_max_vcpus
@@ -21,7 +21,7 @@ module "k8s_control_plane_nodes" {
 module "k8s_worker_nodes" {
   source                        = "./modules/proxmox_vm"
   node_count                    = var.vm_k8s_worker["node_count"]
-  pm_host                       = var.pm_host
+  proxmox_node                  = var.proxmox_node
   vm_clone                      = var.vm_clone
   vm_name_prefix                = "vm-${local.cluster_name}-worker"
   vm_max_vcpus                  = var.vm_max_vcpus

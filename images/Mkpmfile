@@ -4,4 +4,6 @@ include $(MKPM)/dotenv
 IMAGES := $(shell find . -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
 .PHONY: build
 build:
-	@for image in $(IMAGES); do $(call make) -C $$image build; done
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		for image in $(IMAGES); do $(call make) -C $$image build; done && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh

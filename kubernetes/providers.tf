@@ -13,10 +13,10 @@ terraform {
 }
 
 provider "proxmox" {
-  pm_api_url          = var.pm_api_url
-  pm_api_token_id     = var.pm_api_token_id
-  pm_api_token_secret = var.pm_api_token_secret
-  pm_tls_insecure     = var.pm_tls_insecure
-  pm_parallel         = var.pm_parallel
-  pm_timeout          = var.pm_timeout
+  pm_api_token_id     = var.proxmox_token_id
+  pm_api_token_secret = var.proxmox_token_secret
+  pm_api_url          = "${var.proxmox_host}/api2/json"
+  pm_parallel         = var.proxmox_parallel
+  pm_timeout          = var.proxmox_timeout
+  pm_tls_insecure     = var.proxmox_tls_insecure
 }

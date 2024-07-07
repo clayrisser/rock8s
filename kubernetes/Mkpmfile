@@ -10,12 +10,18 @@ format:
 
 .PHONY: init
 init:
-	@$(TERRAFORM) init $(VARS) .
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		$(TERRAFORM) init $(VARS) . && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: apply
 apply: init
-	@$(TERRAFORM) apply $(VARS) .
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		$(TERRAFORM) apply $(VARS) . && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: destroy
 destroy: init
-	@$(TERRAFORM) destroy $(VARS) .
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		$(TERRAFORM) destroy $(VARS) . && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
