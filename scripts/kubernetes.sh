@@ -15,6 +15,6 @@ set -- $(sudo pveum user token add root@pam "$(tr -dc 'a-z' < /dev/urandom | hea
     jq -r '([.["full-tokenid"],.value]) | @tsv')
 PROXMOX_TOKEN_ID="$1"
 PROXMOX_TOKEN_SECRET="$2"
-cd ~/yaps
+cd $HOME/yaps
 make apply
 sudo pveum user token remove "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f1)" "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f2)"

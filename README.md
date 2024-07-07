@@ -49,9 +49,9 @@ sure to provide a password for the admin account.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
-sh 01_post-install.sh
-rm 01_post-install.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/post-install.sh > post-install.sh
+sh post-install.sh
+rm post-install.sh
 ```
 
 ### VI. Reboot
@@ -64,10 +64,7 @@ proxmox system to fully power off.
 SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
-$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/02_setup.sh > 02_setup.sh
-sh 02_setup.sh
-rm 02_setup.sh
+make -sC ~/yaps setup
 ```
 
 ### VIII. Deploy Kubernetes
@@ -76,9 +73,9 @@ SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/03_deploy_kubernetes.sh > 03_deploy_kubernetes.sh
-sh 03_deploy_kubernetes.sh
-rm 03_deploy_kubernetes.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/deploy_kubernetes.sh > deploy_kubernetes.sh
+sh deploy_kubernetes.sh
+rm deploy_kubernetes.sh
 ```
 
 ## Debian Install
@@ -105,9 +102,9 @@ sure to provide a password for the admin account.
 
 ```sh
 $(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/01_post-install.sh > 01_post-install.sh
-sh 01_post-install.sh
-rm 01_post-install.sh
+    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/post-install.sh > post-install.sh
+sh post-install.sh
+rm post-install.sh
 ```
 
 ### IV. Reboot
@@ -120,10 +117,7 @@ proxmox system to fully power off.
 SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
-$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/02_setup.sh > 02_setup.sh
-sh 02_setup.sh
-rm 02_setup.sh
+make -sC ~/yaps setup
 ```
 
 ### VI. Deploy Kubernetes
@@ -131,8 +125,5 @@ rm 02_setup.sh
 SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
-$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/03_deploy_kubernetes.sh > 03_deploy_kubernetes.sh
-sh 03_deploy_kubernetes.sh
-rm 03_deploy_kubernetes.sh
+make -sC ~/yaps kubernetes
 ```
