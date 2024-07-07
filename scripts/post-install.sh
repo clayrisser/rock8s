@@ -217,9 +217,9 @@ if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
     done
 fi
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
-$SUDO -iu admin git lfs install
+$SUDO su -c "git lfs install" - admin
 if [ ! -d /home/admin/yaps ]; then
-    $SUDO -iu admin git clone https://gitlab.com/bitspur/rock8s/yaps.git /home/admin/yaps
+    $SUDO su -c "git clone https://gitlab.com/bitspur/rock8s/yaps.git /home/admin/yaps" - admin
 fi
 if [ "$_ADDED_USER" = "1" ]; then
     $SUDO passwd admin
