@@ -10,7 +10,10 @@ wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee 
 sudo apt-add-repository -y "deb https://download.ceph.com/debian-reef/ $(lsb_release -cs) main"
 sudo systemctl mask rpcbind
 for IMAGE in $IMAGES; do
-    (cd /var/lib/vz/template/iso && sudo curl -LO "$IMAGE")
+    FILENAME="$(basename "$IMAGE")"
+    if [ ! -f "/var/lib/vz/template/iso/$FILENAME" ]; then
+        (cd /var/lib/vz/template/iso && sudo curl -LO "$IMAGE")
+    fi
 done
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
 sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
