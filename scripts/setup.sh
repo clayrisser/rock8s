@@ -24,5 +24,5 @@ export PROXMOX_TOKEN_SECRET="$2"
 export STORAGE_POOL="$( (sudo pvesm status | grep -q local-zfs) && echo local-zfs || ( (sudo pvesm status | grep -q local-lvm) && echo local-lvm || echo local))"
 export PROXMOX_NODE="$(hostname)"
 export PROXMOX_HOST="localhost:8006"
-make -sC $HOME/yaps build
+make -sC $HOME/yaps images/build
 sudo pveum user token remove "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f1)" "$(echo $PROXMOX_TOKEN_ID | cut -d'!' -f2)"
