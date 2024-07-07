@@ -1,7 +1,7 @@
 cluster_prefix           = "demo"
 iteration                = "0"
 cluster_domain           = "local"
-pm_api_url               = "https://localhost:8006/api"
+pm_api_url               = "https://localhost:8006/api2/json"
 pm_api_token_id          = ""
 pm_api_token_secret      = ""
 pm_tls_insecure          = true
@@ -25,7 +25,7 @@ vm_k8s_control_plane = {
   disk_size  = 20
 }
 vm_k8s_worker = {
-  node_count = 3
+  node_count = 1
   vcpus      = 4
   memory     = 4096
   disk_size  = 20
