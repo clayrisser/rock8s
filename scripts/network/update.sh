@@ -258,6 +258,11 @@ $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd.conf
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/hosts
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/resolv.conf
+$SUDO sed -i '${/^$/d;}' /etc/default/isc-dhcp-server
+$SUDO sed -i '${/^$/d;}' /etc/dhcp/dhcpd.conf
+$SUDO sed -i '${/^$/d;}' /etc/hosts
+$SUDO sed -i '${/^$/d;}' /etc/network/interfaces
+$SUDO sed -i '${/^$/d;}' /etc/resolv.conf
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
 printf "\n\033[1;36m/etc/network/interfaces\033[0m\n"
 $SUDO cat /etc/network/interfaces
