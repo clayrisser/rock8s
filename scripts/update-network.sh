@@ -1,11 +1,45 @@
 #!/bin/sh
 
 PRIVATE_IP_NETWORK="192.168.1.0/24"
-GUEST_SUBNETS="
-172.20.0.0/16
-"
+STARTING_GUEST_SUBNET="172.20.0.0/16"
+EXTRA_SUBNETS_COUNT="1"
+K8S_SUBNETS_COUNT="1"
 MAX_SERVERS="64"
 ADDITIONAL_IPS=""
+
+_INTERFACES_BY_ROLE="$(sh "$(dirname "$0")/list-interfaces-by-role.sh")"
+_TOTAL_GUEST_SUBNETS=$(($EXTRA_SUBNETS_COUNT + $K8S_SUBNETS_COUNT))
+
+next_subnet() {
+    cidr=$1
+    broadcast_ip=$(sipcalc "$cidr" | grep "Broadcast address" | awk -F'- ' '{print $2}')
+    IFS='.' read -r octet1 octet2 octet3 octet4 <<EOF
+$broadcast_ip
+EOF
+    octet4=$((octet4+1))
+    if [ $octet4 -eq 256 ]; then
+        octet4=0
+        octet3=$((octet3+1))
+        if [ $octet3 -eq 256 ]; then
+            octet3=0
+            octet2=$((octet2+1))
+            if [ $octet2 -eq 256 ]; then
+                octet2=0
+                octet1=$((octet1+1))
+            fi
+        fi
+    fi
+    next_subnet_start="$octet1.$octet2.$octet3.$octet4"
+    next_subnet="$next_subnet_start/${cidr#*/}"
+    echo $next_subnet
+}
+
+_GUEST_SUBNETS=""
+current_subnet="$STARTING_GUEST_SUBNET"
+for i in $(seq 0 $((_TOTAL_GUEST_SUBNETS - 1))); do
+    _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
+    current_subnet=$(next_subnet "$current_subnet")
+done
 
 generate_dhcp_config() {
     cidr="$1"
@@ -127,7 +161,7 @@ iface vmbr1 inet static
     mtu          1400
 EOF
 i=1
-for GUEST_SUBNET in $GUEST_SUBNETS; do
+for GUEST_SUBNET in $_GUEST_SUBNETS; do
 if [ "$DHCP_INTERFACES" = "" ]; then
     DHCP_INTERFACES="vmbr$((i + 1))"
 else
