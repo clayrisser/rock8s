@@ -1,13 +1,18 @@
 #!/bin/sh
 
-PRIVATE_IP_NETWORK="192.168.1.0/24"
-CEPH_NETWORK="192.168.2.0/24"
-STARTING_GUEST_SUBNET="172.20.0.0/16"
+PRIVATE_IP_NETWORK="${PRIVATE_IP_NETWORK:="192.168.1.0/24"}"
+CEPH_NETWORK="${CEPH_NETWORK:="192.168.2.0/24"}"
+STARTING_GUEST_SUBNET="${STARTING_GUEST_SUBNET:="172.20.0.0/16"}"
 EXTRA_GUEST_SUBNETS_COUNT="1"
-K8S_GUEST_SUBNETS_COUNT="1"
-MAX_SERVERS="64"
-ADDITIONAL_IPS=""
-VSWITCH_MTU="1400"
+K8S_GUEST_SUBNETS_COUNT="${K8S_GUEST_SUBNETS_COUNT:="1"}"
+MAX_SERVERS="${MAX_SERVERS:="64"}"
+ADDITIONAL_IPS="${ADDITIONAL_IPS:=""}"
+VSWITCH_MTU="${VSWITCH_MTU:="1400"}"
+NAMESERVERS="${NAMESERVERS:-"
+8.8.8.8
+4.4.4.4
+1.1.1.1
+"}"
 
 next_subnet() {
     cidr=$1
@@ -85,7 +90,9 @@ EOF
     echo "    range $range_start $range_end;"
     echo "    option routers $(echo "$subnet" | awk -F. '{print $1"."$2"."$3".1"}');"
     echo "    option subnet-mask $subnet_mask;"
-    echo "    option domain-name-servers 8.8.8.8, 4.4.4.4, 1.1.1.1;"
+    echo "    option domain-name-servers $(echo "$NAMESERVERS" | \
+        awk 'BEGIN{RS=""; ORS="\n"} {print}' | \
+        tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');"
     echo "}"
 }
 
@@ -121,17 +128,14 @@ CEPH_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^ceph:" | cut -d= -f1 
 PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
 HOST_NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')
 if [ "$HOST_NUMBER" = "" ] || [ "$HOST_NUMBER" -gt 245 ]; then
-    echo "Error: Host number must be between 1 and 245." >&2
+    echo "Error: host number must be between 1 and 245." >&2
     exit 1
 fi
 PRIVATE_IP_ADDRESS="$(echo $PRIVATE_IP_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 9))"
 CEPH_IP_ADDRESS="$(echo $CEPH_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 9))"
 $SUDO sed -i "s|.*[0-9]\s*\($(hostname).*\)|$PRIVATE_IP_ADDRESS \1|g" /etc/hosts
-cat <<EOF | $SUDO tee /etc/resolv.conf >/dev/null
-nameserver 8.8.8.8
-nameserver 4.4.4.4
-nameserver 1.1.1.1
-EOF
+echo "$NAMESERVERS" | awk 'BEGIN{RS=""; ORS="\n\n"} {print}' | \
+    awk '{for (i=1; i<=NF; i++) print "nameserver", $i}' | $SUDO tee /etc/resolv.conf >/dev/null
 $SUDO sed -i 's|^#*\s*net.ipv4.ip_forward\s*=\s*.*|net.ipv4.ip_forward=1|' /etc/sysctl.conf
 $SUDO sed -i 's|^#*\s*net.ipv6.conf.all.forwarding\s*=\s*.*|net.ipv6.conf.all.forwarding=1|' /etc/sysctl.conf
 $SUDO sysctl -p
