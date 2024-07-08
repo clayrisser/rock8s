@@ -28,26 +28,25 @@ convert_speed() {
 sudo true
 linked_interfaces=""
 unlinked_interfaces=""
-for iface in $(ls /sys/class/net); do
-    if [ -e "/sys/class/net/$iface/device" ]; then
-        sudo ip link set "$iface" up
-        link_status=$(ethtool "$iface" 2>/dev/null | grep "Link detected" | awk '{print $3}')
-        max_speed=$(get_max_speed "$iface")
+for _IFACE in $(ls /sys/class/net); do
+    if [ -e "/sys/class/net/$_IFACE/device" ]; then
+        link_status=$(ethtool "$_IFACE" 2>/dev/null | grep "Link detected" | awk '{print $3}')
+        max_speed=$(get_max_speed "$_IFACE")
         numeric_speed=$(convert_speed "$max_speed")
         if [ "$link_status" = "yes" ]; then
-            value="$iface=link:$max_speed"
+            value="$_IFACE=link:$max_speed"
             linked_interfaces="$linked_interfaces $numeric_speed:$value"
         else
-            value="$iface=:$max_speed"
+            value="$_IFACE=:$max_speed"
             unlinked_interfaces="$unlinked_interfaces $numeric_speed:$value"
         fi
     fi
 done
 sorted_linked_interfaces=$(echo "$linked_interfaces" | tr ' ' '\n' | sort -t: -k1 -nr | cut -d: -f2- | sort -t= -k1,1)
 sorted_unlinked_interfaces=$(echo "$unlinked_interfaces" | tr ' ' '\n' | sort -t: -k1 -nr | cut -d: -f2- | sort -t= -k1,1)
-for iface in $sorted_linked_interfaces; do
-    echo "$iface"
+for _IFACE in $sorted_linked_interfaces; do
+    echo "$_IFACE"
 done
-for iface in $sorted_unlinked_interfaces; do
-    echo "$iface"
+for _IFACE in $sorted_unlinked_interfaces; do
+    echo "$_IFACE"
 done
