@@ -21,4 +21,7 @@ sudo apt-get update
 sudo apt-get install -y \
     packer \
     terraform
+if [ ! -f "$HOME/.ssh/id_rsa" ]; then
+    ssh-keygen -t rsa -b 4096 -C "$(whoami)@$(hostname)" -N "" -f "$HOME/.ssh/id_rsa"
+fi
 make -sC $HOME/yaps images/build
