@@ -1,10 +1,10 @@
 #!/bin/sh
 
-_LIST_NETWORK_DEVICES_SH="$(dirname "$0")/list-network-devices.sh"
-if [ -f "$_LIST_NETWORK_DEVICES_SH" ]; then
-    _NETWORK_DEVICES="$(sh "$_LIST_NETWORK_DEVICES_SH")"
+_NETWORK_DEVICES_SH="$(dirname "$0")/devices.sh"
+if [ -f "$_NETWORK_DEVICES_SH" ]; then
+    _NETWORK_DEVICES="$(sh "$_NETWORK_DEVICES_SH")"
 else
-    _NETWORK_DEVICES="$(curl -Lsf https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/list-network-devices.sh | sh)"
+    _NETWORK_DEVICES="$(curl -Lsf https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/network/devices.sh | sh)"
 fi
 _ALL_10G=""
 _LINK_10G=""
@@ -29,6 +29,6 @@ else
     _UPLINK=$1
     _CEPH=$2
 fi
-echo "uplink=$(echo "$_NETWORK_DEVICES" | grep -E "^$_UPLINK=")"
-echo "private=$(echo "$_NETWORK_DEVICES" | grep -E "^$_PRIVATE=")"
-echo "ceph=$(echo "$_NETWORK_DEVICES" | grep -E "^$_CEPH=")"
+echo "uplink:$(echo "$_NETWORK_DEVICES" | grep -E "^$_UPLINK=")"
+echo "private:$(echo "$_NETWORK_DEVICES" | grep -E "^$_PRIVATE=")"
+echo "ceph:$(echo "$_NETWORK_DEVICES" | grep -E "^$_CEPH=")"

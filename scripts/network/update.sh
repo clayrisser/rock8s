@@ -109,7 +109,7 @@ if [ -f $HOME/.env ]; then
     rm $HOME/.env
 else
     GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
-    NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/list-network-devices-by-role.sh")"
+    NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/devices-by-role.sh")"
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
 fi
