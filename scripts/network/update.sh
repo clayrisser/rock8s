@@ -251,3 +251,22 @@ if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
     done
 fi
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
+echo -e "\033[1;36m/etc/network/interfaces\033[0m"
+$SUDO cat /etc/network/interfaces
+echo
+echo -e "\033[1;36m/etc/default/isc-dhcp-server\033[0m"
+$SUDO cat /etc/default/isc-dhcp-server
+echo
+echo -e "\033[1;36m/etc/dhcp/dhcpd.conf\033[0m"
+$SUDO cat /etc/dhcp/dhcpd.conf
+echo
+echo -e "\033[1;36m/etc/resolv.conf\033[0m"
+$SUDO cat /etc/resolv.conf
+echo
+echo -e "\033[1;36m/etc/hosts\033[0m"
+$SUDO cat /etc/hosts
+echo
+echo -e "\033[1;33mrestart the networking service after reviewing the changes\033[0m"
+echo
+echo -e "    \033[0;32msudo systemctl restart networking\033[0m"
+echo
