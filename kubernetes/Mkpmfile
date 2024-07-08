@@ -2,6 +2,9 @@ include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
 TERRAFORM ?= terraform
+ANSIBLE_PLAYBOOK ?= ../env/bin/ansible-playbook
+export LANG ?= en_US.UTF-8
+export LC_ALL ?= en_US.UTF-8
 
 .PHONY: format
 format:
@@ -24,12 +27,12 @@ apply: init
 .PHONY: install
 install: apply
 	@cd $(KUBESPRAY_DATA_DIR)/kubespray && \
-		../env/bin/ansible-playbook -i inventory/sample/inventory.ini -u admin --become --become-user=root cluster.yml
+		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root cluster.yml
 
 .PHONY: reset
 reset: apply
 	@cd $(KUBESPRAY_DATA_DIR)/kubespray && \
-		../env/bin/ansible-playbook -i inventory/sample/inventory.ini -u admin --become --become-user=root reset.yml
+		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root reset.yml
 
 .PHONY: destroy
 destroy: init
