@@ -1,15 +1,8 @@
 locals {
-  kubespray_data_dir = "$HOME/kubespray"
   setup_kubespray_script_content = templatefile(
     "${path.module}/scripts/setup_kubespray.sh",
     {
-      kubespray_data_dir = local.kubespray_data_dir
-    }
-  )
-  install_kubernetes_script_content = templatefile(
-    "${path.module}/scripts/install_kubernetes.sh",
-    {
-      kubespray_data_dir = local.kubespray_data_dir,
+      kubespray_data_dir = var.kubespray_data_dir
     }
   )
   kubespray_inventory_content = templatefile(
@@ -45,19 +38,16 @@ locals {
 resource "null_resource" "setup_kubespray" {
   provisioner "local-exec" {
     command = <<-EOT
-      export LC_ALL=en_US.UTF-8
-      export LANG=en_US.UTF-8
       ${local.setup_kubespray_script_content}
-      cat <<EOF > ${local.kubespray_data_dir}/kubespray/inventory/sample/inventory.ini
+      cat <<EOF > ${var.kubespray_data_dir}/kubespray/inventory/sample/inventory.ini
       ${local.kubespray_inventory_content}
       EOF
-      cat <<EOF > ${local.kubespray_data_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml
+      cat <<EOF > ${var.kubespray_data_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml
       ${local.kubespray_k8s_config_content}
       EOF
-      cat <<EOF > ${local.kubespray_data_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/addons.yml
+      cat <<EOF > ${var.kubespray_data_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/addons.yml
       ${local.kubespray_addon_config_content}
       EOF
-      ${local.install_kubernetes_script_content}
     EOT
   }
   triggers = {

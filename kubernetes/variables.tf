@@ -150,3 +150,7 @@ variable "argocd_enabled" {
 variable "argocd_version" {
   default = "v2.4.12"
 }
+
+variable "kubespray_data_dir" {
+  type = string
+}

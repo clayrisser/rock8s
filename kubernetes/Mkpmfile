@@ -21,6 +21,16 @@ apply: init
 		$(TERRAFORM) apply && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
+.PHONY: install
+install: apply
+	@cd $(KUBESPRAY_DATA_DIR)/kubespray && \
+		../env/bin/ansible-playbook -i inventory/sample/inventory.ini -u admin --become --become-user=root cluster.yml
+
+.PHONY: reset
+reset: apply
+	@cd $(KUBESPRAY_DATA_DIR)/kubespray && \
+		../env/bin/ansible-playbook -i inventory/sample/inventory.ini -u admin --become --become-user=root reset.yml
+
 .PHONY: destroy
 destroy: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
