@@ -138,7 +138,7 @@ echo "$NAMESERVERS" | awk 'BEGIN{RS=""; ORS="\n\n"} {print}' | \
     awk '{for (i=1; i<=NF; i++) print "nameserver", $i}' | $SUDO tee /etc/resolv.conf >/dev/null
 $SUDO sed -i 's|^#*\s*net.ipv4.ip_forward\s*=\s*.*|net.ipv4.ip_forward=1|' /etc/sysctl.conf
 $SUDO sed -i 's|^#*\s*net.ipv6.conf.all.forwarding\s*=\s*.*|net.ipv6.conf.all.forwarding=1|' /etc/sysctl.conf
-$SUDO sysctl -p
+$SUDO sysctl -p >/dev/null
 cat <<EOF | $SUDO tee /etc/network/interfaces >/dev/null
 auto lo
 iface lo inet loopback
