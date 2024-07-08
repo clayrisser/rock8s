@@ -125,5 +125,5 @@ make -sC ~/yaps setup
 SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
-make -sC ~/yaps kubernetes
+make -sC ~/yaps kubernetes/apply
 ```
