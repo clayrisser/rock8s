@@ -2,13 +2,10 @@
 
 PRIVATE_IP_NETWORK="192.168.1.0/24"
 STARTING_GUEST_SUBNET="172.20.0.0/16"
-EXTRA_SUBNETS_COUNT="1"
-K8S_SUBNETS_COUNT="1"
+EXTRA_SUBNETS_COUNT="2"
+K8S_SUBNETS_COUNT="5"
 MAX_SERVERS="64"
 ADDITIONAL_IPS=""
-
-_INTERFACES_BY_ROLE="$(sh "$(dirname "$0")/list-interfaces-by-role.sh")"
-_TOTAL_GUEST_SUBNETS=$(($EXTRA_SUBNETS_COUNT + $K8S_SUBNETS_COUNT))
 
 next_subnet() {
     cidr=$1
@@ -36,10 +33,16 @@ EOF
 
 _GUEST_SUBNETS=""
 current_subnet="$STARTING_GUEST_SUBNET"
-for i in $(seq 0 $((_TOTAL_GUEST_SUBNETS - 1))); do
+for i in $(seq 0 $((EXTRA_SUBNETS_COUNT - 1))); do
     _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
-    current_subnet=$(next_subnet "$current_subnet")
+    current_subnet="$(next_subnet "$(next_subnet "$current_subnet")")"
 done
+current_subnet="$(next_subnet "$STARTING_GUEST_SUBNET")"
+for i in $(seq 0 $((K8S_SUBNETS_COUNT - 1))); do
+    _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
+    current_subnet="$(next_subnet "$(next_subnet "$current_subnet")")"
+done
+_GUEST_SUBNETS="$(echo "$_GUEST_SUBNETS" | sort -u)"
 
 generate_dhcp_config() {
     cidr="$1"
@@ -106,11 +109,9 @@ if [ -f $HOME/.env ]; then
     rm $HOME/.env
 else
     GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
-    INTERFACE="$(ip route | awk '/default via/ {print $5}')"
-    PUBLIC_IP_ADDRESS_CIDR="$(ip addr show $INTERFACE | grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
-    if [ "$INTERFACE" = "vmbr0" ]; then
-        INTERFACE="$(ip addr | grep "vmbr0 state UP" | sed 's|^[0-9]*:\s*||g' | cut -d':' -f1)"
-    fi
+    NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/list-network-devices-by-role.sh")"
+    PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
+        grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
 fi
 PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
 HOST_NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')

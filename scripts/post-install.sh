@@ -41,6 +41,7 @@ $SUDO apt-get install -y \
     isc-dhcp-server \
     jq \
     make \
+    sipcalc \
     software-properties-common \
     sudo \
     systemd-timesyncd \
