@@ -248,12 +248,16 @@ iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
 EOF
     i=$((i + 1))
 done
-$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
 for GUEST_SUBNET in $_GUEST_SUBNETS; do
     generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
 done
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd.conf
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/hosts
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/resolv.conf
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
 printf "\n\033[1;36m/etc/network/interfaces\033[0m\n"
 $SUDO cat /etc/network/interfaces
