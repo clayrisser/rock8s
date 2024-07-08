@@ -68,7 +68,7 @@ variable "vm_max_vcpus" {
 }
 
 variable "vm_cpu_type" {
-  default = "kvm64" # host or kvm64
+  default = "kvm64"
 }
 
 variable "vm_os_disk_storage" {
