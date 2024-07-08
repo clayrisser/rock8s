@@ -250,9 +250,7 @@ EOF
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
-for GUEST_SUBNET in $GUEST_SUBNETS; do
-    echo generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER"
-    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER"
+for GUEST_SUBNET in $_GUEST_SUBNETS; do
     generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
 done
