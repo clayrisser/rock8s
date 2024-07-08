@@ -24,6 +24,6 @@ else
     _UPLINK=$1
     _CEPH=$2
 fi
-echo "$_UPLINK=uplink:$($interface_data | grep -E "^$_UPLINK=" | cut -d= -f2)"
-echo "$_CEPH=ceph:$($interface_data | grep -E "^$_CEPH=" | cut -d= -f2)"
-echo "$_PRIVATE=private:$($interface_data | grep -E "^$_PRIVATE=" | cut -d= -f2)"
+echo "$_UPLINK=uplink:$($interface_data | grep -E "^$_UPLINK=" | sed "s|^$_UPLINK=||g")"
+echo "$_CEPH=ceph:$($interface_data | grep -E "^$_CEPH=" | sed "s|^$_CEPH=||g")"
+echo "$_PRIVATE=private:$($interface_data | grep -E "^$_PRIVATE=" | sed "s|^$_PRIVATE=||g")"
