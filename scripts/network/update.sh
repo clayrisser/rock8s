@@ -122,6 +122,7 @@ else
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
 fi
+echo "$NETWORK_DEVICES_BY_ROLE"
 UPLINK_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^uplink:" | cut -d= -f1 | cut -d: -f2)"
 PRIVATE_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^private:" | cut -d= -f1 | cut -d: -f2)"
 CEPH_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^ceph:" | cut -d= -f1 | cut -d: -f2)"
@@ -251,7 +252,7 @@ if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
     done
 fi
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
-printf "\033[1;36m/etc/network/interfaces\033[0m\n"
+printf "\n\033[1;36m/etc/network/interfaces\033[0m\n"
 $SUDO cat /etc/network/interfaces
 printf "\n"
 printf "\033[1;36m/etc/default/isc-dhcp-server\033[0m\n"
