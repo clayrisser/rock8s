@@ -1,11 +1,13 @@
 #!/bin/sh
 
 PRIVATE_IP_NETWORK="192.168.1.0/24"
+CEPH_NETWORK="192.168.2.0/24"
 STARTING_GUEST_SUBNET="172.20.0.0/16"
-EXTRA_SUBNETS_COUNT="2"
-K8S_SUBNETS_COUNT="5"
+EXTRA_GUEST_SUBNETS_COUNT="1"
+K8S_GUEST_SUBNETS_COUNT="1"
 MAX_SERVERS="64"
 ADDITIONAL_IPS=""
+VSWITCH_MTU="1400"
 
 next_subnet() {
     cidr=$1
@@ -33,12 +35,12 @@ EOF
 
 _GUEST_SUBNETS=""
 current_subnet="$STARTING_GUEST_SUBNET"
-for i in $(seq 0 $((EXTRA_SUBNETS_COUNT - 1))); do
+for i in $(seq 0 $((EXTRA_GUEST_SUBNETS_COUNT - 1))); do
     _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
     current_subnet="$(next_subnet "$(next_subnet "$current_subnet")")"
 done
 current_subnet="$(next_subnet "$STARTING_GUEST_SUBNET")"
-for i in $(seq 0 $((K8S_SUBNETS_COUNT - 1))); do
+for i in $(seq 0 $((K8S_GUEST_SUBNETS_COUNT - 1))); do
     _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
     current_subnet="$(next_subnet "$(next_subnet "$current_subnet")")"
 done
@@ -113,6 +115,9 @@ else
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
 fi
+UPLINK_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^uplink:" | cut -d= -f1 | cut -d: -f2)"
+PRIVATE_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^private:" | cut -d= -f1 | cut -d: -f2)"
+CEPH_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^ceph:" | cut -d= -f1 | cut -d: -f2)"
 PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
 HOST_NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')
 if [ "$HOST_NUMBER" = "" ] || [ "$HOST_NUMBER" -gt 245 ]; then
@@ -120,10 +125,7 @@ if [ "$HOST_NUMBER" = "" ] || [ "$HOST_NUMBER" -gt 245 ]; then
     exit 1
 fi
 PRIVATE_IP_ADDRESS="$(echo $PRIVATE_IP_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 9))"
-if ping -c 1 -W 1 "$PRIVATE_IP_ADDRESS" >/dev/null 2>&1; then
-    echo "Error: Proxmox is already installed on IP address $PRIVATE_IP_ADDRESS." >&2
-    exit 1
-fi
+CEPH_IP_ADDRESS="$(echo $CEPH_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 9))"
 $SUDO sed -i "s|.*[0-9]\s*\($(hostname).*\)|$PRIVATE_IP_ADDRESS \1|g" /etc/hosts
 cat <<EOF | $SUDO tee /etc/resolv.conf >/dev/null
 nameserver 8.8.8.8
@@ -138,55 +140,106 @@ auto lo
 iface lo inet loopback
 iface lo inet6 loopback
 
-auto $INTERFACE
-iface $INTERFACE inet manual
+auto $UPLINK_DEVICE
+iface $UPLINK_DEVICE inet manual
+
+$(if [ "$PRIVATE_DEVICE" != "" ]; then
+    echo "auto $PRIVATE_DEVICE"
+    echo "iface $PRIVATE_DEVICE inet manual"
+fi)
+
+$(if [ "$CEPH_DEVICE" != "" ]; then
+    echo "auto $CEPH_DEVICE"
+    echo "iface $CEPH_DEVICE inet manual"
+fi)
 
 auto vmbr0
 iface vmbr0 inet static
     address      $PUBLIC_IP_ADDRESS_CIDR
     gateway      $GATEWAY
-    bridge-ports $INTERFACE
+    bridge-ports $UPLINK_DEVICE
     bridge-stp   off
     bridge-fd    0
 $(echo "$ADDITIONAL_IPS" | sed '/^$/d; s|\(.*\)|    up ip route add \1/32 dev vmbr0|')
 
-auto $INTERFACE.4000
-iface $INTERFACE.4000 inet manual
+$(if [ "$PRIVATE_DEVICE" = "" ]; then
+    echo "auto $UPLINK_DEVICE.4000"
+    echo "iface $UPLINK_DEVICE.4000 inet manual"
+fi)
 
 auto vmbr1
 iface vmbr1 inet static
     address      $PRIVATE_IP_ADDRESS/$(echo $PRIVATE_IP_NETWORK | cut -d/ -f2)
-    bridge-ports $INTERFACE.4000
-    bridge-stp   off
-    bridge-fd    0
-    mtu          1400
-EOF
-i=1
-for GUEST_SUBNET in $_GUEST_SUBNETS; do
-if [ "$DHCP_INTERFACES" = "" ]; then
-    DHCP_INTERFACES="vmbr$((i + 1))"
+$(if [ "$PRIVATE_DEVICE" = "" ]; then
+    echo "    bridge-ports $UPLINK_DEVICE.4000"
+    echo "    mtu          $VSWITCH_MTU"
 else
-    DHCP_INTERFACES="$DHCP_INTERFACES vmbr$((i + 1))"
-fi
-cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
-
-auto $INTERFACE.$((i + 4000))
-iface $INTERFACE.$((i + 4000)) inet manual
-
-auto vmbr$((i + 1))
-iface vmbr$((i + 1)) inet static
-    address      $(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.1/\3|g')
-    bridge-ports $INTERFACE.$((i + 4000))
+    echo "    bridge-ports $PRIVATE_DEVICE"
+fi)
     bridge-stp   off
     bridge-fd    0
-    mtu          1400
+
+auto vmbr2
+iface vmbr2 inet static
+    address      $CEPH_IP_ADDRESS/$(echo $CEPH_NETWORK | cut -d/ -f2)
+$(if [ "$CEPH_DEVICE" = "" ]; then
+    echo "    bridge-ports $UPLINK_DEVICE.4001"
+    echo "    mtu          $VSWITCH_MTU"
+else
+    echo "    bridge-ports $CEPH_DEVICE"
+fi)
+    bridge-stp   off
+    bridge-fd    0
+EOF
+_VLAN_ID_START=20
+_VLAN_IDS=""
+_unique_vlan_id() {
+    _VLAN_ID="40$_VLAN_ID_START"
+    while echo "$_VLAN_IDS" | grep -q "$_VLAN_ID"; do
+        _VLAN_ID="$((_VLAN_ID + 1))"
+        if [ "$_VLAN_ID" -gt 4094 ]; then
+            echo "Error: vlan ids exceeded 4094" >&2
+            exit 1
+        fi
+    done
+    echo "$_VLAN_ID"
+}
+i=$_VLAN_ID_START
+for GUEST_SUBNET in $_GUEST_SUBNETS; do
+    if echo "$GUEST_SUBNET" | grep -qE '^172\.[0-9][0-9]\.0\.0\/16$'; then
+        _VLAN_ID="$(echo "$GUEST_SUBNET" | sed 's|172\.\([0-9][0-9]\)\.0\.0\/16|40\1|g')"
+    else
+        _VLAN_ID="40$i"
+    fi
+    if echo "$_VLAN_IDS" | grep -q "$_VLAN_ID"; then
+        _VLAN_ID="$(_unique_vlan_id)"
+    fi
+    _VLAN_IDS="$_VLAN_IDS $_VLAN_ID"
+    if [ "$DHCP_INTERFACES" = "" ]; then
+        DHCP_INTERFACES="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+    else
+        DHCP_INTERFACES="$DHCP_INTERFACES vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+    fi
+    cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
+
+auto $UPLINK_DEVICE.$_VLAN_ID
+iface $UPLINK_DEVICE.$_VLAN_ID inet manual
+
+auto vmbr$(echo $_VLAN_ID | sed 's|^40||')
+iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
+    address      $(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.1/\3|g')
+    bridge-ports $UPLINK_DEVICE.$_VLAN_ID
+    bridge-stp   off
+    bridge-fd    0
+    mtu          $VSWITCH_MTU
     post-up      iptables -t nat -A POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
     post-down    iptables -t nat -D POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
     post-up      iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
     post-down    iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
 EOF
-i=$((i + 1))
+    i=$((i + 1))
 done
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
 if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
     for GUEST_SUBNET in $GUEST_SUBNETS; do
         generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
