@@ -1,9 +1,9 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
-.PHONY: network/update
-network/update:
-	@sh $(PROJECT_ROOT)/scripts/update-network.sh
+.PHONY: network/%
+network/%:
+	@sh $(PROJECT_ROOT)/scripts/network/$*.sh
 
 .PHONY: setup
 setup:

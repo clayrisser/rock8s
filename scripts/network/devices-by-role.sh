@@ -30,5 +30,7 @@ else
     _CEPH=$2
 fi
 echo "uplink:$(echo "$_NETWORK_DEVICES" | grep -E "^$_UPLINK=")"
-echo "private:$(echo "$_NETWORK_DEVICES" | grep -E "^$_PRIVATE=")"
-echo "ceph:$(echo "$_NETWORK_DEVICES" | grep -E "^$_CEPH=")"
+if [ "$#" -ge 2 ]; then
+    echo "private:$(echo "$_NETWORK_DEVICES" | grep -E "^$_PRIVATE=")"
+    echo "ceph:$(echo "$_NETWORK_DEVICES" | grep -E "^$_CEPH=")"
+fi
