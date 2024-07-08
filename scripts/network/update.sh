@@ -119,16 +119,19 @@ if [ -f $HOME/.env ]; then
     rm $HOME/.env
 else
     GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
-    NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/devices-by-role.sh")"
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
+    NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/devices-by-role.sh")"
+    echo PUBLIC_IP_ADDRESS_CIDR=$PUBLIC_IP_ADDRESS_CIDR
+    echo NETWORK_DEVICES_BY_ROLE=$NETWORK_DEVICES_BY_ROLE
+    echo NETWORK_DEVICES_BY_ROLE="\"$NETWORK_DEVICES_BY_ROLE\""
 fi
-echo "$NETWORK_DEVICES_BY_ROLE"
 UPLINK_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^uplink:" | cut -d= -f1 | cut -d: -f2)"
 PRIVATE_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^private:" | cut -d= -f1 | cut -d: -f2)"
 CEPH_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^ceph:" | cut -d= -f1 | cut -d: -f2)"
 PUBLIC_IP_ADDRESS="$(echo $PUBLIC_IP_ADDRESS_CIDR | cut -d/ -f1)"
 HOST_NUMBER=$(echo "$(hostname)" | sed 's/[^0-9]//g')
+echo HOST_NUMBER=$HOST_NUMBER
 if [ "$HOST_NUMBER" = "" ] || [ "$HOST_NUMBER" -gt 245 ]; then
     echo "Error: host number must be between 1 and 245." >&2
     exit 1
@@ -248,6 +251,8 @@ done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
 for GUEST_SUBNET in $GUEST_SUBNETS; do
+    echo generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER"
+    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER"
     generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
 done
