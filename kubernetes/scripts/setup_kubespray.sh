@@ -2,6 +2,7 @@
 
 KUBESPRAY_VERSION=2.25.0
 KUBESPRAY_DATA_DIR="${kubespray_data_dir}"
+echo KUBESPRAY_DATA_DIR $KUBESPRAY_DATA_DIR
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 sudo apt-get install -y \
