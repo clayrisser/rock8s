@@ -1,11 +1,11 @@
 #!/bin/sh
 
-_INTERFACE_DATA=$(sh "$(dirname "$0")/list-interfaces.sh")
+_INTERFACES_DATA="$(sh "$(dirname "$0")/list-interfaces.sh")"
 _ALL_10G=""
 _LINK_10G=""
 _NO_LINK_10G=""
 _OTHER_INTERFACES=""
-for line in $(echo "$_INTERFACE_DATA"); do
+for line in $(echo "$_INTERFACES_DATA"); do
     case "$line" in
     *=link:10G) _LINK_10G="$_LINK_10G ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
     *:10G) _NO_LINK_10G="$_NO_LINK_10G ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
@@ -24,6 +24,6 @@ else
     _UPLINK=$1
     _CEPH=$2
 fi
-echo "$_UPLINK=uplink:$(echo "$_INTERFACE_DATA" | grep -E "^$_UPLINK=" | sed "s|^$_UPLINK=||g")"
-echo "$_CEPH=ceph:$(echo "$_INTERFACE_DATA" | grep -E "^$_CEPH=" | sed "s|^$_CEPH=||g")"
-echo "$_PRIVATE=private:$(echo "$_INTERFACE_DATA" | grep -E "^$_PRIVATE=" | sed "s|^$_PRIVATE=||g")"
+echo "uplink=$(echo "$_INTERFACES_DATA" | grep -E "^$_UPLINK=")"
+echo "private=$(echo "$_INTERFACES_DATA" | grep -E "^$_PRIVATE=")"
+echo "ceph=$(echo "$_INTERFACES_DATA" | grep -E "^$_CEPH=")"
