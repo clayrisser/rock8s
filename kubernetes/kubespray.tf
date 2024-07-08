@@ -15,8 +15,9 @@ locals {
   kubespray_inventory_content = templatefile(
     "${path.module}/kubespray/inventory.ini",
     {
+      bastion      = "",
       cp_nodes     = join("\n", [for host in module.k8s_control_plane_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])])
-      worker_nodes = join("\n", [for host in module.k8s_worker_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])])
+      worker_nodes = join("\n", [for host in module.k8s_worker_nodes.vm_list : join("", [host.name, " ansible_ssh_host=${host.ip0}", " ansible_connection=ssh"])]),
     }
   )
   kubespray_k8s_config_content = templatefile(
