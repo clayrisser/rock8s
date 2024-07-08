@@ -1,6 +1,5 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
-include $(CURDIR)/variables.mk
 
 TERRAFORM ?= terraform
 
@@ -11,17 +10,20 @@ format:
 .PHONY: init
 init:
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) init && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: apply
 apply: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) apply && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: destroy
 destroy: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) destroy && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
