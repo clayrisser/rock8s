@@ -45,6 +45,8 @@ locals {
 resource "null_resource" "setup_kubespray" {
   provisioner "local-exec" {
     command = <<-EOT
+      export LC_ALL=en_US.UTF-8
+      export LANG=en_US.UTF-8
       ${local.setup_kubespray_script_content}
       cat <<EOF > ${local.kubespray_data_dir}/kubespray/inventory/sample/inventory.ini
       ${local.kubespray_inventory_content}
