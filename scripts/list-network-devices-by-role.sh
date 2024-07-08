@@ -1,11 +1,16 @@
 #!/bin/sh
 
-_INTERFACES_DATA="$(sh "$(dirname "$0")/list-interfaces.sh")"
+_LIST_NETWORK_DEVICES_SH="$(dirname "$0")/list-network-devices.sh"
+if [ -f "$_LIST_NETWORK_DEVICES_SH" ]; then
+    _NETWORK_DEVICES="$(sh "$_LIST_NETWORK_DEVICES_SH")"
+else
+    _NETWORK_DEVICES="$(curl -Lsf https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/list-network-devices.sh | sh)"
+fi
 _ALL_10G=""
 _LINK_10G=""
 _NO_LINK_10G=""
 _OTHER_INTERFACES=""
-for line in $(echo "$_INTERFACES_DATA"); do
+for line in $(echo "$_NETWORK_DEVICES"); do
     case "$line" in
     *=link:10G) _LINK_10G="$_LINK_10G ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
     *:10G) _NO_LINK_10G="$_NO_LINK_10G ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
@@ -24,6 +29,6 @@ else
     _UPLINK=$1
     _CEPH=$2
 fi
-echo "uplink=$(echo "$_INTERFACES_DATA" | grep -E "^$_UPLINK=")"
-echo "private=$(echo "$_INTERFACES_DATA" | grep -E "^$_PRIVATE=")"
-echo "ceph=$(echo "$_INTERFACES_DATA" | grep -E "^$_CEPH=")"
+echo "uplink=$(echo "$_NETWORK_DEVICES" | grep -E "^$_UPLINK=")"
+echo "private=$(echo "$_NETWORK_DEVICES" | grep -E "^$_PRIVATE=")"
+echo "ceph=$(echo "$_NETWORK_DEVICES" | grep -E "^$_CEPH=")"
