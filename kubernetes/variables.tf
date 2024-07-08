@@ -47,10 +47,6 @@ variable "internal_net_subnet_cidr" {
   type = string
 }
 
-variable "ssh_private_key_b64" {
-  type = string
-}
-
 variable "ssh_public_keys_b64" {
   type = string
 }
