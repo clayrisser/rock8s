@@ -94,6 +94,7 @@ EOF
         awk 'BEGIN{RS=""; ORS="\n"} {print}' | \
         tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');"
     echo "}"
+    echo
 }
 
 cidr2mask() {
@@ -245,12 +246,11 @@ EOF
     i=$((i + 1))
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
-if ! (cat /etc/dhcp/dhcpd.conf | grep -qE "^subnet "); then
-    for GUEST_SUBNET in $GUEST_SUBNETS; do
-        generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
-            $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
-    done
-fi
+true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
+for GUEST_SUBNET in $GUEST_SUBNETS; do
+    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
+        $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+done
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
 printf "\n\033[1;36m/etc/network/interfaces\033[0m\n"
 $SUDO cat /etc/network/interfaces
