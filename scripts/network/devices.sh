@@ -25,7 +25,6 @@ convert_speed() {
     esac
 }
 
-sudo true
 linked_interfaces=""
 unlinked_interfaces=""
 for _IFACE in $(ls /sys/class/net); do
