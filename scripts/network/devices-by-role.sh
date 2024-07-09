@@ -6,7 +6,6 @@ if [ -f "$_NETWORK_DEVICES_SH" ]; then
 else
     _NETWORK_DEVICES="$(curl -Lsf https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/network/devices.sh | sh)"
 fi
-_ALL_10G=""
 _LINK_10G=""
 _NO_LINK_10G=""
 _LINK_1G=""
@@ -16,9 +15,9 @@ _LINK_1G_INTERNET=""
 _OTHER_INTERFACES=""
 for line in $(echo "$_NETWORK_DEVICES"); do
     case "$line" in
-    *=link:10G:internet) _LINK_10G_INTERNET="$_LINK_10G_INTERNET ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
-    *=link:10G) _LINK_10G="$_LINK_10G ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
-    *:10G) _NO_LINK_10G="$_NO_LINK_10G ${line%%=*}"; _ALL_10G="$_ALL_10G ${line%%=*}" ;;
+    *=link:10G:internet) _LINK_10G_INTERNET="$_LINK_10G_INTERNET ${line%%=*}" ;;
+    *=link:10G) _LINK_10G="$_LINK_10G ${line%%=*}" ;;
+    *:10G) _NO_LINK_10G="$_NO_LINK_10G ${line%%=*}" ;;
     *=link:1G:internet) _LINK_1G_INTERNET="$_LINK_1G_INTERNET ${line%%=*}" ;;
     *=link:1G) _LINK_1G="$_LINK_1G ${line%%=*}" ;;
     *:1G) _NO_LINK_1G="$_NO_LINK_1G ${line%%=*}" ;;
@@ -26,6 +25,14 @@ for line in $(echo "$_NETWORK_DEVICES"); do
     esac
 done
 _ALL_INTERFACES="$_LINK_10G $_NO_LINK_10G $_LINK_1G $_NO_LINK_1G $_OTHER_INTERFACES"
+echo _LINK_10G_INTERNET: $_LINK_10G_INTERNET
+echo _LINK_1G_INTERNET: $_LINK_1G_INTERNET
+echo _LINK_10G: $_LINK_10G
+echo _LINK_1G: $_LINK_1G
+echo _NO_LINK_10G: $_NO_LINK_10G
+echo _NO_LINK_1G: $_NO_LINK_1G
+echo _OTHER_INTERFACES: $_OTHER_INTERFACES
+echo _ALL_INTERFACES: $_ALL_INTERFACES
 _UPLINK=""
 _CEPH=""
 _PRIVATE=""
@@ -45,7 +52,7 @@ for device in $_LINK_10G $_LINK_1G $_NO_LINK_10G $_NO_LINK_1G; do
         break
     fi
 done
-if [ -z "$_CEPH" ]; then
+if [ "$_CEPH" = "" ]; then
     for device in $_LINK_10G $_LINK_1G $_NO_LINK_10G $_NO_LINK_1G; do
         if [ "$device" != "$_PRIVATE" ] && [ "$device" != "$_UPLINK" ]; then
             _CEPH=$device
@@ -53,7 +60,7 @@ if [ -z "$_CEPH" ]; then
         fi
     done
 fi
-if [ "$_UPLINK" != "$_PRIVATE" ]; then
+if [ "$_UPLINK" != "" ]; then
     echo "uplink:$(echo "$_NETWORK_DEVICES" | grep -m 1 -E "^$_UPLINK=")"
 fi
 if [ "$_PRIVATE" != "" ]; then
