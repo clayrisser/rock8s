@@ -1,5 +1,7 @@
 #!/bin/sh
 
+TEST_IP="8.8.8.8"
+
 get_max_speed() {
     iface=$1
     link_modes=$(ethtool "$iface" 2>/dev/null | awk '/Advertised link modes:/ {flag=1} flag && /Advertised pause frame use:/ {flag=0} flag' | xargs)
@@ -32,11 +34,29 @@ for _IFACE in $(ls /sys/class/net); do
         link_status=$(ethtool "$_IFACE" 2>/dev/null | grep "Link detected" | awk '{print $3}')
         max_speed=$(get_max_speed "$_IFACE")
         numeric_speed=$(convert_speed "$max_speed")
+        internet_tag=""
+        _BRIDGE_PATH="/sys/class/net/$_IFACE/brport/bridge"
+        if [ -d "$_BRIDGE_PATH" ]; then
+            _BRIDGE=$(basename $(readlink $_BRIDGE_PATH))
+            if [ ! -z "$_BRIDGE" ]; then
+                if ping -I $_BRIDGE -c 1 -W 1 $TEST_IP > /dev/null 2>&1; then
+                    internet_tag="internet"
+                fi
+            else
+                if ping -I $_IFACE -c 1 -W 1 $TEST_IP > /dev/null 2>&1; then
+                    internet_tag="internet"
+                fi
+            fi
+        else
+            if ping -I $_IFACE -c 1 -W 1 $TEST_IP > /dev/null 2>&1; then
+                internet_tag="internet"
+            fi
+        fi
         if [ "$link_status" = "yes" ]; then
-            value="$_IFACE=link:$max_speed"
+            value="$_IFACE=link:$max_speed:$internet_tag"
             linked_interfaces="$linked_interfaces $numeric_speed:$value"
         else
-            value="$_IFACE=:$max_speed"
+            value="$_IFACE=:$max_speed:$internet_tag"
             unlinked_interfaces="$unlinked_interfaces $numeric_speed:$value"
         fi
     fi
