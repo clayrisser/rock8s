@@ -40,7 +40,7 @@ variable "iso_url" {
 }
 
 variable "network_bridge" {
-  default = "vmbr2"
+  default = "vmbr20"
 }
 
 variable "proxmox_token_id" {
