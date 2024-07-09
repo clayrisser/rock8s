@@ -74,7 +74,7 @@ $SUDO su -c "git lfs install" - admin
 if [ ! -d /home/admin/yaps ]; then
     $SUDO su -c "git clone https://gitlab.com/bitspur/rock8s/yaps.git /home/admin/yaps" - admin
 fi
-$SUDO sh /home/admin/yaps/scripts/update-network.sh
+$SUDO sh /home/admin/yaps/scripts/network/update.sh
 if [ "$_ADDED_USER" = "1" ]; then
     $SUDO passwd admin
 fi
