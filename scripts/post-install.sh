@@ -48,6 +48,7 @@ $SUDO apt-get install -y \
     make \
     sipcalc \
     software-properties-common \
+    speedtest-cli \
     sudo \
     systemd-timesyncd \
     vim
