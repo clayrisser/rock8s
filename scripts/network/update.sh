@@ -14,6 +14,16 @@ NAMESERVERS="${NAMESERVERS:-"
 1.1.1.1
 "}"
 
+echo PRIVATE_IP_NETWORK=$PRIVATE_IP_NETWORK
+echo CEPH_NETWORK=$CEPH_NETWORK
+echo STARTING_GUEST_SUBNET=$STARTING_GUEST_SUBNET
+echo EXTRA_GUEST_SUBNETS_COUNT=$EXTRA_GUEST_SUBNETS_COUNT
+echo K8S_GUEST_SUBNETS_COUNT=$K8S_GUEST_SUBNETS_COUNT
+echo MAX_SERVERS=$MAX_SERVERS
+echo ADDITIONAL_IPS="\"$ADDITIONAL_IPS\""
+echo VSWITCH_MTU=$VSWITCH_MTU
+echo NAMESERVERS="\"$NAMESERVERS\""
+
 next_subnet() {
     cidr=$1
     broadcast_ip=$(sipcalc "$cidr" | grep "Broadcast address" | awk -F'- ' '{print $2}')
@@ -122,8 +132,8 @@ else
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
     NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/devices-by-role.sh")"
+    echo GATEWAY=$GATEWAY
     echo PUBLIC_IP_ADDRESS_CIDR=$PUBLIC_IP_ADDRESS_CIDR
-    echo NETWORK_DEVICES_BY_ROLE=$NETWORK_DEVICES_BY_ROLE
     echo NETWORK_DEVICES_BY_ROLE="\"$NETWORK_DEVICES_BY_ROLE\""
 fi
 UPLINK_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^uplink:" | cut -d= -f1 | cut -d: -f2)"
@@ -137,7 +147,9 @@ if [ "$HOST_NUMBER" = "" ] || [ "$HOST_NUMBER" -gt 245 ]; then
     exit 1
 fi
 PRIVATE_IP_ADDRESS="$(echo $PRIVATE_IP_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 10))"
+echo PRIVATE_IP_ADDRESS=$PRIVATE_IP_ADDRESS
 CEPH_IP_ADDRESS="$(echo $CEPH_NETWORK | cut -d. -f1-3).$(($HOST_NUMBER + 10))"
+echo CEPH_IP_ADDRESS=$CEPH_IP_ADDRESS
 $SUDO sed -i "s|.*[0-9]\s*\($(hostname).*\)|$PRIVATE_IP_ADDRESS \1|g" /etc/hosts
 echo "$NAMESERVERS" | awk 'BEGIN{RS=""; ORS="\n\n"} {print}' | \
     awk '{for (i=1; i<=NF; i++) print "nameserver", $i}' | $SUDO tee /etc/resolv.conf >/dev/null
