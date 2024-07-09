@@ -16,11 +16,11 @@ _OTHER_INTERFACES=""
 for line in $(echo "$_NETWORK_DEVICES"); do
     case "$line" in
     *=link:10G:internet) _LINK_10G_INTERNET="$_LINK_10G_INTERNET ${line%%=*}" ;;
-    *=link:10G) _LINK_10G="$_LINK_10G ${line%%=*}" ;;
-    *:10G) _NO_LINK_10G="$_NO_LINK_10G ${line%%=*}" ;;
+    *=link:10G:) _LINK_10G="$_LINK_10G ${line%%=*}" ;;
+    *:10G:) _NO_LINK_10G="$_NO_LINK_10G ${line%%=*}" ;;
     *=link:1G:internet) _LINK_1G_INTERNET="$_LINK_1G_INTERNET ${line%%=*}" ;;
-    *=link:1G) _LINK_1G="$_LINK_1G ${line%%=*}" ;;
-    *:1G) _NO_LINK_1G="$_NO_LINK_1G ${line%%=*}" ;;
+    *=link:1G:) _LINK_1G="$_LINK_1G ${line%%=*}" ;;
+    *:1G:) _NO_LINK_1G="$_NO_LINK_1G ${line%%=*}" ;;
     *) _OTHER_INTERFACES="$_OTHER_INTERFACES ${line%%=*}" ;;
     esac
 done
