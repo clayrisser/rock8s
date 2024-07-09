@@ -27,45 +27,49 @@ convert_speed() {
     esac
 }
 
-linked_interfaces=""
-unlinked_interfaces=""
+_LINKED_INTERFACES=""
+_UNLINKED_INTERFACES=""
 for _IFACE in $(ls /sys/class/net); do
     if [ -e "/sys/class/net/$_IFACE/device" ]; then
-        link_status=$(ethtool "$_IFACE" 2>/dev/null | grep "Link detected" | awk '{print $3}')
-        max_speed=$(get_max_speed "$_IFACE")
-        numeric_speed=$(convert_speed "$max_speed")
-        internet_tag=""
+        _ALTNAME="$(ip link show "$_IFACE" | grep -E '^ *altname ' | sed 's|^ *altname *||g' | head -n1)"
+        _LINK_STATUS=$(ethtool "$_IFACE" 2>/dev/null | grep "Link detected" | awk '{print $3}')
+        _MAX_SPEED=$(get_max_speed "$_IFACE")
+        _NUMERIC_SPEED=$(convert_speed "$_MAX_SPEED")
+        _INTERNET_TAG=""
         _BRIDGE_PATH="/sys/class/net/$_IFACE/brport/bridge"
         if [ -d "$_BRIDGE_PATH" ]; then
             _BRIDGE=$(basename $(readlink $_BRIDGE_PATH))
             if [ ! -z "$_BRIDGE" ]; then
                 if ping -I $_BRIDGE -c 1 -W 1 $TEST_IP > /dev/null 2>&1; then
-                    internet_tag="internet"
+                    _INTERNET_TAG="internet"
                 fi
             else
                 if ping -I $_IFACE -c 1 -W 1 $TEST_IP > /dev/null 2>&1; then
-                    internet_tag="internet"
+                    _INTERNET_TAG="internet"
                 fi
             fi
         else
             if ping -I $_IFACE -c 1 -W 1 $TEST_IP > /dev/null 2>&1; then
-                internet_tag="internet"
+                _INTERNET_TAG="internet"
             fi
         fi
-        if [ "$link_status" = "yes" ]; then
-            value="$_IFACE=link:$max_speed:$internet_tag"
-            linked_interfaces="$linked_interfaces $numeric_speed:$value"
+        if [ "$_ALTNAME" != "" ]; then
+            _IFACE="$_ALTNAME"
+        fi
+        if [ "$_LINK_STATUS" = "yes" ]; then
+            value="$_IFACE=link:$_MAX_SPEED:$_INTERNET_TAG"
+            _LINKED_INTERFACES="$_LINKED_INTERFACES $_NUMERIC_SPEED:$value"
         else
-            value="$_IFACE=:$max_speed:$internet_tag"
-            unlinked_interfaces="$unlinked_interfaces $numeric_speed:$value"
+            value="$_IFACE=:$_MAX_SPEED:$_INTERNET_TAG"
+            _UNLINKED_INTERFACES="$_UNLINKED_INTERFACES $_NUMERIC_SPEED:$value"
         fi
     fi
 done
-sorted_linked_interfaces=$(echo "$linked_interfaces" | tr ' ' '\n' | sort -t: -k3,3r -k1,1nr -k2,2r | cut -d: -f2- | sort -t= -k1,1)
-sorted_unlinked_interfaces=$(echo "$unlinked_interfaces" | tr ' ' '\n' | sort -t: -k1,1nr -k2,2r | cut -d: -f2- | sort -t= -k1,1)
-for _IFACE in $sorted_linked_interfaces; do
+_SORTED_LINKED_INTERFACES=$(echo "$_LINKED_INTERFACES" | tr ' ' '\n' | sort -t: -k3,3r -k1,1nr -k2,2r | cut -d: -f2- | sort -t= -k1,1)
+_SORTED_UNLINKED_INTERFACES=$(echo "$_UNLINKED_INTERFACES" | tr ' ' '\n' | sort -t: -k1,1nr -k2,2r | cut -d: -f2- | sort -t= -k1,1)
+for _IFACE in $_SORTED_LINKED_INTERFACES; do
     echo "$_IFACE"
 done
-for _IFACE in $sorted_unlinked_interfaces; do
+for _IFACE in $_SORTED_UNLINKED_INTERFACES; do
     echo "$_IFACE"
 done
