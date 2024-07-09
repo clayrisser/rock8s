@@ -61,8 +61,8 @@ for _IFACE in $(ls /sys/class/net); do
         fi
     fi
 done
-sorted_linked_interfaces=$(echo "$linked_interfaces" | tr ' ' '\n' | sort -t: -k1 -nr | cut -d: -f2- | sort -t= -k1,1)
-sorted_unlinked_interfaces=$(echo "$unlinked_interfaces" | tr ' ' '\n' | sort -t: -k1 -nr | cut -d: -f2- | sort -t= -k1,1)
+sorted_linked_interfaces=$(echo "$linked_interfaces" | tr ' ' '\n' | sort -t: -k3,3r -k1,1nr -k2,2r | cut -d: -f2- | sort -t= -k1,1)
+sorted_unlinked_interfaces=$(echo "$unlinked_interfaces" | tr ' ' '\n' | sort -t: -k1,1nr -k2,2r | cut -d: -f2- | sort -t= -k1,1)
 for _IFACE in $sorted_linked_interfaces; do
     echo "$_IFACE"
 done
