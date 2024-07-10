@@ -29,11 +29,6 @@ EOF
 cat <<EOF | $SUDO tee /etc/apt/sources.list.d/pvetest-for-beta.list >/dev/null
 deb http://download.proxmox.com/debian/pve bookworm pvetest
 EOF
-for _IFACE in $(ls /sys/class/net); do
-    if [ -e "/sys/class/net/$_IFACE/device" ]; then
-        $SUDO ip link set "$_IFACE" up
-    fi
-done
 $SUDO apt-get update
 $SUDO apt-get upgrade -y
 $SUDO apt-get dist-upgrade -y
