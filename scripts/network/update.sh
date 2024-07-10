@@ -249,7 +249,7 @@ iface $UPLINK_DEVICE.$_VLAN_ID inet manual
 
 auto vmbr$(echo $_VLAN_ID | sed 's|^40||')
 iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
-    address      $(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g')
+    address      $(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g")
     bridge-ports $UPLINK_DEVICE.$_VLAN_ID
     bridge-stp   off
     bridge-fd    0
@@ -263,7 +263,7 @@ EOF
 done
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
 for GUEST_SUBNET in $_GUEST_SUBNETS; do
-    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" "$(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g')" | \
+    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g")" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
