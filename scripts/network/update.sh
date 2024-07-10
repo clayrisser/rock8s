@@ -62,44 +62,45 @@ done
 _GUEST_SUBNETS="$(echo "$_GUEST_SUBNETS" | sort -u)"
 
 generate_dhcp_config() {
-    cidr="$1"
-    num_servers="$2"
-    server_index="$3"
-    if [ $((num_servers % 2)) -ne 0 ]; then
+    _CIDR="$1"
+    _NUM_SERVERS="$2"
+    _SERVER_INDEX="$3"
+    _GATEWAY="$4"
+    if [ $((_NUM_SERVERS % 2)) -ne 0 ]; then
         echo "Error: Number of servers must be an even number." >&2
         exit 1
     fi
-    subnet=$(echo "$cidr" | cut -d '/' -f 1)
-    prefix=$(echo "$cidr" | cut -d '/' -f 2)
-    subnet_mask=$(cidr2mask "$prefix")
+    _SUBNET=$(echo "$_CIDR" | cut -d '/' -f 1)
+    _PREFIX=$(echo "$_CIDR" | cut -d '/' -f 2)
+    _SUBNET_MASK=$(cidr2mask "$_PREFIX")
     IFS=. read i1 i2 i3 i4 <<EOF
-$subnet
+$_SUBNET
 EOF
-    host_bits=$(( 32 - prefix ))
-    num_hosts=$(( (1 << host_bits) - 2 ))
-    hosts_per_server=$(( num_hosts / num_servers ))
-    range_start_ip=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + (hosts_per_server * (server_index - 1)) + (server_index - 1) ))
-    range_end_ip=$(( range_start_ip + hosts_per_server ))
-    if [ "$server_index" -eq 1 ]; then
-        range_start_ip=$(( range_start_ip + 2 ))
+    _HOST_BITS=$(( 32 - _PREFIX ))
+    _NUM_HOSTS=$(( (1 << _HOST_BITS) - 2 ))
+    _HOSTS_PER_SERVER=$(( _NUM_HOSTS / _NUM_SERVERS ))
+    _RANGE_START_IP=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + (_HOSTS_PER_SERVER * (_SERVER_INDEX - 1)) + (_SERVER_INDEX - 1) ))
+    _RANGE_END_IP=$(( _RANGE_START_IP + _HOSTS_PER_SERVER ))
+    if [ "$_SERVER_INDEX" -eq 1 ]; then
+        _RANGE_START_IP=$(( _RANGE_START_IP + 2 ))
     fi
-    if [ "$server_index" -eq "$num_servers" ]; then
-        range_end_ip=$(( range_end_ip - 1 ))
+    if [ "$_SERVER_INDEX" -eq "$_NUM_SERVERS" ]; then
+        _RANGE_END_IP=$(( _RANGE_END_IP - 1 ))
     fi
-    range_start=$(printf "%d.%d.%d.%d" \
-                  $(( (range_start_ip >> 24) & 255 )) \
-                  $(( (range_start_ip >> 16) & 255 )) \
-                  $(( (range_start_ip >> 8) & 255 )) \
-                  $(( range_start_ip & 255 )))
-    range_end=$(printf "%d.%d.%d.%d" \
-                $(( (range_end_ip >> 24) & 255 )) \
-                $(( (range_end_ip >> 16) & 255 )) \
-                $(( (range_end_ip >> 8) & 255 )) \
-                $(( range_end_ip & 255 )))
-    echo "subnet $subnet netmask $subnet_mask {"
-    echo "    range $range_start $range_end;"
-    echo "    option routers $(echo "$subnet" | awk -F. '{print $1"."$2"."$3".1"}');"
-    echo "    option subnet-mask $subnet_mask;"
+    _RANGE_START=$(printf "%d.%d.%d.%d" \
+                  $(( (_RANGE_START_IP >> 24) & 255 )) \
+                  $(( (_RANGE_START_IP >> 16) & 255 )) \
+                  $(( (_RANGE_START_IP >> 8) & 255 )) \
+                  $(( _RANGE_START_IP & 255 )))
+    _RANGE_END=$(printf "%d.%d.%d.%d" \
+                $(( (_RANGE_END_IP >> 24) & 255 )) \
+                $(( (_RANGE_END_IP >> 16) & 255 )) \
+                $(( (_RANGE_END_IP >> 8) & 255 )) \
+                $(( _RANGE_END_IP & 255 )))
+    echo "subnet $_SUBNET netmask $_SUBNET_MASK {"
+    echo "    range $_RANGE_START $_RANGE_END;"
+    echo "    option routers $_GATEWAY;"
+    echo "    option subnet-mask $_SUBNET_MASK;"
     echo "    option domain-name-servers $(echo "$NAMESERVERS" | \
         awk 'BEGIN{RS=""; ORS="\n"} {print}' | \
         tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');"
@@ -108,14 +109,14 @@ EOF
 }
 
 cidr2mask() {
-    prefix="$1"
-    shift=$(( 32 - prefix ))
-    mask=$(( (1 << 32) - (1 << shift) ))
+    _PREFIX="$1"
+    shift=$(( 32 - _PREFIX ))
+    _MASK=$(( (1 << 32) - (1 << shift) ))
     printf "%d.%d.%d.%d\n" \
-           $(( (mask >> 24) & 255 )) \
-           $(( (mask >> 16) & 255 )) \
-           $(( (mask >> 8) & 255 )) \
-           $(( mask & 255 ))
+           $(( (_MASK >> 24) & 255 )) \
+           $(( (_MASK >> 16) & 255 )) \
+           $(( (_MASK >> 8) & 255 )) \
+           $(( _MASK & 255 ))
 }
 
 SUDO=
@@ -248,7 +249,7 @@ iface $UPLINK_DEVICE.$_VLAN_ID inet manual
 
 auto vmbr$(echo $_VLAN_ID | sed 's|^40||')
 iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
-    address      $(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.1/\3|g')
+    address      $(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g')
     bridge-ports $UPLINK_DEVICE.$_VLAN_ID
     bridge-stp   off
     bridge-fd    0
@@ -262,7 +263,7 @@ EOF
 done
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
 for GUEST_SUBNET in $_GUEST_SUBNETS; do
-    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" | \
+    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" "$(echo $GUEST_SUBNET | sed 's|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g')" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
