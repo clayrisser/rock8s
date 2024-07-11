@@ -124,6 +124,9 @@ if which sudo >/dev/null 2>&1; then
     SUDO=sudo
 fi
 $SUDO true
+for _IFACE in $(ls /sys/class/net); do
+    $SUDO ip link set "$_IFACE" up
+done
 if [ -f $HOME/.env ]; then
     . $HOME/.env
     cat $HOME/.env
@@ -209,6 +212,7 @@ $(if [ "$CEPH_DEVICE" = "" ]; then
     echo "    mtu          $VSWITCH_MTU"
 else
     echo "    bridge-ports $CEPH_DEVICE"
+    echo "    mtu          8192"
 fi)
     bridge-stp   off
     bridge-fd    0
