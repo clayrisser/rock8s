@@ -2,7 +2,7 @@
 
 PROXMOX_VERSION=8.2-1
 PROXMOX_ISO="http://download.proxmox.com/iso/proxmox-ve_${PROXMOX_VERSION}.iso"
-DRIVE_INTERFACE="nvme"
+DRIVE_PREFIX="sd"
 SUDO=
 if which sudo >/dev/null 2>&1; then
     SUDO=sudo
@@ -17,7 +17,7 @@ $SUDO apt-get install -y \
 if [ ! -f pve.iso ]; then
     curl -Lo pve.iso "$PROXMOX_ISO"
 fi
-DRIVES="$(lsblk -dn -o NAME | grep "$DRIVE_INTERFACE" | sort)"
+DRIVES="$(lsblk -dn -o NAME | grep -E "^$DRIVE_PREFIX" | sort)"
 DRIVE_ARGS=""
 for DRIVE in $DRIVES; do
     DRIVE_ARGS="$DRIVE_ARGS -drive file=/dev/$DRIVE,format=raw,media=disk,if=virtio"
