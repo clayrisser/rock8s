@@ -2,7 +2,7 @@
 
 PROXMOX_VERSION=8.2-1
 PROXMOX_ISO="http://download.proxmox.com/iso/proxmox-ve_${PROXMOX_VERSION}.iso"
-DRIVE_PREFIX="sd"
+DRIVE_PREFIX="nvme"
 SUDO=
 if which sudo >/dev/null 2>&1; then
     SUDO=sudo
