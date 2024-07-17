@@ -77,26 +77,23 @@ generate_dhcp_config() {
 $_SUBNET
 EOF
     _HOST_BITS=$(( 32 - _PREFIX ))
-    _NUM_HOSTS=$(( (1 << _HOST_BITS) - 2 ))
+    _NUM_HOSTS=$(( (1 << _HOST_BITS) - 2 - _NUM_SERVERS ))
     _HOSTS_PER_SERVER=$(( _NUM_HOSTS / _NUM_SERVERS ))
-    _RANGE_START_IP=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + (_HOSTS_PER_SERVER * (_SERVER_INDEX - 1)) + (_SERVER_INDEX - 1) ))
-    _RANGE_END_IP=$(( _RANGE_START_IP + _HOSTS_PER_SERVER ))
-    if [ "$_SERVER_INDEX" -eq 1 ]; then
-        _RANGE_START_IP=$(( _RANGE_START_IP + 2 ))
-    fi
+    _RANGE_START_IP=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + _NUM_SERVERS + (_HOSTS_PER_SERVER * (_SERVER_INDEX - 1)) + 1 ))
+    _RANGE_END_IP=$(( _RANGE_START_IP + _HOSTS_PER_SERVER - 1 ))
     if [ "$_SERVER_INDEX" -eq "$_NUM_SERVERS" ]; then
-        _RANGE_END_IP=$(( _RANGE_END_IP - 1 ))
+        _RANGE_END_IP=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 + (1 << _HOST_BITS) - 2 ))
     fi
     _RANGE_START=$(printf "%d.%d.%d.%d" \
-                  $(( (_RANGE_START_IP >> 24) & 255 )) \
-                  $(( (_RANGE_START_IP >> 16) & 255 )) \
-                  $(( (_RANGE_START_IP >> 8) & 255 )) \
-                  $(( _RANGE_START_IP & 255 )))
+        $(( (_RANGE_START_IP >> 24) & 255 )) \
+        $(( (_RANGE_START_IP >> 16) & 255 )) \
+        $(( (_RANGE_START_IP >> 8) & 255 )) \
+        $(( _RANGE_START_IP & 255 )))
     _RANGE_END=$(printf "%d.%d.%d.%d" \
-                $(( (_RANGE_END_IP >> 24) & 255 )) \
-                $(( (_RANGE_END_IP >> 16) & 255 )) \
-                $(( (_RANGE_END_IP >> 8) & 255 )) \
-                $(( _RANGE_END_IP & 255 )))
+        $(( (_RANGE_END_IP >> 24) & 255 )) \
+        $(( (_RANGE_END_IP >> 16) & 255 )) \
+        $(( (_RANGE_END_IP >> 8) & 255 )) \
+        $(( _RANGE_END_IP & 255 )))
     echo "subnet $_SUBNET netmask $_SUBNET_MASK {"
     echo "    range $_RANGE_START $_RANGE_END;"
     echo "    option routers $_GATEWAY;"
@@ -106,6 +103,16 @@ EOF
         tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');"
     echo "}"
     echo
+}
+
+consolidated_dhcp_config() {
+    _CIDR="$1"
+    _NUM_SERVERS="$2"
+    for i in $(seq 1 $_NUM_SERVERS); do
+        _GATEWAY="172.20.0.$i"
+        printf "\033[1;36m$_GATEWAY\033[0m\n"
+        generate_dhcp_config "$_CIDR" "$_NUM_SERVERS" "$i" "$_GATEWAY"
+    done
 }
 
 cidr2mask() {
@@ -269,6 +276,7 @@ true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
 for GUEST_SUBNET in $_GUEST_SUBNETS; do
     generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER|g")" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+    consolidated_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS"
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd.conf
