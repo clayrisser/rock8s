@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DRIVE_PREFIX="sd"
+DRIVE_PREFIX="nvme"
 DRIVES="$(lsblk -dn -o NAME | grep -E "^$DRIVE_PREFIX" | sort | head -n2)"
 DRIVE_ARGS=""
 for DRIVE in $DRIVES; do
