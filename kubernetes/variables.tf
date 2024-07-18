@@ -68,11 +68,11 @@ variable "vm_cpu_type" {
 }
 
 variable "vm_os_disk_storage" {
-  default = "local-zfs"
+  default = "rbd"
 }
 
 variable "worker_node_data_disk_storage" {
-  default = "local-zfs"
+  default = "rbd"
 }
 
 variable "worker_node_data_disk_size" {
