@@ -61,7 +61,7 @@ variable "vm_os_disk_size_gb" {
 }
 
 variable "vm_os_disk_storage" {
-  default = "local-zfs"
+  default = "rbd"
 }
 
 variable "vm_clone" {
