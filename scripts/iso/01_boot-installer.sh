@@ -17,7 +17,7 @@ $SUDO apt-get install -y \
 if [ ! -f pve.iso ]; then
     curl -Lo pve.iso "$PROXMOX_ISO"
 fi
-DRIVES="$(lsblk -dn -o NAME | grep -E "^$DRIVE_PREFIX" | sort)"
+DRIVES="$(lsblk -dn -o NAME | grep -E "^$DRIVE_PREFIX" | sort | head -n2)"
 DRIVE_ARGS=""
 for DRIVE in $DRIVES; do
     DRIVE_ARGS="$DRIVE_ARGS -drive file=/dev/$DRIVE,format=raw,media=disk,if=virtio"
