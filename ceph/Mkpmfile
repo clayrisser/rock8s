@@ -1,0 +1,42 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+TERRAFORM ?= terraform
+ANSIBLE_PLAYBOOK ?= ../env/bin/ansible-playbook
+export LANG := C.UTF-8
+export LC_ALL := C.UTF-8
+
+.PHONY: format
+format:
+	@$(TERRAFORM) fmt --recursive
+
+.PHONY: init
+init:
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/variables.sh && \
+		$(TERRAFORM) init && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
+
+.PHONY: apply
+apply: init
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/variables.sh && \
+		$(TERRAFORM) apply -auto-approve && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
+
+.PHONY: install
+install: apply
+	@cd $(KUBESPRAY_DATA_DIR)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root cluster.yml
+
+.PHONY: reset
+reset: apply
+	@cd $(KUBESPRAY_DATA_DIR)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root reset.yml
+
+.PHONY: destroy
+destroy: init
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/variables.sh && \
+		$(TERRAFORM) destroy && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
