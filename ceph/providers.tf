@@ -1,4 +1,7 @@
 terraform {
+  backend "local" {
+    path = "/home/admin/shared/apps/ceph/terraform.tfstate"
+  }
   required_version = ">=1.3.3"
   required_providers {
     proxmox = {
