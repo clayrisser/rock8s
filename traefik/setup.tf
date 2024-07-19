@@ -4,7 +4,6 @@ locals {
     {}
   )
 }
-
 resource "null_resource" "setup" {
   provisioner "remote-exec" {
     inline = [
@@ -13,7 +12,7 @@ resource "null_resource" "setup" {
     connection {
       type = "ssh"
       user = var.vm_user
-      host = module.nodes[0].public_ip
+      host = module.nodes.vm_list[0].ip0
     }
   }
   triggers = {
