@@ -69,7 +69,7 @@ done
 if sudo radosgw-admin user info --uid=s3 > /dev/null 2>&1; then
     sudo radosgw-admin user info --uid=s3
 else
-    sudo radosgw-admin user create --uid=s3 --display-name="S3" --email=s3@bitspur.com
+    sudo radosgw-admin user create --uid=s3 --display-name="S3" --email="s3@$_DOMAIN"
 fi
 sudo ceph osd pool application enable .rgw.root rgw || true
 sudo ceph osd pool application enable default.rgw.control rgw || true
