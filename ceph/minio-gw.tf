@@ -13,7 +13,7 @@ module "nodes-minio-gw" {
   vm_os_disk_size_gb  = var.vm_disk_size
   vm_os_disk_storage  = var.vm_os_disk_storage
   vm_sockets          = var.vm_sockets
-  vm_tags             = "terraform;minio-gw"
+  vm_tags             = "terraform;minio_gw"
   vm_user             = var.vm_user
   vm_vcpus            = var.vm_vcpus
 }
