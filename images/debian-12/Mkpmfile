@@ -3,6 +3,9 @@ include $(MKPM)/dotenv
 include $(CURDIR)/variables.mk
 
 PACKER ?= packer
+NETWORK_BRIDGE ?= vmbr1
+export NETWORK_IP ?= $(shell ip addr show $(NETWORK_BRIDGE) | grep -E 'inet ' | sed 's| *inet *||g' | cut -d' ' -f1)
+export NETWORK_GATEWAY ?= $(shell ip route show dev $(NETWORK_BRIDGE) | sed 's|.*src *||g')
 
 .PHONY: init
 init:

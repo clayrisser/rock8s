@@ -2,6 +2,8 @@ VARS := -var cores=$(CORES) \
 		-var cpu_type=$(CPU_TYPE) \
 		-var disk_format=$(DISK_FORMAT) \
 		-var disk_size=$(DISK_SIZE) \
+		-var gateway=$(GATEWAY) \
+		-var ip=$(IP) \
 		-var iso_checksum=$(ISO_CHECKSUM) \
 		-var iso_file=$(ISO_FILE) \
 		-var iso_storage_pool=$(ISO_STORAGE_POOL) \
