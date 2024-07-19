@@ -2,8 +2,6 @@ if [ "$SSH_PUBLIC_KEYS_B64" = "" ]; then
     SSH_PUBLIC_KEYS_B64="$(cat $HOME/.ssh/id_rsa.pub | base64 -w0)"
 fi
 
-export TF_VAR_internal_net_name="$INTERNAL_NET_NAME"
-export TF_VAR_internal_net_subnet_cidr="$INTERNAL_NET_SUBNET_CIDR"
 export TF_VAR_proxmox_host="$PROXMOX_HOST"
 export TF_VAR_proxmox_node="$PROXMOX_NODE"
 export TF_VAR_proxmox_parallel="$PROXMOX_PARALLEL"
@@ -18,6 +16,8 @@ export TF_VAR_vm_cpu_type="$VM_CPU_TYPE"
 export TF_VAR_vm_disk_size="$VM_DISK_SIZE"
 export TF_VAR_vm_max_vcpus="$VM_MAX_VCPUS"
 export TF_VAR_vm_memory="$VM_MEMORY"
+export TF_VAR_vm_net_name="$VM_NET_NAME"
+export TF_VAR_vm_net_subnet_cidr="$VM_NET_SUBNET_CIDR"
 export TF_VAR_vm_os_disk_storage="$VM_OS_DISK_STORAGE"
 export TF_VAR_vm_sockets="$VM_SOCKETS"
 export TF_VAR_vm_user="$VM_USER"
