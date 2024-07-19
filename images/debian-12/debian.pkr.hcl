@@ -9,7 +9,7 @@ packer {
 
 source "proxmox-iso" "debian-12" {
   bios                     = "seabios"
-  boot_command             = ["<esc><wait>auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<enter>"]
+  boot_command             = ["<esc><wait>auto url=http://${var.network_ip}:{{ .HTTPPort }}/preseed.cfg<enter>"]
   boot_wait                = "10s"
   cloud_init               = true
   cloud_init_storage_pool  = var.storage_pool
@@ -18,7 +18,6 @@ source "proxmox-iso" "debian-12" {
   http_directory           = "http"
   http_port_max            = 8100
   http_port_min            = 8100
-  http_ip                  = var.network_ip
   insecure_skip_tls_verify = true
   iso_checksum             = var.iso_checksum
   iso_file                 = var.iso_file
