@@ -1,7 +1,7 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
-TERRAFORM ?= terraform -state=/etc/pve/terraform/traefik/terraform.tfstate
+TERRAFORM ?= terraform -state=/etc/pve/yaps/traefik/terraform.tfstate
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
