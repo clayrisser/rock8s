@@ -26,3 +26,7 @@ traefik/%:
 .PHONY: images/%
 images/%:
 	@$(call make,images) $*
+
+.PHONY: ceph/%
+ceph/%:
+	@$(call make,ceph) $*
