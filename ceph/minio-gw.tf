@@ -50,7 +50,4 @@ resource "null_resource" "setup" {
   triggers = {
     always_run = timestamp()
   }
-  depends_on = [
-    module.nodes
-  ]
 }
