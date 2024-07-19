@@ -16,6 +16,7 @@ source "proxmox-iso" "debian-12" {
   cores                    = var.cores
   cpu_type                 = var.cpu_type
   http_directory           = "http"
+  http_ip                  = var.network_ip
   http_port_max            = 8100
   http_port_min            = 8100
   insecure_skip_tls_verify = true
