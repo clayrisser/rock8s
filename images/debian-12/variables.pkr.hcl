@@ -63,3 +63,11 @@ variable "proxmox_node" {
 variable "iso_checksum" {
   type = string
 }
+
+variable "ip" {
+  type = string
+}
+
+variable "gateway" {
+  type = string
+}

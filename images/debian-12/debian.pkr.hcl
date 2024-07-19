@@ -5,6 +5,13 @@ packer {
       source  = "github.com/hashicorp/proxmox"
     }
   }
+  network {
+    type = "user"
+    user_network {
+      ip      = var.network_ip
+      gateway = var.network_gateway
+    }
+  }
 }
 
 source "proxmox-iso" "debian-12" {
