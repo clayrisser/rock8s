@@ -1,38 +1,6 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
-TERRAFORM ?= terraform
-ifeq ($(AUTO_APPROVE),1)
-AUTO_APPROVE := -auto-approve
-endif
-export LANG := C.UTF-8
-export LC_ALL := C.UTF-8
-
-.PHONY: format
-format:
-	@$(TERRAFORM) fmt --recursive
-
-.PHONY: init
-init:
-	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
-		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) init && \
-		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
-
-.PHONY: apply
-apply: init
-	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
-		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) apply $(AUTO_APPROVE) && \
-		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
-
-.PHONY: install
-install: apply
-	@sh scripts/install.sh
-
-.PHONY: destroy
-destroy: init
-	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
-		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) destroy $(AUTO_APPROVE) && \
-		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
+.PHONY: %
+%:
+	@sh scripts/$*.sh
