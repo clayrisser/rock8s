@@ -5,13 +5,6 @@ packer {
       source  = "github.com/hashicorp/proxmox"
     }
   }
-  network {
-    type = "user"
-    user_network {
-      ip      = var.network_ip
-      gateway = var.network_gateway
-    }
-  }
 }
 
 source "proxmox-iso" "debian-12" {
@@ -25,6 +18,7 @@ source "proxmox-iso" "debian-12" {
   http_directory           = "http"
   http_port_max            = 8100
   http_port_min            = 8100
+  http_ip                  = var.network_ip
   insecure_skip_tls_verify = true
   iso_checksum             = var.iso_checksum
   iso_file                 = var.iso_file
