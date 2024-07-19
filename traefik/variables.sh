@@ -1,6 +1,9 @@
 if [ "$SSH_PUBLIC_KEYS_B64" = "" ]; then
     SSH_PUBLIC_KEYS_B64="$(cat $HOME/.ssh/id_rsa.pub | base64 -w0)"
 fi
+if [ "$SSH_PRIVATE_KEY_B64" = "" ]; then
+    SSH_PRIVATE_KEY_B64="$(cat $HOME/.ssh/id_rsa | base64 -w0)"
+fi
 
 export TF_VAR_proxmox_host="$PROXMOX_HOST"
 export TF_VAR_proxmox_node="$PROXMOX_NODE"
@@ -9,6 +12,7 @@ export TF_VAR_proxmox_timeout="$PROXMOX_TIMEOUT"
 export TF_VAR_proxmox_tls_insecure="$PROXMOX_TLS_INSECURE"
 export TF_VAR_proxmox_token_id="$PROXMOX_TOKEN_ID"
 export TF_VAR_proxmox_token_secret="$PROXMOX_TOKEN_SECRET"
+export TF_VAR_ssh_private_key_b64="$SSH_PRIVATE_KEY_B64"
 export TF_VAR_ssh_public_keys_b64="$SSH_PUBLIC_KEYS_B64"
 export TF_VAR_vm_clone="$VM_CLONE"
 export TF_VAR_vm_count="$VM_COUNT"
