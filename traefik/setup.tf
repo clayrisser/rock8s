@@ -10,9 +10,10 @@ resource "null_resource" "setup" {
       "${local.setup_script_content}"
     ]
     connection {
-      type = "ssh"
-      user = var.vm_user
-      host = module.nodes.vm_list[0].ip0
+      host        = module.nodes.vm_list[0].ip0
+      private_key = base64decode(var.ssh_private_key_b64)
+      type        = "ssh"
+      user        = var.vm_user
     }
   }
   triggers = {

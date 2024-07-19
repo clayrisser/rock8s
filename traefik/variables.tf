@@ -40,6 +40,11 @@ variable "ssh_public_keys_b64" {
   sensitive = true
 }
 
+variable "ssh_private_key_b64" {
+  type      = string
+  sensitive = true
+}
+
 variable "vm_user" {
   default = "admin"
 }
