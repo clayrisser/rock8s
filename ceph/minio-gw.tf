@@ -26,6 +26,17 @@ locals {
 }
 
 resource "null_resource" "setup" {
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p /home/admin/stacks/minio-gw"
+    ]
+    connection {
+      host        = module.nodes-minio-gw.vm_list[0].ip0
+      private_key = base64decode(var.ssh_private_key_b64)
+      type        = "ssh"
+      user        = var.vm_user
+    }
+  }
   provisioner "file" {
     source      = "${path.module}/stacks/minio-gw/compose.yaml"
     destination = "/home/admin/stacks/minio-gw/compose.yaml"
