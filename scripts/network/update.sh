@@ -268,6 +268,12 @@ iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
     post-down    iptables -t nat -D POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
     post-up      iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
     post-down    iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
+    post-up      iptables -t nat -A PREROUTING -i vmbr0 -p tcp -d $PUBLIC_IP_ADDRESS -j MARK --set-mark 0x200/0x200
+    post-down    iptables -t nat -D PREROUTING -i vmbr0 -p tcp -d $PUBLIC_IP_ADDRESS -j MARK --set-mark 0x200/0x200
+    post-up      iptables -t nat -A PREROUTING -i vmbr0 -p tcp -d $PUBLIC_IP_ADDRESS -j DNAT --to $PRIVATE_IP_ADDRESS
+    post-down    iptables -t nat -D PREROUTING -i vmbr0 -p tcp -d $PUBLIC_IP_ADDRESS -j DNAT --to $PRIVATE_IP_ADDRESS
+    post-up      iptables -t nat -A POSTROUTING -o vmbr0 -m mark --mark 0x200 -j MASQUERADE
+    post-down    iptables -t nat -D POSTROUTING -o vmbr0 -m mark --mark 0x200 -j MASQUERADE
 EOF
     i=$((i + 1))
 done
