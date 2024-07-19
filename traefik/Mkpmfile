@@ -2,7 +2,9 @@ include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
 TERRAFORM ?= terraform
-TERRAFORM_STATE ?= -state=$(HOME)/shared/apps/traefik/terraform.tfstate
+ifeq ($(AUTO_APPROVE),1)
+AUTO_APPROVE := -auto-approve
+endif
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
@@ -14,14 +16,14 @@ format:
 init:
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) init $(TERRAFORM_STATE) && \
+		$(TERRAFORM) init && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: apply
 apply: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) apply $(TERRAFORM_STATE) -auto-approve && \
+		$(TERRAFORM) apply $(AUTO_APPROVE) && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: install
@@ -32,5 +34,5 @@ install: apply
 destroy: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) destroy $(TERRAFORM_STATE) && \
+		$(TERRAFORM) destroy $(AUTO_APPROVE) && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
