@@ -106,3 +106,4 @@ for _NODE in $_NODES; do
 done
 sudo rm -rf /mnt/pve/cephfs/shared/tmp
 make -sC "$HOME/yaps" images/build
+cd "$HOME"
