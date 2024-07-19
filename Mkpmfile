@@ -19,6 +19,7 @@ kubernetes/%:
 
 .PHONY: traefik/%
 traefik/%:
+	@$(MKDIR) -p /etc/pve/yaps/traefik
 	@$(call make,traefik) $*
 
 .PHONY: images/%
