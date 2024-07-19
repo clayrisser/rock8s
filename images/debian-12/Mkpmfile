@@ -1,10 +1,10 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
-include $(CURDIR)/variables.mk
 
 PACKER ?= packer
 NETWORK_BRIDGE ?= vmbr20
 export NETWORK_IP ?= $(shell ip addr show $(NETWORK_BRIDGE) | grep -E 'inet ' | sed 's| *inet *||g' | cut -d' ' -f1 | cut -d'/' -f1)
+include $(CURDIR)/variables.mk
 
 .PHONY: init
 init:
