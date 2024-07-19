@@ -27,11 +27,11 @@ variable "proxmox_timeout" {
   default = 600
 }
 
-variable "internal_net_name" {
+variable "vm_net_name" {
   type = string
 }
 
-variable "internal_net_subnet_cidr" {
+variable "vm_net_subnet_cidr" {
   type = string
 }
 
