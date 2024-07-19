@@ -1,7 +1,7 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
-TERRAFORM ?= terraform
+TERRAFORM ?= terraform -state=/etc/pve/terraform/traefik/terraform.tfstate
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
@@ -24,7 +24,7 @@ apply: init
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: install
-install: # apply
+install: apply
 	@sh scripts/install.sh
 
 .PHONY: destroy

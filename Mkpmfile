@@ -17,6 +17,10 @@ kubernetes:
 kubernetes/%:
 	@$(call make,kubernetes) $*
 
+.PHONY: traefik/%
+traefik/%:
+	@$(call make,traefik) $*
+
 .PHONY: images/%
 images/%:
 	@$(call make,images) $*
