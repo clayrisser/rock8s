@@ -71,14 +71,14 @@ if sudo radosgw-admin user info --uid=s3 > /dev/null 2>&1; then
 else
     sudo radosgw-admin user create --uid=s3 --display-name="S3" --email=s3@bitspur.com
 fi
-sudo ceph osd pool application enable .rgw.root rgw
-sudo ceph osd pool application enable default.rgw.control rgw
-sudo ceph osd pool application enable default.rgw.data.root rgw
-sudo ceph osd pool application enable default.rgw.gc rgw
-sudo ceph osd pool application enable default.rgw.log rgw
-sudo ceph osd pool application enable default.rgw.users.uid rgw
-sudo ceph osd pool application enable default.rgw.users.email rgw
-sudo ceph osd pool application enable default.rgw.users.keys rgw
-sudo ceph osd pool application enable default.rgw.buckets.index rgw
-sudo ceph osd pool application enable default.rgw.buckets.data rgw
-sudo ceph osd pool application enable default.rgw.lc rgw
+sudo ceph osd pool application enable .rgw.root rgw || true
+sudo ceph osd pool application enable default.rgw.control rgw || true
+sudo ceph osd pool application enable default.rgw.data.root rgw || true
+sudo ceph osd pool application enable default.rgw.gc rgw || true
+sudo ceph osd pool application enable default.rgw.log rgw || true
+sudo ceph osd pool application enable default.rgw.users.uid rgw || true
+sudo ceph osd pool application enable default.rgw.users.email rgw || true
+sudo ceph osd pool application enable default.rgw.users.keys rgw || true
+sudo ceph osd pool application enable default.rgw.buckets.index rgw || true
+sudo ceph osd pool application enable default.rgw.buckets.data rgw || true
+sudo ceph osd pool application enable default.rgw.lc rgw || true
