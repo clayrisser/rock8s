@@ -30,7 +30,7 @@ resource "null_resource" "setup" {
     source      = "${path.module}/stacks/minio-gw/compose.yaml"
     destination = "/home/admin/stacks/minio-gw/compose.yaml"
     connection {
-      host        = module.nodes.vm_list[0].ip0
+      host        = module.nodes-minio-gw.vm_list[0].ip0
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
       user        = var.vm_user
@@ -41,7 +41,7 @@ resource "null_resource" "setup" {
       "${local.setup_script_content}"
     ]
     connection {
-      host        = module.nodes.vm_list[0].ip0
+      host        = module.nodes-minio-gw.vm_list[0].ip0
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
       user        = var.vm_user
