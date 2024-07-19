@@ -64,10 +64,6 @@ variable "iso_checksum" {
   type = string
 }
 
-variable "ip" {
-  type = string
-}
-
-variable "gateway" {
+variable "network_ip" {
   type = string
 }
