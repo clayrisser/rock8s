@@ -15,11 +15,12 @@ kubernetes:
 
 .PHONY: kubernetes/%
 kubernetes/%:
+	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*
 
 .PHONY: traefik/%
 traefik/%:
-	@$(MKDIR) -p /etc/pve/yaps/traefik
+	@$(MKDIR) -p $(HOME)/shared/apps/traefik
 	@$(call make,traefik) $*
 
 .PHONY: images/%
