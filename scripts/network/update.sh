@@ -1,28 +1,32 @@
 #!/bin/sh
 
-PRIVATE_IP_NETWORK="${PRIVATE_IP_NETWORK:="192.168.1.0/24"}"
-CEPH_NETWORK="${CEPH_NETWORK:="192.168.2.0/24"}"
-STARTING_GUEST_SUBNET="${STARTING_GUEST_SUBNET:="172.20.0.0/16"}"
-EXTRA_GUEST_SUBNETS_COUNT="1"
-K8S_GUEST_SUBNETS_COUNT="${K8S_GUEST_SUBNETS_COUNT:="1"}"
-MAX_SERVERS="${MAX_SERVERS:="64"}"
 ADDITIONAL_IPS="${ADDITIONAL_IPS:=""}"
+CEPH_NETWORK="${CEPH_NETWORK:="192.168.2.0/24"}"
+EXTRA_GUEST_SUBNETS_COUNT="${EXTRA_GUEST_SUBNETS_COUNT:="2"}"
+MAX_SERVERS="${MAX_SERVERS:="64"}"
+PRIVATE_IP_NETWORK="${PRIVATE_IP_NETWORK:="192.168.1.0/24"}"
+STARTING_GUEST_SUBNET="${STARTING_GUEST_SUBNET:="172.20.0.0/16"}"
 VSWITCH_MTU="${VSWITCH_MTU:="1400"}"
 NAMESERVERS="${NAMESERVERS:-"
 8.8.8.8
-4.4.4.4
+8.8.4.4
 1.1.1.1
 "}"
+IPV6_NAMESERVERS="${IPV6_NAMESERVERS:="
+2001:4860:4860::8888
+2001:4860:4860::8844
+2606:4700:4700::1111
+"}"
 
-echo PRIVATE_IP_NETWORK=$PRIVATE_IP_NETWORK
-echo CEPH_NETWORK=$CEPH_NETWORK
-echo STARTING_GUEST_SUBNET=$STARTING_GUEST_SUBNET
-echo EXTRA_GUEST_SUBNETS_COUNT=$EXTRA_GUEST_SUBNETS_COUNT
-echo K8S_GUEST_SUBNETS_COUNT=$K8S_GUEST_SUBNETS_COUNT
-echo MAX_SERVERS=$MAX_SERVERS
 echo ADDITIONAL_IPS="\"$ADDITIONAL_IPS\""
+echo CEPH_NETWORK=$CEPH_NETWORK
+echo EXTRA_GUEST_SUBNETS_COUNT=$EXTRA_GUEST_SUBNETS_COUNT
+echo MAX_SERVERS=$MAX_SERVERS
+echo PRIVATE_IP_NETWORK=$PRIVATE_IP_NETWORK
+echo STARTING_GUEST_SUBNET=$STARTING_GUEST_SUBNET
 echo VSWITCH_MTU=$VSWITCH_MTU
 echo NAMESERVERS="\"$NAMESERVERS\""
+echo IPV6_NAMESERVERS="\"$IPV6_NAMESERVERS\""
 
 next_subnet() {
     cidr=$1
@@ -52,12 +56,7 @@ _GUEST_SUBNETS=""
 current_subnet="$STARTING_GUEST_SUBNET"
 for i in $(seq 0 $((EXTRA_GUEST_SUBNETS_COUNT - 1))); do
     _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
-    current_subnet="$(next_subnet "$(next_subnet "$current_subnet")")"
-done
-current_subnet="$(next_subnet "$STARTING_GUEST_SUBNET")"
-for i in $(seq 0 $((K8S_GUEST_SUBNETS_COUNT - 1))); do
-    _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
-    current_subnet="$(next_subnet "$(next_subnet "$current_subnet")")"
+    current_subnet="$(next_subnet "$current_subnet")"
 done
 _GUEST_SUBNETS="$(echo "$_GUEST_SUBNETS" | sort -u)"
 
@@ -247,6 +246,20 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
         _VLAN_ID="$(_unique_vlan_id)"
     fi
     _VLAN_IDS="$_VLAN_IDS $_VLAN_ID"
+    IPV6_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
+        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
+        jq -r ".vmbr$(echo $_VLAN_ID | sed 's|^40||').ipv6 // \"\"")"
+    if [ "$IPV6_SUBNET" != "" ]; then
+        _OUT="$(python3 "$(dirname "$0")/ipv6_subnet.py" dhcp "$IPV6_SUBNET" "$HOST_NUMBER" "$MAX_SERVERS")"
+        GUEST_IPV6_GATEWAY="$(echo "$_OUT" | jq -r '.gateway')"
+        GUEST_IPV6_RANGE="$(echo "$_OUT" | jq -r '.range')"
+        GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.root_subnet')"
+        if [ "$IPV6_DHCP_INTERFACES" = "" ]; then
+            IPV6_DHCP_INTERFACES="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+        else
+            IPV6_DHCP_INTERFACES="$IPV6_DHCP_INTERFACES vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+        fi
+    fi
     if [ "$DHCP_INTERFACES" = "" ]; then
         DHCP_INTERFACES="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
     else
@@ -269,12 +282,44 @@ iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
     post-up      iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
     post-down    iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
 EOF
+    if [ "$GUEST_IPV6_SUBNET" != "" ]; then
+        cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
+iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet6 static
+    address      $GUEST_IPV6_GATEWAY/96
+    bridge-ports $UPLINK_DEVICE.$_VLAN_ID
+    bridge-stp   off
+    bridge-fd    0
+    mtu          $VSWITCH_MTU
+EOF
+    fi
     i=$((i + 1))
 done
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
 for GUEST_SUBNET in $_GUEST_SUBNETS; do
-    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER|g")" | \
+    if echo "$GUEST_SUBNET" | grep -qE '^172\.[0-9][0-9]\.0\.0\/16$'; then
+        _VLAN_ID="$(echo "$GUEST_SUBNET" | sed 's|172\.\([0-9][0-9]\)\.0\.0\/16|40\1|g')"
+    else
+        _VLAN_ID="40$i"
+    fi
+    IPV6_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
+        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
+        jq -r ".vmbr$(echo $_VLAN_ID | sed 's|^40||').ipv6 // \"\"")"
+    generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" \
+        "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER|g")" \
+        "$GUEST_IPV6_SUBNET" \
+        "$GUEST_IPV6_RANGE" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+    if [ "$IPV6_SUBNET" != "" ] && ! $SUDO grep -q "subnet6 $IPV6_SUBNET" /etc/dhcp/dhcpd.conf; then
+        _OUT="$(python3 "$(dirname "$0")/ipv6_subnet.py" dhcp "$IPV6_SUBNET" "$HOST_NUMBER" "$MAX_SERVERS")"
+        GUEST_IPV6_RANGE="$(echo "$_OUT" | jq -r '.range')"
+        GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.root_subnet')"
+        echo "subnet6 $GUEST_IPV6_SUBNET {" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+        echo "    range6 $GUEST_IPV6_RANGE;" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+        echo "    option dhcp6.name-servers $(echo "$IPV6_NAMESERVERS" | \
+            awk 'BEGIN{RS=""; ORS="\n"} {print}' | \
+            tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+        echo "}" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+    fi
     consolidated_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS"
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
@@ -288,6 +333,7 @@ $SUDO sed -i '${/^$/d;}' /etc/hosts
 $SUDO sed -i '${/^$/d;}' /etc/network/interfaces
 $SUDO sed -i '${/^$/d;}' /etc/resolv.conf
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
+$SUDO sed -i "s|^#*\s*INTERFACESv6=.*|INTERFACESv6=\"$IPV6_DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
 printf "\n\033[1;36m/etc/network/interfaces\033[0m\n"
 $SUDO cat /etc/network/interfaces
 printf "\n"
