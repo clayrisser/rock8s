@@ -41,6 +41,7 @@ $SUDO apt-get install -y \
     isc-dhcp-server \
     jq \
     make \
+    radvd \
     sipcalc \
     software-properties-common \
     speedtest-cli \

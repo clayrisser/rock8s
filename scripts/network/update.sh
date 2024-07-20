@@ -210,25 +210,27 @@ auto vmbr1
 iface vmbr1 inet static
     address      $PRIVATE_IP_ADDRESS/$(echo $PRIVATE_IP_NETWORK | cut -d/ -f2)
 $(if [ "$PRIVATE_DEVICE" = "" ]; then
-    echo "    bridge-ports $UPLINK_DEVICE.4000"
-    echo "    mtu          $VSWITCH_MTU"
+    echo "    bridge-ports    $UPLINK_DEVICE.4000"
+    echo "    mtu             $VSWITCH_MTU"
+    echo "    vlan-raw-device $UPLINK_DEVICE"
 else
-    echo "    bridge-ports $PRIVATE_DEVICE"
+    echo "    bridge-ports    $PRIVATE_DEVICE"
 fi)
-    bridge-stp   off
-    bridge-fd    0
+    bridge-stp      off
+    bridge-fd       0
 
 auto vmbr2
 iface vmbr2 inet static
     address      $CEPH_IP_ADDRESS/$(echo $CEPH_NETWORK | cut -d/ -f2)
 $(if [ "$CEPH_DEVICE" = "" ]; then
-    echo "    bridge-ports $UPLINK_DEVICE.4001"
-    echo "    mtu          $VSWITCH_MTU"
+    echo "    bridge-ports    $UPLINK_DEVICE.4001"
+    echo "    mtu             $VSWITCH_MTU"
+    echo "    vlan-raw-device $UPLINK_DEVICE"
 else
-    echo "    bridge-ports $CEPH_DEVICE"
+    echo "    bridge-ports    $CEPH_DEVICE"
 fi)
-    bridge-stp   off
-    bridge-fd    0
+    bridge-stp      off
+    bridge-fd       0
 EOF
 _VLAN_ID_START=20
 _VLAN_IDS=""
@@ -254,50 +256,52 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
         _VLAN_ID="$(_unique_vlan_id)"
     fi
     _VLAN_IDS="$_VLAN_IDS $_VLAN_ID"
+    _INTERFACE="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
     IPV6_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
         perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".vmbr$(echo $_VLAN_ID | sed 's|^40||').ipv6 // \"\"")"
-    if [ "$IPV6_SUBNET" != "" ]; then
+        jq -r ".$_INTERFACE.ipv6.subnet // \"\"")"
+    IPV6_GATEWAY="$(cat "$HOME/shared/subnets.yaml" | \
+        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
+        jq -r ".$_INTERFACE.ipv6.gateway // \"\"")"
+    if [ "$IPV6_SUBNET" != "" ] && [ "$IPV6_GATEWAY" != "" ]; then
         _OUT="$(python3 "$(dirname "$0")/ipv6_subnet.py" dhcp "$IPV6_SUBNET" "$HOST_NUMBER" "$MAX_SERVERS")"
         GUEST_IPV6_GATEWAY="$(echo "$_OUT" | jq -r '.gateway')"
         GUEST_IPV6_RANGE="$(echo "$_OUT" | jq -r '.range')"
         GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.subnet')"
         if [ "$IPV6_DHCP_INTERFACES" = "" ]; then
-            IPV6_DHCP_INTERFACES="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+            IPV6_DHCP_INTERFACES="$_INTERFACE"
         else
-            IPV6_DHCP_INTERFACES="$IPV6_DHCP_INTERFACES vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+            IPV6_DHCP_INTERFACES="$IPV6_DHCP_INTERFACES $_INTERFACE"
         fi
     fi
     if [ "$DHCP_INTERFACES" = "" ]; then
-        DHCP_INTERFACES="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+        DHCP_INTERFACES="$_INTERFACE"
     else
-        DHCP_INTERFACES="$DHCP_INTERFACES vmbr$(echo $_VLAN_ID | sed 's|^40||')"
+        DHCP_INTERFACES="$DHCP_INTERFACES $_INTERFACE"
     fi
     cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 
 auto $UPLINK_DEVICE.$_VLAN_ID
 iface $UPLINK_DEVICE.$_VLAN_ID inet manual
 
-auto vmbr$(echo $_VLAN_ID | sed 's|^40||')
-iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet static
-    address      $(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g")
-    bridge-ports $UPLINK_DEVICE.$_VLAN_ID
-    bridge-stp   off
-    bridge-fd    0
-    mtu          $VSWITCH_MTU
-    post-up      iptables -t nat -A POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
-    post-down    iptables -t nat -D POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
-    post-up      iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-    post-down    iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
+auto $_INTERFACE
+iface $_INTERFACE inet static
+    address         $(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g")
+    bridge-ports    $UPLINK_DEVICE.$_VLAN_ID
+    vlan-raw-device $UPLINK_DEVICE
+    bridge-stp      off
+    bridge-fd       0
+    mtu             $VSWITCH_MTU
+    post-up         iptables -t nat -A POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
+    post-down       iptables -t nat -D POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
+    post-up         iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
+    post-down       iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
 EOF
     if [ "$GUEST_IPV6_SUBNET" != "" ]; then
         cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
-iface vmbr$(echo $_VLAN_ID | sed 's|^40||') inet6 static
-    address      $GUEST_IPV6_GATEWAY/96
-    bridge-ports $UPLINK_DEVICE.$_VLAN_ID
-    bridge-stp   off
-    bridge-fd    0
-    mtu          $VSWITCH_MTU
+iface $_INTERFACE inet6 static
+    address         $GUEST_IPV6_GATEWAY/96
+    gateway         $IPV6_GATEWAY
 EOF
     fi
     i=$((i + 1))
@@ -310,9 +314,10 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
     else
         _VLAN_ID="40$i"
     fi
+    _INTERFACE="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
     IPV6_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
         perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".vmbr$(echo $_VLAN_ID | sed 's|^40||').ipv6 // \"\"")"
+        jq -r ".$_INTERFACE.ipv6.subnet // \"\"")"
     generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" \
         "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER|g")" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
@@ -327,6 +332,18 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
             tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
         echo "}" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
     fi
+    $SUDO rm -f /etc/radvd.conf
+    if [ "$IPV6_SUBNET" != "" ] && ! $SUDO grep -q "interface $_INTERFACE" /etc/radvd.conf; then
+        echo "interface $_INTERFACE {" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "    AdvSendAdvert on;" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "    prefix $IPV6_SUBNET {" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "        AdvOnLink on;" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "        AdvAutonomous on;" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "    };" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "    RDNSS $GUEST_IPV6_GATEWAY {" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "    };" | $SUDO tee -a /etc/radvd.conf >/dev/null
+        echo "};" | $SUDO tee -a /etc/radvd.conf >/dev/null
+    fi
     consolidated_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS"
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
@@ -334,12 +351,14 @@ $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd.conf
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd6.conf
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/hosts
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/radvd.conf
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/resolv.conf
 $SUDO sed -i '${/^$/d;}' /etc/default/isc-dhcp-server
 $SUDO sed -i '${/^$/d;}' /etc/dhcp/dhcpd.conf
 $SUDO sed -i '${/^$/d;}' /etc/dhcp/dhcpd6.conf
 $SUDO sed -i '${/^$/d;}' /etc/hosts
 $SUDO sed -i '${/^$/d;}' /etc/network/interfaces
+$SUDO sed -i '${/^$/d;}' /etc/radvd.conf
 $SUDO sed -i '${/^$/d;}' /etc/resolv.conf
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
 $SUDO sed -i 's/^#\s*DHCPDv4_CONF=/DHCPDv4_CONF=/' /etc/default/isc-dhcp-server
@@ -366,6 +385,11 @@ printf "\n"
 printf "\033[1;36m/etc/dhcp/dhcpd6.conf\033[0m\n"
 $SUDO cat /etc/dhcp/dhcpd6.conf
 printf "\n"
+printf "\033[1;36m/etc/radvd.conf\033[0m\n"
+if grep -q '[^[:space:]]' /etc/radvd.conf; then
+    $SUDO cat /etc/radvd.conf
+    printf "\n"
+fi
 printf "\033[1;36m/etc/resolv.conf\033[0m\n"
 $SUDO cat /etc/resolv.conf
 printf "\n"
@@ -374,6 +398,5 @@ $SUDO cat /etc/hosts
 printf "\n"
 printf "\033[1;33mrestart the networking and dhcp services after reviewing the changes\033[0m\n"
 printf "\n"
-printf "    \033[0;32msudo systemctl restart networking\033[0m\n"
-printf "    \033[0;32msudo systemctl restart isc-dhcp-server\033[0m\n"
+printf "    \033[0;32msudo systemctl restart networking && sudo systemctl restart isc-dhcp-server$(if grep -q '[^[:space:]]' /etc/radvd.conf; then printf " radvd"; fi)\033[0m\n"
 printf "\n"
