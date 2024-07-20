@@ -139,12 +139,17 @@ if [ -f $HOME/.env ]; then
     rm $HOME/.env
 else
     GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
+    IPV6_GATEWAY="$(ip -6 route | grep default | awk '{ print $3 }')"
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
+    PUBLIC_IPV6_ADDRESS_CIDR="$(ip addr show "$(ip -6 route | awk '/default via/ {print $5}')" 2>/dev/null | \
+        grep -E "^ *inet6" | awk '{ print $2 }' | grep -v '^fe80' | head -n1)"
     NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/devices-by-role.sh")"
     echo GATEWAY=$GATEWAY
-    echo PUBLIC_IP_ADDRESS_CIDR=$PUBLIC_IP_ADDRESS_CIDR
+    echo IPV6_GATEWAY=$IPV6_GATEWAY
     echo NETWORK_DEVICES_BY_ROLE="\"$NETWORK_DEVICES_BY_ROLE\""
+    echo PUBLIC_IPV6_ADDRESS_CIDR=$PUBLIC_IPV6_ADDRESS_CIDR
+    echo PUBLIC_IP_ADDRESS_CIDR=$PUBLIC_IP_ADDRESS_CIDR
 fi
 UPLINK_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^uplink:" | cut -d= -f1 | cut -d: -f2)"
 PRIVATE_DEVICE="$(echo "$NETWORK_DEVICES_BY_ROLE" | grep -E "^private:" | cut -d= -f1 | cut -d: -f2)"
@@ -191,7 +196,10 @@ iface vmbr0 inet static
     bridge-ports $UPLINK_DEVICE
     bridge-stp   off
     bridge-fd    0
-$(echo "$ADDITIONAL_IPS" | sed '/^$/d; s|\(.*\)|    up ip route add \1/32 dev vmbr0|')
+$(echo "$ADDITIONAL_IPS" | sed '/^$/d; s|\(.*\)|    up ip route add \1/32 dev vmbr0|'; \
+    ([ "$PUBLIC_IPV6_ADDRESS_CIDR" != "" ] && [ "$IPV6_GATEWAY" != "" ]) && echo "iface vmbr0 inet6 static
+    address      $PUBLIC_IPV6_ADDRESS_CIDR
+    gateway      $IPV6_GATEWAY")
 
 $(if [ "$PRIVATE_DEVICE" = "" ]; then
     echo "auto $UPLINK_DEVICE.4000"
