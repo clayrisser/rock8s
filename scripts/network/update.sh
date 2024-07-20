@@ -108,7 +108,7 @@ consolidated_dhcp_config() {
     _CIDR="$1"
     _NUM_SERVERS="$2"
     for i in $(seq 1 $_NUM_SERVERS); do
-        _GATEWAY="172.20.0.$i"
+        _GATEWAY="$(echo $_CIDR | sed 's|^\(.*\)\.\([0-9]*\)\/.*$|\1.'"$i"'|')"
         printf "\033[1;36m$_GATEWAY\033[0m\n"
         generate_dhcp_config "$_CIDR" "$_NUM_SERVERS" "$i" "$_GATEWAY"
     done
@@ -295,6 +295,7 @@ EOF
     i=$((i + 1))
 done
 true | $SUDO tee /etc/dhcp/dhcpd.conf >/dev/null
+true | $SUDO tee /etc/dhcp/dhcpd6.conf >/dev/null
 for GUEST_SUBNET in $_GUEST_SUBNETS; do
     if echo "$GUEST_SUBNET" | grep -qE '^172\.[0-9][0-9]\.0\.0\/16$'; then
         _VLAN_ID="$(echo "$GUEST_SUBNET" | sed 's|172\.\([0-9][0-9]\)\.0\.0\/16|40\1|g')"
@@ -309,31 +310,44 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
         "$GUEST_IPV6_SUBNET" \
         "$GUEST_IPV6_RANGE" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
-    if [ "$IPV6_SUBNET" != "" ] && ! $SUDO grep -q "subnet6 $IPV6_SUBNET" /etc/dhcp/dhcpd.conf; then
+    if [ "$IPV6_SUBNET" != "" ] && ! $SUDO grep -q "subnet6 $IPV6_SUBNET" /etc/dhcp/dhcpd6.conf; then
         _OUT="$(python3 "$(dirname "$0")/ipv6_subnet.py" dhcp "$IPV6_SUBNET" "$HOST_NUMBER" "$MAX_SERVERS")"
         GUEST_IPV6_RANGE="$(echo "$_OUT" | jq -r '.range')"
         GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.root_subnet')"
-        echo "subnet6 $GUEST_IPV6_SUBNET {" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
-        echo "    range6 $GUEST_IPV6_RANGE;" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+        echo "subnet6 $GUEST_IPV6_SUBNET {" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
+        echo "    range6 $GUEST_IPV6_RANGE;" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
         echo "    option dhcp6.name-servers $(echo "$IPV6_NAMESERVERS" | \
             awk 'BEGIN{RS=""; ORS="\n"} {print}' | \
-            tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
-        echo "}" | $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
+            tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
+        echo "}" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
     fi
     consolidated_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS"
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/default/isc-dhcp-server
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd.conf
+$SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/dhcp/dhcpd6.conf
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/hosts
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/resolv.conf
 $SUDO sed -i '${/^$/d;}' /etc/default/isc-dhcp-server
 $SUDO sed -i '${/^$/d;}' /etc/dhcp/dhcpd.conf
+$SUDO sed -i '${/^$/d;}' /etc/dhcp/dhcpd6.conf
 $SUDO sed -i '${/^$/d;}' /etc/hosts
 $SUDO sed -i '${/^$/d;}' /etc/network/interfaces
 $SUDO sed -i '${/^$/d;}' /etc/resolv.conf
 $SUDO sed -i "s|^#*\s*INTERFACESv4=.*|INTERFACESv4=\"$DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
-$SUDO sed -i "s|^#*\s*INTERFACESv6=.*|INTERFACESv6=\"$IPV6_DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
+$SUDO sed -i 's/^#\s*DHCPDv4_CONF=/DHCPDv4_CONF=/' /etc/default/isc-dhcp-server
+$SUDO sed -i 's/^#\s*DHCPDv4_PID=/DHCPDv4_PID=/' /etc/default/isc-dhcp-server
+if grep -q '[^[:space:]]' /etc/dhcp/dhcpd6.conf; then
+    if (! grep -q '^DHCPDv6_CONF=' /etc/default/isc-dhcp-server) || (! grep -q '^DHCPDv6_PID=' /etc/default/isc-dhcp-server); then
+        $SUDO systemctl stop isc-dhcp-server
+        $SUDO rm /var/run/dhcpd.pid
+        $SUDO rm /var/run/dhcpd6.pid
+    fi
+    $SUDO sed -i "s|^#*\s*INTERFACESv6=.*|INTERFACESv6=\"$IPV6_DHCP_INTERFACES\"|" /etc/default/isc-dhcp-server
+    $SUDO sed -i 's/^#\s*DHCPDv6_CONF=/DHCPDv6_CONF=/' /etc/default/isc-dhcp-server
+    $SUDO sed -i 's/^#\s*DHCPDv6_PID=/DHCPDv6_PID=/' /etc/default/isc-dhcp-server
+fi
 printf "\n\033[1;36m/etc/network/interfaces\033[0m\n"
 $SUDO cat /etc/network/interfaces
 printf "\n"
@@ -342,6 +356,9 @@ $SUDO cat /etc/default/isc-dhcp-server
 printf "\n"
 printf "\033[1;36m/etc/dhcp/dhcpd.conf\033[0m\n"
 $SUDO cat /etc/dhcp/dhcpd.conf
+printf "\n"
+printf "\033[1;36m/etc/dhcp/dhcpd6.conf\033[0m\n"
+$SUDO cat /etc/dhcp/dhcpd6.conf
 printf "\n"
 printf "\033[1;36m/etc/resolv.conf\033[0m\n"
 $SUDO cat /etc/resolv.conf
