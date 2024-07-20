@@ -48,7 +48,6 @@ variable "vm_vcpus" {
 
 variable "vm_cpu_type" {
   type        = string
-  description = "The type of CPU to emulate in the Guest"
   default     = "host"
 }
 

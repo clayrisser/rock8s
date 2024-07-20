@@ -1,12 +1,10 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
+export NETWORK_BRIDGE ?= vmbr20
+export NETWORK_IP ?= $(shell ip addr show $(NETWORK_BRIDGE) | grep -E 'inet ' | sed 's| *inet *||g' | cut -d' ' -f1 | cut -d'/' -f1)
+export S3_ENDPOINT ?= http://$(NETWORK_IP):7480
 TERRAFORM ?= terraform
-ifeq ($(AUTO_APPROVE),1)
-AUTO_APPROVE := -auto-approve
-endif
-export LANG := C.UTF-8
-export LC_ALL := C.UTF-8
 
 .PHONY: format
 format:
@@ -23,17 +21,20 @@ init:
 apply: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) apply $(AUTO_APPROVE) && \
+		$(TERRAFORM) apply -auto-approve && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: install
-install: radosgw apply
+install: radosgw
+	@export S3_ACCESS_KEY="$$(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].access_key')" && \
+	export S3_SECRET_KEY="$$(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].secret_key')" && \
+	$(call make) apply
 
 .PHONY: destroy
 destroy: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) destroy $(AUTO_APPROVE) && \
+		$(TERRAFORM) destroy && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: %
