@@ -253,7 +253,7 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
         _OUT="$(python3 "$(dirname "$0")/ipv6_subnet.py" dhcp "$IPV6_SUBNET" "$HOST_NUMBER" "$MAX_SERVERS")"
         GUEST_IPV6_GATEWAY="$(echo "$_OUT" | jq -r '.gateway')"
         GUEST_IPV6_RANGE="$(echo "$_OUT" | jq -r '.range')"
-        GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.root_subnet')"
+        GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.subnet')"
         if [ "$IPV6_DHCP_INTERFACES" = "" ]; then
             IPV6_DHCP_INTERFACES="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
         else
@@ -306,14 +306,12 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
         perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
         jq -r ".vmbr$(echo $_VLAN_ID | sed 's|^40||').ipv6 // \"\"")"
     generate_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS" "$HOST_NUMBER" \
-        "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER|g")" \
-        "$GUEST_IPV6_SUBNET" \
-        "$GUEST_IPV6_RANGE" | \
+        "$(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER|g")" | \
         $SUDO tee -a /etc/dhcp/dhcpd.conf >/dev/null
     if [ "$IPV6_SUBNET" != "" ] && ! $SUDO grep -q "subnet6 $IPV6_SUBNET" /etc/dhcp/dhcpd6.conf; then
         _OUT="$(python3 "$(dirname "$0")/ipv6_subnet.py" dhcp "$IPV6_SUBNET" "$HOST_NUMBER" "$MAX_SERVERS")"
         GUEST_IPV6_RANGE="$(echo "$_OUT" | jq -r '.range')"
-        GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.root_subnet')"
+        GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.subnet')"
         echo "subnet6 $GUEST_IPV6_SUBNET {" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
         echo "    range6 $GUEST_IPV6_RANGE;" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
         echo "    option dhcp6.name-servers $(echo "$IPV6_NAMESERVERS" | \

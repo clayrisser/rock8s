@@ -16,9 +16,7 @@ def get_dhcp(base_subnet, i):
     return {
         "gateway": str(gateway),
         "range": f"{dhcp_start} {dhcp_end}",
-        "range_subnet": str(subnet),
-        "root_subnet": str(network.supernet(new_prefix=96)),
-        "subnet_mask": str(subnet.netmask),
+        "subnet": str(network.supernet(new_prefix=96)),
     }
 
 def get_metallb(base_subnet, i, total_hosts):
@@ -31,9 +29,7 @@ def get_metallb(base_subnet, i, total_hosts):
     subnet = subnets[i + 1 + total_hosts]
     return {
         "range": f"{subnet.network_address} {subnet.broadcast_address}",
-        "range_subnet": str(subnet),
-        "root_subnet": str(network.supernet(new_prefix=96)),
-        "subnet_mask": str(subnet.netmask),
+        "subnet": str(network.supernet(new_prefix=96)),
     }
 
 def main():
