@@ -105,5 +105,6 @@ for _NODE in $_NODES; do
     fi
 done
 sudo rm -rf /mnt/pve/cephfs/shared/tmp
+touch $HOME/shared/subnets.yaml
 make -sC "$HOME/yaps" images/build
 cd "$HOME"
