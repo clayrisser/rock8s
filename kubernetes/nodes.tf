@@ -41,9 +41,9 @@ module "k8s_worker_nodes" {
 }
 
 output "k8s_control_plane" {
-  value = module.k8s_control_plane_nodes.vm_list
+  value = module.k8s_control_plane_nodes.list
 }
 
 output "k8s_worker" {
-  value = module.k8s_worker_nodes.vm_list
+  value = module.k8s_worker_nodes.list
 }
