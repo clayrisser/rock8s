@@ -31,7 +31,7 @@ resource "null_resource" "setup" {
       "mkdir -p /home/admin/stacks/minio-gw"
     ]
     connection {
-      host        = module.nodes-minio-gw.list[0].ip0
+      host        = module.nodes-minio-gw.list[0].ip
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
       user        = var.user
@@ -41,7 +41,7 @@ resource "null_resource" "setup" {
     source      = "${path.module}/stacks/minio-gw/compose.yaml"
     destination = "/home/admin/stacks/minio-gw/compose.yaml"
     connection {
-      host        = module.nodes-minio-gw.list[0].ip0
+      host        = module.nodes-minio-gw.list[0].ip
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
       user        = var.user
