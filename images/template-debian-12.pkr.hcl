@@ -1,4 +1,4 @@
-source "proxmox-iso" "debian-12" {
+source "proxmox-iso" "template-debian-12" {
   bios                     = "seabios"
   boot_command             = ["<esc><wait>auto url=http://${var.network_ip}:{{ .HTTPPort }}/preseed.cfg<enter>"]
   boot_wait                = "10s"
@@ -45,7 +45,7 @@ source "proxmox-iso" "debian-12" {
 }
 
 build {
-  sources = ["source.proxmox-iso.debian-12"]
+  sources = ["source.proxmox-iso.template-debian-12"]
   provisioner "shell" {
     inline = [
       "export DEBIAN_FRONTEND=noninteractive",
