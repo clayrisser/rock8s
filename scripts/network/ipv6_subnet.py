@@ -42,7 +42,9 @@ def main():
     total_hosts = int(sys.argv[4])
     base_network = IPv6Network(base_subnet)
     if base_network.prefixlen < 96:
-        base_subnet_96 = next(base_network.subnets(new_prefix=96))
+        base_network_generator = base_network.subnets(new_prefix=96)
+        next(base_network_generator)
+        base_subnet_96 = next(base_network_generator)
     elif base_network.prefixlen == 96:
         base_subnet_96 = base_network
     else:
