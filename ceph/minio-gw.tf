@@ -1,21 +1,21 @@
 module "nodes-minio-gw" {
   source              = "../modules/vm"
-  instances          = var.instances
-  node        = var.proxmox_node
+  instances           = var.instances
+  node                = var.proxmox_node
   ssh_public_keys_b64 = var.ssh_public_keys_b64
-  clone            = var.clone
-  cpu_type         = var.cpu_type
-  max_vcpus        = var.max_vcpus
-  memory           = var.memory
-  prefix      = "minio-gw"
-  net_name         = var.net_name
-  net_subnet_cidr  = var.net_subnet_cidr
-  os_disk_size  = var.disk_size
-  os_disk_storage  = var.os_disk_storage
-  sockets          = var.sockets
-  tags             = "terraform;minio_gw"
-  user             = var.user
-  vcpus            = var.vcpus
+  clone               = var.clone
+  cpu_type            = var.cpu_type
+  max_vcpus           = var.max_vcpus
+  memory              = var.memory
+  prefix              = "minio-gw"
+  net_name            = var.net_name
+  net_subnet_cidr     = var.net_subnet_cidr
+  os_disk_size        = var.disk_size
+  os_disk_storage     = var.os_disk_storage
+  sockets             = var.sockets
+  tags                = "terraform;minio_gw"
+  user                = var.user
+  vcpus               = var.vcpus
 }
 
 locals {
