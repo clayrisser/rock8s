@@ -1,21 +1,21 @@
 module "nodes-minio-gw" {
-  source              = "./modules/proxmox_vm"
-  node_count          = var.vm_count
-  proxmox_node        = var.proxmox_node
+  source              = "../modules/vm"
+  instances          = var.instances
+  node        = var.proxmox_node
   ssh_public_keys_b64 = var.ssh_public_keys_b64
-  vm_clone            = var.vm_clone
-  vm_cpu_type         = var.vm_cpu_type
-  vm_max_vcpus        = var.vm_max_vcpus
-  vm_memory_mb        = var.vm_memory
-  vm_name_prefix      = "minio-gw"
-  vm_net_name         = var.vm_net_name
-  vm_net_subnet_cidr  = var.vm_net_subnet_cidr
-  vm_os_disk_size_gb  = var.vm_disk_size
-  vm_os_disk_storage  = var.vm_os_disk_storage
-  vm_sockets          = var.vm_sockets
-  vm_tags             = "terraform;minio_gw"
-  vm_user             = var.vm_user
-  vm_vcpus            = var.vm_vcpus
+  clone            = var.clone
+  cpu_type         = var.cpu_type
+  max_vcpus        = var.max_vcpus
+  memory           = var.memory
+  prefix      = "minio-gw"
+  net_name         = var.net_name
+  net_subnet_cidr  = var.net_subnet_cidr
+  os_disk_size  = var.disk_size
+  os_disk_storage  = var.os_disk_storage
+  sockets          = var.sockets
+  tags             = "terraform;minio_gw"
+  user             = var.user
+  vcpus            = var.vcpus
 }
 
 locals {
@@ -31,20 +31,20 @@ resource "null_resource" "setup" {
       "mkdir -p /home/admin/stacks/minio-gw"
     ]
     connection {
-      host        = module.nodes-minio-gw.vm_list[0].ip0
+      host        = module.nodes-minio-gw.list[0].ip0
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
-      user        = var.vm_user
+      user        = var.user
     }
   }
   provisioner "file" {
     source      = "${path.module}/stacks/minio-gw/compose.yaml"
     destination = "/home/admin/stacks/minio-gw/compose.yaml"
     connection {
-      host        = module.nodes-minio-gw.vm_list[0].ip0
+      host        = module.nodes-minio-gw.list[0].ip0
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
-      user        = var.vm_user
+      user        = var.user
     }
   }
   provisioner "remote-exec" {
@@ -52,10 +52,10 @@ resource "null_resource" "setup" {
       "${local.setup_script_content}"
     ]
     connection {
-      host        = module.nodes-minio-gw.vm_list[0].ip0
+      host        = module.nodes-minio-gw.list[0].ip
       private_key = base64decode(var.ssh_private_key_b64)
       type        = "ssh"
-      user        = var.vm_user
+      user        = var.user
     }
   }
   triggers = {

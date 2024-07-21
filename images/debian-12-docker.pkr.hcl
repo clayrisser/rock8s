@@ -1,13 +1,4 @@
-packer {
-  required_plugins {
-    proxmox = {
-      version = "1.1.3"
-      source  = "github.com/hashicorp/proxmox"
-    }
-  }
-}
-
-source "proxmox-iso" "debian-12" {
+source "proxmox-iso" "debian-12-docker" {
   bios                     = "seabios"
   boot_command             = ["<esc><wait>auto url=http://${var.network_ip}:{{ .HTTPPort }}/preseed.cfg<enter>"]
   boot_wait                = "10s"
@@ -38,11 +29,12 @@ source "proxmox-iso" "debian-12" {
   unmount_iso              = true
   username                 = var.proxmox_token_id
   token                    = var.proxmox_token_secret
-  vm_name                  = var.vm_name
+  vm_name                  = "template-debian-12-docker"
   network_adapters {
     bridge   = var.network_bridge
     firewall = true
     model    = "virtio"
+    mtu      = 1400
   }
   disks {
     disk_size    = var.disk_size
@@ -53,7 +45,7 @@ source "proxmox-iso" "debian-12" {
 }
 
 build {
-  sources = ["source.proxmox-iso.debian-12"]
+  sources = ["source.proxmox-iso.debian-12-docker"]
   provisioner "shell" {
     inline = [
       "export DEBIAN_FRONTEND=noninteractive",

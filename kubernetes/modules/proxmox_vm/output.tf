@@ -1,4 +1,4 @@
-output "vm_list" {
+output "list" {
   value = [
     for host in proxmox_vm_qemu.vm : {
       "name" : host.name

@@ -1,24 +1,24 @@
-variable "proxmox_node" {
+variable "node" {
   default = "pve1"
 }
 
-variable "vm_name_prefix" {
+variable "prefix" {
   default = "vm"
 }
 
-variable "node_count" {
+variable "instances" {
   default = 1
 }
 
-variable "vm_tags" {
+variable "tags" {
   default = ""
 }
 
-variable "vm_net_name" {
+variable "net_name" {
   type = string
 }
 
-variable "vm_net_subnet_cidr" {
+variable "net_subnet_cidr" {
   type = string
 }
 
@@ -26,44 +26,44 @@ variable "ssh_public_keys_b64" {
   type = string
 }
 
-variable "vm_onboot" {
+variable "onboot" {
   default = true
 }
 
-variable "vm_user" {
+variable "user" {
   default = "admin"
 }
 
-variable "vm_sockets" {
+variable "sockets" {
   default = 1
 }
 
-variable "vm_max_vcpus" {
+variable "max_vcpus" {
   default = 2
 }
 
-variable "vm_vcpus" {
+variable "vcpus" {
   default = 2
 }
 
-variable "vm_cpu_type" {
+variable "cpu_type" {
   type        = string
   default     = "host"
 }
 
-variable "vm_memory_mb" {
+variable "memory" {
   default = 2048
 }
 
-variable "vm_os_disk_size_gb" {
+variable "os_disk_size" {
   default = 20
 }
 
-variable "vm_os_disk_storage" {
+variable "os_disk_storage" {
   default = "rbd"
 }
 
-variable "vm_clone" {
+variable "clone" {
   default = "template-debian-12"
 }
 
@@ -73,4 +73,8 @@ variable "worker_node_data_disk_storage" {
 
 variable "worker_node_data_disk_size" {
   default = 10
+}
+
+variable "ipv6" {
+  default = false
 }

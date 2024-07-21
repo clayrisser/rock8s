@@ -1,12 +1,3 @@
-packer {
-  required_plugins {
-    proxmox = {
-      version = "1.1.3"
-      source  = "github.com/hashicorp/proxmox"
-    }
-  }
-}
-
 source "proxmox-iso" "debian-12" {
   bios                     = "seabios"
   boot_command             = ["<esc><wait>auto url=http://${var.network_ip}:{{ .HTTPPort }}/preseed.cfg<enter>"]
@@ -38,11 +29,12 @@ source "proxmox-iso" "debian-12" {
   unmount_iso              = true
   username                 = var.proxmox_token_id
   token                    = var.proxmox_token_secret
-  vm_name                  = var.vm_name
+  vm_name                  = "template-debian-12"
   network_adapters {
     bridge   = var.network_bridge
     firewall = true
     model    = "virtio"
+    mtu      = 1400
   }
   disks {
     disk_size    = var.disk_size
@@ -73,29 +65,6 @@ apt-get install -y \
   unattended-upgrades \
   vim \
   wget
-EOF
-    ]
-  }
-  provisioner "shell" {
-    inline = [
-      "export DEBIAN_FRONTEND=noninteractive",
-      "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -",
-      "echo 'deb https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list",
-      "apt-get update",
-      <<EOF
-apt-get install -y \
-  containerd.io \
-  docker-ce \
-  docker-ce-cli \
-  docker-compose-plugin
-EOF
-      ,
-      "mkdir -p /etc/docker",
-      <<EOF
-echo '{
-  "metrics-addr": "127.0.0.1:9323",
-  "experimental": true
-}' > /etc/docker/daemon.json
 EOF
     ]
   }

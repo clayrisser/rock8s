@@ -8,10 +8,4 @@ VARS := -var cores=$(CORES) \
 		-var iso_url=$(ISO_URL) \
 		-var memory=$(MEMORY) \
 		-var network_bridge=$(NETWORK_BRIDGE) \
-		-var network_ip=$(NETWORK_IP) \
-		-var proxmox_host=$(PROXMOX_HOST) \
-		-var proxmox_node=$(PROXMOX_NODE) \
-		-var proxmox_token_id=$(PROXMOX_TOKEN_ID) \
-		-var proxmox_token_secret=$(PROXMOX_TOKEN_SECRET) \
-		-var storage_pool=$(STORAGE_POOL) \
-		-var vm_name=$(VM_NAME)
+		-var network_ip=$(NETWORK_IP)

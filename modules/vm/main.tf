@@ -9,31 +9,31 @@ terraform {
 }
 
 resource "proxmox_vm_qemu" "vm" {
-  count            = var.node_count
-  target_node      = var.proxmox_node
-  clone            = var.vm_clone
+  count            = var.instances
+  target_node      = var.node
+  clone            = var.clone
   qemu_os          = "l26"
-  name             = "${var.vm_name_prefix}-${format("%02d", count.index + 1)}"
+  name             = "${var.prefix}-${format("%02d", count.index + 1)}"
   agent            = 1
-  onboot           = var.vm_onboot
+  onboot           = var.onboot
   os_type          = "cloud-init"
-  cores            = var.vm_max_vcpus
-  vcpus            = var.vm_vcpus
-  sockets          = var.vm_sockets
-  cpu              = var.vm_cpu_type
-  memory           = var.vm_memory_mb
+  cores            = var.max_vcpus
+  vcpus            = var.vcpus
+  sockets          = var.sockets
+  cpu              = var.cpu_type
+  memory           = var.memory
   bootdisk         = "virtio0"
   scsihw           = "virtio-scsi-single"
   hotplug          = "network,disk,usb,memory,cpu"
   numa             = true
   automatic_reboot = true
-  tags             = var.vm_tags
+  tags             = var.tags
   disks {
     scsi {
       scsi0 {
         disk {
-          storage  = var.vm_os_disk_storage
-          size     = "${var.vm_os_disk_size_gb}G"
+          storage  = var.os_disk_storage
+          size     = "${var.os_disk_size}G"
           iothread = true
         }
       }
@@ -41,7 +41,7 @@ resource "proxmox_vm_qemu" "vm" {
     ide {
       ide0 {
         cloudinit {
-          storage = var.vm_os_disk_storage
+          storage = var.os_disk_storage
         }
       }
       ide2 {
@@ -51,10 +51,10 @@ resource "proxmox_vm_qemu" "vm" {
   }
   network {
     model  = "virtio"
-    bridge = var.vm_net_name
+    bridge = var.net_name
   }
-  ipconfig0 = "ip=dhcp"
-  ciuser    = var.vm_user
+  ipconfig0 = "ip=dhcp${var.ipv6 ? ",ip6=dhcp" : ""}"
+  ciuser    = var.user
   sshkeys   = base64decode(var.ssh_public_keys_b64)
   lifecycle {
     ignore_changes = [

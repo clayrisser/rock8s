@@ -1,7 +1,0 @@
-# app
-.env
-
-# packer
-*.box
-crash.log
-packer_cache/
