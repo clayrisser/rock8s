@@ -12,11 +12,6 @@ NAMESERVERS="${NAMESERVERS:-"
 8.8.4.4
 1.1.1.1
 "}"
-IPV6_NAMESERVERS="${IPV6_NAMESERVERS:="
-2001:4860:4860::8888
-2001:4860:4860::8844
-2606:4700:4700::1111
-"}"
 
 echo ADDITIONAL_IPS="\"$ADDITIONAL_IPS\""
 echo CEPH_NETWORK=$CEPH_NETWORK
@@ -26,7 +21,6 @@ echo PRIVATE_IP_NETWORK=$PRIVATE_IP_NETWORK
 echo STARTING_GUEST_SUBNET=$STARTING_GUEST_SUBNET
 echo VSWITCH_MTU=$VSWITCH_MTU
 echo NAMESERVERS="\"$NAMESERVERS\""
-echo IPV6_NAMESERVERS="\"$IPV6_NAMESERVERS\""
 
 next_subnet() {
     cidr=$1
@@ -138,11 +132,11 @@ if [ -f $HOME/.env ]; then
     cat $HOME/.env
     rm $HOME/.env
 else
-    GATEWAY="$(ip route | grep default | awk '{ print $3 }')"
-    IPV6_GATEWAY="$(ip -6 route | grep default | awk '{ print $3 }')"
+    GATEWAY="$(ip route | grep default | grep "dev vmbr0" | awk '{ print $3 }')"
+    IPV6_GATEWAY="$(ip -6 route | grep default | grep "dev vmbr0" | awk '{ print $3 }')"
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
-    PUBLIC_IPV6_ADDRESS_CIDR="$(ip addr show "$(ip -6 route | awk '/default via/ {print $5}')" 2>/dev/null | \
+    PUBLIC_IPV6_ADDRESS_CIDR="$(ip -6 addr show vmbr0 | \
         grep -E "^ *inet6" | awk '{ print $2 }' | grep -v '^fe80' | head -n1)"
     NETWORK_DEVICES_BY_ROLE="$(sh "$(dirname "$0")/devices-by-role.sh")"
     echo GATEWAY=$GATEWAY
@@ -197,9 +191,9 @@ iface vmbr0 inet static
     bridge-stp   off
     bridge-fd    0
 $(echo "$ADDITIONAL_IPS" | sed '/^$/d; s|\(.*\)|    up ip route add \1/32 dev vmbr0|'; \
-    ([ "$PUBLIC_IPV6_ADDRESS_CIDR" != "" ] && [ "$IPV6_GATEWAY" != "" ]) && echo "iface vmbr0 inet6 static
-    address      $PUBLIC_IPV6_ADDRESS_CIDR
-    gateway      $IPV6_GATEWAY")
+    ([ "$PUBLIC_IPV6_ADDRESS_CIDR" != "" ] && echo "iface vmbr0 inet6 static
+    address      $PUBLIC_IPV6_ADDRESS_CIDR" && \
+    [ "$IPV6_GATEWAY" != "" ] && echo "    gateway      $IPV6_GATEWAY"))
 
 $(if [ "$PRIVATE_DEVICE" = "" ]; then
     echo "auto $UPLINK_DEVICE.4000"
@@ -327,21 +321,12 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
         GUEST_IPV6_SUBNET="$(echo "$_OUT" | jq -r '.subnet')"
         echo "subnet6 $GUEST_IPV6_SUBNET {" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
         echo "    range6 $GUEST_IPV6_RANGE;" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
-        echo "    option dhcp6.name-servers $(echo "$IPV6_NAMESERVERS" | \
-            awk 'BEGIN{RS=""; ORS="\n"} {print}' | \
-            tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g');" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
         echo "}" | $SUDO tee -a /etc/dhcp/dhcpd6.conf >/dev/null
     fi
     $SUDO rm -f /etc/radvd.conf
     if [ "$IPV6_SUBNET" != "" ] && ! $SUDO grep -q "interface $_INTERFACE" /etc/radvd.conf; then
         echo "interface $_INTERFACE {" | $SUDO tee -a /etc/radvd.conf >/dev/null
         echo "    AdvSendAdvert on;" | $SUDO tee -a /etc/radvd.conf >/dev/null
-        echo "    prefix $IPV6_SUBNET {" | $SUDO tee -a /etc/radvd.conf >/dev/null
-        echo "        AdvOnLink on;" | $SUDO tee -a /etc/radvd.conf >/dev/null
-        echo "        AdvAutonomous on;" | $SUDO tee -a /etc/radvd.conf >/dev/null
-        echo "    };" | $SUDO tee -a /etc/radvd.conf >/dev/null
-        echo "    RDNSS $GUEST_IPV6_GATEWAY {" | $SUDO tee -a /etc/radvd.conf >/dev/null
-        echo "    };" | $SUDO tee -a /etc/radvd.conf >/dev/null
         echo "};" | $SUDO tee -a /etc/radvd.conf >/dev/null
     fi
     consolidated_dhcp_config "$GUEST_SUBNET" "$MAX_SERVERS"
