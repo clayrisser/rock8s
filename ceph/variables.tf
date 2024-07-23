@@ -94,7 +94,7 @@ variable "s3_access_key" {
 }
 
 variable "s3_secret_key" {
-  type      = string
+  type = string
   # sensitive = true
 }
 
