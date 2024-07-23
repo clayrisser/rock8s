@@ -27,11 +27,7 @@ variable "proxmox_timeout" {
   default = 600
 }
 
-variable "net_name" {
-  type = string
-}
-
-variable "net_subnet_cidr" {
+variable "network_bridge" {
   type = string
 }
 
@@ -91,4 +87,17 @@ variable "memory" {
 
 variable "disk_size" {
   default = 20
+}
+
+variable "s3_access_key" {
+  type = string
+}
+
+variable "s3_secret_key" {
+  type      = string
+  # sensitive = true
+}
+
+variable "s3_endpoint" {
+  type = string
 }

@@ -38,10 +38,8 @@ $SUDO apt-get install -y \
     git \
     git-lfs \
     iputils-ping \
-    isc-dhcp-server \
     jq \
     make \
-    radvd \
     sipcalc \
     software-properties-common \
     speedtest-cli \

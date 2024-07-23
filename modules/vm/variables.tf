@@ -14,11 +14,7 @@ variable "tags" {
   default = ""
 }
 
-variable "net_name" {
-  type = string
-}
-
-variable "net_subnet_cidr" {
+variable "network_bridge" {
   type = string
 }
 
