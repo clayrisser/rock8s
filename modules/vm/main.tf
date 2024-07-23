@@ -51,7 +51,8 @@ resource "proxmox_vm_qemu" "vm" {
   }
   network {
     model  = "virtio"
-    bridge = var.net_name
+    bridge = var.network_bridge
+    mtu    = 1400
   }
   ipconfig0 = "ip=dhcp${var.ipv6 ? ",ip6=dhcp" : ""}"
   ciuser    = var.user

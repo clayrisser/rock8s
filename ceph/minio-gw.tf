@@ -8,9 +8,9 @@ module "nodes-minio-gw" {
   max_vcpus        = var.max_vcpus
   memory           = var.memory
   prefix      = "minio-gw"
-  net_name         = var.net_name
-  net_subnet_cidr  = var.net_subnet_cidr
+  network_bridge         = var.network_bridge
   os_disk_size  = var.disk_size
+  ipv6 = true
   os_disk_storage  = var.os_disk_storage
   sockets          = var.sockets
   tags             = "terraform;minio_gw"
@@ -49,6 +49,9 @@ resource "null_resource" "setup" {
   }
   provisioner "remote-exec" {
     inline = [
+      "export S3_ACCESS_KEY=\"${var.s3_access_key}\"",
+      "export S3_SECRET_KEY=\"${var.s3_secret_key}\"",
+      "export S3_ENDPOINT=\"${var.s3_endpoint}\"",
       "${local.setup_script_content}"
     ]
     connection {

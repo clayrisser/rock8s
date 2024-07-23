@@ -1,9 +1,8 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
-export NETWORK_BRIDGE ?= vmbr20
-export NETWORK_IP ?= $(shell ip addr show $(NETWORK_BRIDGE) | grep -E 'inet ' | sed 's| *inet *||g' | cut -d' ' -f1 | cut -d'/' -f1)
-export S3_ENDPOINT ?= http://$(NETWORK_IP):7480
+export NETWORK_IP ?= $(shell ip addr show $(NETWORK_BRIDGE) | grep -E 'inet ' | sed 's| *inet *||g' | cut -d' ' -f1 | cut -d'/' -f1 | head -n1)
+export S3_ENDPOINT := http://$(NETWORK_IP):7480
 TERRAFORM ?= terraform
 
 .PHONY: format

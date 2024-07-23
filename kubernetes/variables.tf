@@ -39,11 +39,7 @@ variable "proxmox_timeout" {
   default = 600
 }
 
-variable "internal_net_name" {
-  type = string
-}
-
-variable "internal_net_subnet_cidr" {
+variable "internal_network_bridge" {
   type = string
 }
 
