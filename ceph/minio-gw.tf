@@ -1,7 +1,7 @@
 module "nodes-minio-gw" {
   source              = "../modules/vm"
-  instances          = var.instances
-  node        = var.proxmox_node
+  instances           = var.instances
+  node                = var.proxmox_node
   ssh_public_keys_b64 = var.ssh_public_keys_b64
   clone            = var.clone
   cpu_type         = var.cpu_type
