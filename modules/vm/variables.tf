@@ -1,12 +1,12 @@
-variable "node" {
-  default = "pve1"
+variable "nodes" {
+  default = ["pve1"]
 }
 
 variable "prefix" {
   default = "vm"
 }
 
-variable "instances" {
+variable "count_per_node" {
   default = 1
 }
 
