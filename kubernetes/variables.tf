@@ -27,8 +27,8 @@ variable "proxmox_tls_insecure" {
   type = bool
 }
 
-variable "proxmox_node" {
-  type = string
+variable "proxmox_nodes" {
+  type = list(string)
 }
 
 variable "proxmox_parallel" {
@@ -47,23 +47,23 @@ variable "ssh_public_keys_b64" {
   type = string
 }
 
-variable "vm_user" {
+variable "user" {
   default = "admin"
 }
 
-variable "vm_sockets" {
+variable "sockets" {
   default = 1
 }
 
-variable "vm_max_vcpus" {
+variable "max_vcpus" {
   default = 2
 }
 
-variable "vm_cpu_type" {
+variable "cpu_type" {
   default = "kvm64"
 }
 
-variable "vm_os_disk_storage" {
+variable "os_disk_storage" {
   default = "rbd"
 }
 
@@ -75,39 +75,39 @@ variable "worker_node_data_disk_size" {
   default = 10
 }
 
-variable "vm_clone" {
+variable "clone" {
   default = "template-debian-12"
 }
 
-variable "vm_k8s_control_plane_node_count" {
+variable "control_plane_node_count" {
   default = 1
 }
 
-variable "vm_k8s_control_plane_vcpus" {
+variable "control_plane_vcpus" {
   default = 2
 }
 
-variable "vm_k8s_control_plane_memory" {
+variable "control_plane_memory" {
   default = 1536
 }
 
-variable "vm_k8s_control_plane_disk_size" {
+variable "control_plane_disk_size" {
   default = 20
 }
 
-variable "vm_k8s_worker_node_count" {
+variable "worker_node_count" {
   default = 2
 }
 
-variable "vm_k8s_worker_vcpus" {
+variable "worker_vcpus" {
   default = 2
 }
 
-variable "vm_k8s_worker_memory" {
+variable "worker_memory" {
   default = 2048
 }
 
-variable "vm_k8s_worker_disk_size" {
+variable "worker_disk_size" {
   default = 20
 }
 

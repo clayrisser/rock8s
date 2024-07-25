@@ -1,18 +1,18 @@
 module "nodes-minio-gw" {
   source              = "../modules/vm"
-  instances           = var.instances
-  node                = var.proxmox_node
-  ssh_public_keys_b64 = var.ssh_public_keys_b64
   clone               = var.clone
+  count_per_node      = 1
   cpu_type            = var.cpu_type
+  ipv6                = true
   max_vcpus           = var.max_vcpus
   memory              = var.memory
-  prefix              = "minio-gw"
   network_bridge      = var.network_bridge
+  nodes               = var.proxmox_nodes
   os_disk_size        = var.disk_size
-  ipv6                = true
   os_disk_storage     = var.os_disk_storage
+  prefix              = "minio-gw"
   sockets             = var.sockets
+  ssh_public_keys_b64 = var.ssh_public_keys_b64
   tags                = "terraform;minio_gw"
   user                = var.user
   vcpus               = var.vcpus

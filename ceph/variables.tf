@@ -1,5 +1,5 @@
-variable "proxmox_node" {
-  type = string
+variable "proxmox_nodes" {
+  type = list(string)
 }
 
 variable "proxmox_token_id" {
@@ -71,10 +71,6 @@ variable "worker_node_data_disk_size" {
 
 variable "clone" {
   default = "template-debian-12"
-}
-
-variable "instances" {
-  default = 1
 }
 
 variable "vcpus" {

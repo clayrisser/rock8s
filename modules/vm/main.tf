@@ -9,8 +9,8 @@ terraform {
 }
 
 resource "proxmox_vm_qemu" "vm" {
-  count            = var.instances
-  target_node      = var.node
+  count            = var.count_per_node * length(var.nodes)
+  target_node      = var.nodes[count.index / var.count_per_node]
   clone            = var.clone
   qemu_os          = "l26"
   name             = "${var.prefix}-${format("%02d", count.index + 1)}"
