@@ -204,23 +204,14 @@ auto $UPLINK_DEVICE.$_VLAN_ID
 iface $UPLINK_DEVICE.$_VLAN_ID inet manual
 
 auto $_INTERFACE
-iface $_INTERFACE inet static$(if [ "$IPV4_SUBNET" = "" ] && [ "$IPV4_GATEWAY" = "" ]; then \
-    echo "
-    address         $(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$HOST_NUMBER/\3|g")"; fi)
+iface $_INTERFACE inet static
+    address         $(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$((HOST_NUMBER + 10))/\3|g")
     bridge-ports    $UPLINK_DEVICE.$_VLAN_ID
     vlan-raw-device $UPLINK_DEVICE
     bridge-stp      off
     bridge-fd       0
     mtu             $VSWITCH_MTU
 EOF
-    if [ "$IPV4_SUBNET" = "" ] && [ "$IPV4_GATEWAY" = "" ]; then
-        cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
-    post-up         iptables -t nat -A POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
-    post-down       iptables -t nat -D POSTROUTING -s '$GUEST_SUBNET' -o vmbr0 -j MASQUERADE
-    post-up         iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone 1
-    post-down       iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
-EOF
-    fi
     if [ "$IPV6_SUBNET" != "" ] && [ "$IPV6_GATEWAY" != "" ]; then
         cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 iface $_INTERFACE inet6 static

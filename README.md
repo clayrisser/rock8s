@@ -127,3 +127,61 @@ SSH into the proxmox system as admin and run the following setup script.
 ```sh
 make -sC ~/yaps kubernetes/apply
 ```
+
+## Commands
+
+### Networking
+
+#### List Networks
+
+```sh
+sudo ip addr
+```
+
+#### List Routes
+
+```sh
+sudo ip route
+sudo ip -6 route
+```
+
+#### List Bridges
+
+```sh
+sudo brctl ???
+```
+
+#### Restart
+
+```sh
+sudo systemctl restart networking
+```
+
+### Disks
+
+#### List
+
+```sh
+sudo lsblk
+```
+
+#### Clear
+
+```sh
+sudo sfdisk --delete /dev/<ID>
+sudo wipefs -af /dev/<ID>
+```
+
+### Logs
+
+#### System Logs
+
+```sh
+sudo ??? -xef
+```
+
+#### Hardware Logs
+
+```sh
+???
+```
