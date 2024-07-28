@@ -177,11 +177,11 @@ sudo wipefs -af /dev/<ID>
 #### System Logs
 
 ```sh
-sudo ??? -xef
+sudo journalctl -xef
 ```
 
 #### Hardware Logs
 
 ```sh
-???
+sudo dmesg
 ```
