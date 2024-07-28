@@ -1,0 +1,10 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+PFSENSE_VERSION ?= 2.7.2
+
+.PHONY: download
+download:
+	@sudo curl -Lo /mnt/pve/cephfs/template/iso/pfSense-CE-$(PFSENSE_VERSION)-RELEASE-amd64.iso.gz https://atxfiles.netgate.com/mirror/downloads/pfSense-CE-$(PFSENSE_VERSION)-RELEASE-amd64.iso.gz
+	@sudo gunzip -c /mnt/pve/cephfs/template/iso/pfSense-CE-$(PFSENSE_VERSION)-RELEASE-amd64.iso.gz | sudo tee /mnt/pve/cephfs/template/iso/pfSense-CE-$(PFSENSE_VERSION)-RELEASE-amd64.iso > /dev/null
+	@sudo rm /mnt/pve/cephfs/template/iso/pfSense-CE-$(PFSENSE_VERSION)-RELEASE-amd64.iso.gz
