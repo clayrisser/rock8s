@@ -1,17 +1,21 @@
 #!/bin/sh
 
+PFSENSE_VERSION=2.7.2
+DEBIAN_VERSION=12.5.0
+FEDORA_VERSION=40
 YAPS_REPO="https://gitlab.com/bitspur/rock8s/yaps.git"
 IMAGES="
-https://cdimage.debian.org/mirror/cdimage/archive/12.5.0/amd64/iso-cd/debian-12.5.0-amd64-netinst.iso
-https://download.fedoraproject.org/pub/fedora/linux/releases/40/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-40-1.14.iso
+https://cdimage.debian.org/mirror/cdimage/archive/$DEBIAN_VERSION/amd64/iso-cd/debian-$DEBIAN_VERSION-amd64-netinst.iso
+https://download.fedoraproject.org/pub/fedora/linux/releases/$FEDORA_VERSION/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-$FEDORA_VERSION-1.14.iso
 "
+PFSENSE_IMAGE="https://atxfiles.netgate.com/mirror/downloads/pfSense-CE-$PFSENSE_VERSION-RELEASE-amd64.iso.gz"
 
 if [ ! "$USER" = "admin" ]; then
     echo "this script must be run as admin user" 1>&2
     exit 1
 fi
 if ! sudo pvesh get /cluster/status --output-format json | jq -e '.[0].quorate' >/dev/null; then
-    echo "this script must be run on a Proxmox cluster" 1>&2
+    echo "this script must be run on a proxmox cluster" 1>&2
     exit 1
 fi
 if ! [ -d "/mnt/pve/cephfs" ]; then
@@ -30,6 +34,13 @@ for IMAGE in $IMAGES; do
         (cd "$ISO_DIR" && sudo curl -LO "$IMAGE")
     fi
 done
+PFSENSE_FILENAME="pfSense-CE-$PFSENSE_VERSION-RELEASE-amd64.iso"
+if [ ! -f "$ISO_DIR/$PFSENSE_FILENAME" ]; then
+    sudo curl -Lo "$ISO_DIR/$PFSENSE_FILENAME.gz" "$PFSENSE_IMAGE"
+    sudo gunzip -c "$ISO_DIR/$PFSENSE_FILENAME.gz" | \
+    sudo tee "$ISO_DIR/$PFSENSE_FILENAME" > /dev/null
+    sudo rm "$ISO_DIR/$PFSENSE_FILENAME.gz"
+fi
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
 sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 sudo apt-get update
@@ -80,10 +91,10 @@ for _NODE in $_NODES; do
                     packer \
                     terraform
                 sudo mkdir -p /home/$USER/.ssh
+                sudo chown -R $USER:$USER /home/$USER/.ssh
                 sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa /home/$USER/.ssh/id_rsa
                 sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa.pub /home/$USER/.ssh/id_rsa.pub
-                sudo chown $USER:$USER /home/$USER/.ssh/id_rsa
-                sudo chown $USER:$USER /home/$USER/.ssh/id_rsa.pub
+                sudo chown -R $USER:$USER /home/$USER/.ssh
                 sudo chmod 600 /home/$USER/.ssh/id_rsa
                 sudo chmod 644 /home/$USER/.ssh/id_rsa.pub
                 if [ ! -f /home/$USER/.ssh/authorized_keys ]; then
@@ -106,5 +117,4 @@ for _NODE in $_NODES; do
 done
 sudo rm -rf /mnt/pve/cephfs/shared/tmp
 touch $HOME/shared/subnets.yaml
-make -sC "$HOME/yaps" images/build
 cd "$HOME"

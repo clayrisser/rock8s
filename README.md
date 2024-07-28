@@ -128,7 +128,39 @@ SSH into the proxmox system as admin and run the following setup script.
 make -sC ~/yaps kubernetes/apply
 ```
 
+## PFSense Install
+
+### Setup
+
+1. Install pfsense from the iso
+2. Set the WAN to `vtnet1` and the LAN to `vtnet0`
+3. Set WAN interface ip addresses
+4. Disable the firewall `pfctl -d`
+5. Go to the WAN gateway ip and login with user `admin` and password `pfsense`
+
+### Network Topology
+
+| description           | ip                          | hostname                       |
+| --------------------- | --------------------------- | ------------------------------ |
+| LAN primary gateway   | `172.20.0.1`                | `access-primary.bitspur.com`   |
+| LAN secondary gateway | `172.20.0.2`                | `access-secondary.bitspur.com` |
+| LAN DHCP range        | `172.20.1.1-172.20.255.254` |                                |
+
 ## Commands
+
+### Debugging
+
+#### Failed Services
+
+```sh
+sudo systemctl --failed
+```
+
+#### Reset Failed Services
+
+```sh
+sudo systemctl reset-failed
+```
 
 ### Networking
 
