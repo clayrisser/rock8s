@@ -30,3 +30,7 @@ images/%:
 .PHONY: ceph/%
 ceph/%:
 	@$(call make,ceph) $*
+
+.PHONY: pfsense/%
+pfsense/%:
+	@$(call make,pfsense) $*
