@@ -202,7 +202,7 @@ iface $_INTERFACE inet static
 EOF
         cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 iface $_INTERFACE inet6 static
-    address         fd00::$i:0:$((HOST_NUMBER + 10))/96
+    address         fd$i::$((HOST_NUMBER + 10))/64
 EOF
     i=$((i + 1))
 done
