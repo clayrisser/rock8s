@@ -140,11 +140,14 @@ make -sC ~/yaps kubernetes/apply
 
 ### Network Topology
 
-| description           | ip                          | hostname                       |
-| --------------------- | --------------------------- | ------------------------------ |
-| LAN primary gateway   | `172.20.0.1`                | `access-primary.bitspur.com`   |
-| LAN secondary gateway | `172.20.0.2`                | `access-secondary.bitspur.com` |
-| LAN DHCP range        | `172.20.1.1-172.20.255.254` |                                |
+| description    | ipv4                        | ipv6                                |
+| -------------- | --------------------------- | ----------------------------------- |
+| LAN virtual    | `172.20.0.1`                | `fd00::20:0:1`                      |
+| LAN primary    | `172.20.0.2`                | `fd00::20:0:2`                      |
+| LAN secondary  | `172.20.0.3`                | `fd00::20:0:3`                      |
+| LAN DHCP range | `172.20.1.1-172.20.255.254` | `fd00::20.1.1-fd00::ffff:ffff:ffff` |
+| SYNC primary   | `172.22.0.1`                |                                     |
+| SYNC secondary | `172.22.0.2`                |                                     |
 
 ## Commands
 
@@ -180,7 +183,7 @@ sudo ip -6 route
 #### List Bridges
 
 ```sh
-sudo brctl ???
+sudo brctl show
 ```
 
 #### Restart
