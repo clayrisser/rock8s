@@ -149,6 +149,25 @@ make -sC ~/yaps kubernetes/apply
 | SYNC primary   | `172.22.0.1`                |                                     |
 | SYNC secondary | `172.22.0.2`                |                                     |
 
+## Reference
+
+### DNS Servers
+
+#### IPV4
+
+| ip        | provider   |
+| --------- | ---------- |
+| `8.8.8.8` | google     |
+| `8.8.4.4` | google     |
+| `1.1.1.1` | cloudflare |
+
+#### IPV6
+
+| ip                     | provider |
+| ---------------------- | -------- |
+| `2001:4860:4860::8888` | google   |
+| `2001:4860:4860::8844` | google   |
+
 ## Commands
 
 ### Debugging
@@ -163,6 +182,16 @@ sudo systemctl --failed
 
 ```sh
 sudo systemctl reset-failed
+```
+
+#### Trace Routes
+
+```sh
+traceroute -n 8.8.8.8
+```
+
+```sh
+traceroute6 -n 2001:4860:4860::8888
 ```
 
 ### Networking

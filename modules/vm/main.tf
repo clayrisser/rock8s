@@ -54,7 +54,7 @@ resource "proxmox_vm_qemu" "vm" {
     bridge = var.network_bridge
     mtu    = 1400
   }
-  ipconfig0 = "ip=dhcp${var.ipv6 ? ",ip6=dhcp" : ""}"
+  ipconfig0 = "ip=dhcp${var.ipv6 ? ",ip6=auto" : ""}"
   ciuser    = var.user
   sshkeys   = base64decode(var.ssh_public_keys_b64)
   lifecycle {
