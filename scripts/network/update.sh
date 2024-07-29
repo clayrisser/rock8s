@@ -2,10 +2,10 @@
 
 ADDITIONAL_IPS="${ADDITIONAL_IPS:=""}"
 CEPH_NETWORK="${CEPH_NETWORK:="192.168.2.0/24"}"
-EXTRA_GUEST_SUBNETS_COUNT="${EXTRA_GUEST_SUBNETS_COUNT:="2"}"
+EXTRA_SUBNETS_COUNT="${EXTRA_SUBNETS_COUNT:="3"}"
 MAX_SERVERS="${MAX_SERVERS:="64"}"
 PRIVATE_IP_NETWORK="${PRIVATE_IP_NETWORK:="192.168.1.0/24"}"
-STARTING_GUEST_SUBNET="${STARTING_GUEST_SUBNET:="172.20.0.0/16"}"
+STARTING_SUBNET="${STARTING_SUBNET:="172.20.0.0/16"}"
 VSWITCH_MTU="${VSWITCH_MTU:="1400"}"
 NAMESERVERS="${NAMESERVERS:-"
 8.8.8.8
@@ -15,10 +15,10 @@ NAMESERVERS="${NAMESERVERS:-"
 
 echo ADDITIONAL_IPS="\"$ADDITIONAL_IPS\""
 echo CEPH_NETWORK=$CEPH_NETWORK
-echo EXTRA_GUEST_SUBNETS_COUNT=$EXTRA_GUEST_SUBNETS_COUNT
+echo EXTRA_SUBNETS_COUNT=$EXTRA_SUBNETS_COUNT
 echo MAX_SERVERS=$MAX_SERVERS
 echo PRIVATE_IP_NETWORK=$PRIVATE_IP_NETWORK
-echo STARTING_GUEST_SUBNET=$STARTING_GUEST_SUBNET
+echo STARTING_SUBNET=$STARTING_SUBNET
 echo VSWITCH_MTU=$VSWITCH_MTU
 echo NAMESERVERS="\"$NAMESERVERS\""
 
@@ -46,13 +46,13 @@ EOF
     echo $next_subnet
 }
 
-_GUEST_SUBNETS=""
-current_subnet="$STARTING_GUEST_SUBNET"
-for i in $(seq 0 $((EXTRA_GUEST_SUBNETS_COUNT - 1))); do
-    _GUEST_SUBNETS="$_GUEST_SUBNETS\n$current_subnet"
+_EXTRA_SUBNETS=""
+current_subnet="$STARTING_SUBNET"
+for i in $(seq 0 $((EXTRA_SUBNETS_COUNT - 1))); do
+    _EXTRA_SUBNETS="$_EXTRA_SUBNETS\n$current_subnet"
     current_subnet="$(next_subnet "$current_subnet")"
 done
-_GUEST_SUBNETS="$(echo "$_GUEST_SUBNETS" | sort -u)"
+_EXTRA_SUBNETS="$(echo "$_EXTRA_SUBNETS" | sort -u)"
 
 SUDO=
 if which sudo >/dev/null 2>&1; then
@@ -175,9 +175,9 @@ _unique_vlan_id() {
     echo "$_VLAN_ID"
 }
 i=$_VLAN_ID_START
-for GUEST_SUBNET in $_GUEST_SUBNETS; do
-    if echo "$GUEST_SUBNET" | grep -qE '^172\.[0-9][0-9]\.0\.0\/16$'; then
-        _VLAN_ID="$(echo "$GUEST_SUBNET" | sed 's|172\.\([0-9][0-9]\)\.0\.0\/16|40\1|g')"
+for EXTRA_SUBNET in $_EXTRA_SUBNETS; do
+    if echo "$EXTRA_SUBNET" | grep -qE '^172\.[0-9][0-9]\.0\.0\/16$'; then
+        _VLAN_ID="$(echo "$EXTRA_SUBNET" | sed 's|172\.\([0-9][0-9]\)\.0\.0\/16|40\1|g')"
     else
         _VLAN_ID="40$i"
     fi
@@ -186,18 +186,6 @@ for GUEST_SUBNET in $_GUEST_SUBNETS; do
     fi
     _VLAN_IDS="$_VLAN_IDS $_VLAN_ID"
     _INTERFACE="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
-    IPV6_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
-        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".$_INTERFACE.ipv6.subnet // \"\"")"
-    IPV6_GATEWAY="$(cat "$HOME/shared/subnets.yaml" | \
-        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".$_INTERFACE.ipv6.gateway // \"\"")"
-    IPV4_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
-        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".$_INTERFACE.ipv4.subnet // \"\"")"
-    IPV4_GATEWAY="$(cat "$HOME/shared/subnets.yaml" | \
-        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".$_INTERFACE.ipv4.gateway // \"\"")"
     cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 
 auto $UPLINK_DEVICE.$_VLAN_ID
@@ -205,30 +193,18 @@ iface $UPLINK_DEVICE.$_VLAN_ID inet manual
 
 auto $_INTERFACE
 iface $_INTERFACE inet static
-    address         $(echo $GUEST_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$((HOST_NUMBER + 10))/\3|g")
+    address         $(echo $EXTRA_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$((HOST_NUMBER + 10))/\3|g")
     bridge-ports    $UPLINK_DEVICE.$_VLAN_ID
     vlan-raw-device $UPLINK_DEVICE
     bridge-stp      off
     bridge-fd       0
     mtu             $VSWITCH_MTU
 EOF
-    if [ "$IPV6_SUBNET" != "" ] && [ "$IPV6_GATEWAY" != "" ]; then
         cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 iface $_INTERFACE inet6 static
+    address         fd00::$i:0:$((HOST_NUMBER + 10))/96
 EOF
-    fi
     i=$((i + 1))
-done
-for GUEST_SUBNET in $_GUEST_SUBNETS; do
-    if echo "$GUEST_SUBNET" | grep -qE '^172\.[0-9][0-9]\.0\.0\/16$'; then
-        _VLAN_ID="$(echo "$GUEST_SUBNET" | sed 's|172\.\([0-9][0-9]\)\.0\.0\/16|40\1|g')"
-    else
-        _VLAN_ID="40$i"
-    fi
-    _INTERFACE="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
-    IPV6_SUBNET="$(cat "$HOME/shared/subnets.yaml" | \
-        perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(join "", <STDIN>))' | \
-        jq -r ".$_INTERFACE.ipv6.subnet // \"\"")"
 done
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/hosts
 $SUDO sed -i ':a;N;$!ba;s/\n\n\n*/\n\n/g' /etc/network/interfaces
