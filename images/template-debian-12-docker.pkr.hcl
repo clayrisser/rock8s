@@ -5,7 +5,7 @@ source "proxmox-iso" "template-debian-12-docker" {
   cloud_init               = true
   cloud_init_storage_pool  = var.storage_pool
   cores                    = var.cores
-  cpu_type                 = var.cpu_type
+  cpu_type                 = var.cpu
   http_directory           = "http"
   http_port_max            = 8100
   http_port_min            = 8100
@@ -65,6 +65,29 @@ apt-get install -y \
   unattended-upgrades \
   vim \
   wget
+EOF
+    ]
+  }
+  provisioner "shell" {
+    inline = [
+      "export DEBIAN_FRONTEND=noninteractive",
+      "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -",
+      "echo 'deb https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list",
+      "apt-get update",
+      <<EOF
+apt-get install -y \
+  containerd.io \
+  docker-ce \
+  docker-ce-cli \
+  docker-compose-plugin
+EOF
+      ,
+      "mkdir -p /etc/docker",
+      <<EOF
+echo '{
+  "metrics-addr": "127.0.0.1:9323",
+  "experimental": true
+}' > /etc/docker/daemon.json
 EOF
     ]
   }

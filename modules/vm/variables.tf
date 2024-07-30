@@ -42,9 +42,9 @@ variable "vcpus" {
   default = 2
 }
 
-variable "cpu_type" {
+variable "cpu" {
   type        = string
-  default     = "host"
+  default     = "kvm64"
 }
 
 variable "memory" {
@@ -73,4 +73,12 @@ variable "worker_node_data_disk_size" {
 
 variable "ipv6" {
   default = false
+}
+
+variable "protection" {
+  default = false
+}
+
+variable "display" {
+  default = "qxl"
 }

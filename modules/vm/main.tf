@@ -11,23 +11,26 @@ terraform {
 resource "proxmox_vm_qemu" "vm" {
   count            = var.count_per_node * length(var.nodes)
   target_node      = var.nodes[count.index / var.count_per_node]
-  clone            = var.clone
-  qemu_os          = "l26"
-  name             = "${var.prefix}-${format("%02d", count.index + 1)}"
   agent            = 1
+  automatic_reboot = true
+  balloon          = var.memory
+  bios             = "seabios"
+  bootdisk         = "virtio0"
+  clone            = var.clone
+  cores            = var.max_vcpus
+  cpu              = var.cpu
+  hotplug          = "network,disk,usb,memory,cpu"
+  memory           = var.memory
+  name             = "${var.prefix}-${format("%02d", count.index + 1)}"
+  numa             = true
   onboot           = var.onboot
   os_type          = "cloud-init"
-  cores            = var.max_vcpus
-  vcpus            = var.vcpus
-  sockets          = var.sockets
-  cpu              = var.cpu_type
-  memory           = var.memory
-  bootdisk         = "virtio0"
+  protection       = var.protection
+  qemu_os          = "l26"
   scsihw           = "virtio-scsi-single"
-  hotplug          = "network,disk,usb,memory,cpu"
-  numa             = true
-  automatic_reboot = true
+  sockets          = var.sockets
   tags             = var.tags
+  vcpus            = var.vcpus
   disks {
     scsi {
       scsi0 {
@@ -35,6 +38,8 @@ resource "proxmox_vm_qemu" "vm" {
           storage  = var.os_disk_storage
           size     = "${var.os_disk_size}G"
           iothread = true
+          discard = true
+          cache   = "writethrough"
         }
       }
     }
@@ -53,6 +58,9 @@ resource "proxmox_vm_qemu" "vm" {
     model  = "virtio"
     bridge = var.network_bridge
     mtu    = 1400
+  }
+  vga {
+    type = var.display
   }
   ipconfig0 = "ip=dhcp${var.ipv6 ? ",ip6=auto" : ""}"
   ciuser    = var.user

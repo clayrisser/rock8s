@@ -14,4 +14,4 @@ sudo apt-get install -y \
 sudo /sbin/usermod -aG docker admin
 cd stacks/minio-gw
 env
-docker-compose up -d
+sudo -E docker-compose up -d

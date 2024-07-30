@@ -5,7 +5,7 @@ source "proxmox-iso" "template-debian-12" {
   cloud_init               = true
   cloud_init_storage_pool  = var.storage_pool
   cores                    = var.cores
-  cpu_type                 = var.cpu_type
+  cpu_type                 = var.cpu
   http_directory           = "http"
   http_port_max            = 8100
   http_port_min            = 8100

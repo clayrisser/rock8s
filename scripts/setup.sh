@@ -46,7 +46,21 @@ sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com 
 sudo apt-get update
 sudo apt-get install -y \
     packer \
+    podman \
     terraform
+echo '#!/bin/sh' | sudo tee /usr/local/bin/overlayzfsmount >/dev/null
+echo 'exec /bin/mount -t overlay overlay "$@"' | sudo tee -a /usr/local/bin/overlayzfsmount >/dev/null
+sudo chmod +x /usr/local/bin/overlayzfsmount
+if [ ! -f /etc/containers/storage.conf ]; then
+    echo '[storage]' | sudo tee /etc/containers/storage.conf >/dev/null
+    echo 'driver = "overlay"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+    echo 'runroot = "/run/containers/storage"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+    echo 'graphroot = "/var/lib/containers/storage"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+    echo | sudo tee -a /etc/containers/storage.conf >/dev/null
+    echo '[storage.options]' | sudo tee -a /etc/containers/storage.conf >/dev/null
+    echo 'mount_program = "/usr/local/bin/overlayzfsmount"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+fi
+sudo systemctl restart podman*
 _DOMAIN=$(cat /etc/hosts | grep "$HOSTNAME" | grep -oE "$HOSTNAME\.[^ ]+" | sed "s|^$HOSTNAME\.||g")
 mkdir -p "$HOME/.ssh"
 if [ ! -f "$HOME/.ssh/id_rsa" ]; then
@@ -73,6 +87,7 @@ if [ ! -L "$HOME/yaps" ]; then
     ln -s /mnt/pve/cephfs/shared/yaps "$HOME/yaps"
 fi
 (cd "$HOME/yaps" && git pull origin main)
+make -C "$HOME/yaps" powerdns/install
 _NODES=$(sudo pvesh get /nodes --output-format json | jq -r '.[].node' | sort)
 for _NODE in $_NODES; do
     _NODE_ID=$(sudo corosync-cmapctl | grep -oP "(?<=nodelist.node.)\d+(?=.name \(str\) = $_NODE)")
@@ -89,7 +104,21 @@ for _NODE in $_NODES; do
                 sudo apt-get update
                 sudo apt-get install -y \
                     packer \
+                    podman \
                     terraform
+                echo '#!/bin/sh' | sudo tee /usr/local/bin/overlayzfsmount >/dev/null
+                echo 'exec /bin/mount -t overlay overlay \"\$@\"' | sudo tee -a /usr/local/bin/overlayzfsmount >/dev/null
+                sudo chmod +x /usr/local/bin/overlayzfsmount
+                if [ ! -f /etc/containers/storage.conf ]; then
+                    echo '[storage]' | sudo tee /etc/containers/storage.conf >/dev/null
+                    echo 'driver = \"overlay\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                    echo 'runroot = \"/run/containers/storage\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                    echo 'graphroot = \"/var/lib/containers/storage\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                    echo | sudo tee -a /etc/containers/storage.conf >/dev/null
+                    echo '[storage.options]' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                    echo 'mount_program = \"/usr/local/bin/overlayzfsmount\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                fi
+                sudo systemctl restart podman*
                 sudo mkdir -p /home/$USER/.ssh
                 sudo chown -R $USER:$USER /home/$USER/.ssh
                 sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa /home/$USER/.ssh/id_rsa
@@ -111,6 +140,7 @@ for _NODE in $_NODES; do
                     sudo rm -rf "/home/$USER/yaps"
                     ln -s /mnt/pve/cephfs/shared/yaps /home/$USER/yaps
                 fi
+                make -C /home/$USER/yaps powerdns/install
             "
         fi
     fi

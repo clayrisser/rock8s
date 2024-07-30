@@ -2,7 +2,7 @@ module "k8s_control_plane_nodes" {
   source              = "../modules/vm"
   clone               = var.clone
   count_per_node      = 1
-  cpu_type            = var.cpu_type
+  cpu                 = var.cpu
   ipv6                = true
   max_vcpus           = var.max_vcpus
   memory              = var.control_plane_memory
@@ -22,7 +22,7 @@ module "k8s_worker_nodes" {
   source              = "../modules/vm"
   clone               = var.clone
   count_per_node      = 1
-  cpu_type            = var.cpu_type
+  cpu                 = var.cpu
   ipv6                = true
   max_vcpus           = var.max_vcpus
   memory              = var.worker_memory

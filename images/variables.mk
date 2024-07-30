@@ -1,5 +1,5 @@
 VARS := -var cores=$(CORES) \
-		-var cpu_type=$(CPU_TYPE) \
+		-var cpu=$(CPU) \
 		-var disk_format=$(DISK_FORMAT) \
 		-var disk_size=$(DISK_SIZE) \
 		-var iso_checksum=$(ISO_CHECKSUM) \

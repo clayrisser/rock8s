@@ -59,7 +59,7 @@ variable "max_vcpus" {
   default = 2
 }
 
-variable "cpu_type" {
+variable "cpu" {
   default = "kvm64"
 }
 

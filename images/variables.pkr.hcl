@@ -6,7 +6,7 @@ variable "vm_name" {
   default = "template-debian-12-docker"
 }
 
-variable "cpu_type" {
+variable "cpu" {
   default = "kvm64"
 }
 

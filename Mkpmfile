@@ -34,3 +34,7 @@ ceph/%:
 .PHONY: pfsense/%
 pfsense/%:
 	@$(call make,pfsense) $*
+
+.PHONY: powerdns/%
+powerdns/%:
+	@$(call make,powerdns) $*
