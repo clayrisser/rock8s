@@ -1,0 +1,6 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+.PHONY: %
+%:
+	@sh scripts/$@.sh
