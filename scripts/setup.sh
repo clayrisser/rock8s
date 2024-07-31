@@ -87,7 +87,6 @@ if [ ! -L "$HOME/yaps" ]; then
     ln -s /mnt/pve/cephfs/shared/yaps "$HOME/yaps"
 fi
 (cd "$HOME/yaps" && git pull origin main)
-make -C "$HOME/yaps" powerdns/install
 _NODES=$(sudo pvesh get /nodes --output-format json | jq -r '.[].node' | sort)
 for _NODE in $_NODES; do
     _NODE_ID=$(sudo corosync-cmapctl | grep -oP "(?<=nodelist.node.)\d+(?=.name \(str\) = $_NODE)")
@@ -140,7 +139,6 @@ for _NODE in $_NODES; do
                     sudo rm -rf "/home/$USER/yaps"
                     ln -s /mnt/pve/cephfs/shared/yaps /home/$USER/yaps
                 fi
-                make -C /home/$USER/yaps powerdns/install
             "
         fi
     fi

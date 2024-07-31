@@ -1,4 +1,8 @@
 launch+=gsqlite3
-gsqlite3-database=/mnt/pve/cephfs/shared/powerdns/pdns.sqlite3
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
 api=yes
+webserver-address=0.0.0.0
+webserver-allow-from=0.0.0.0/0,::/0
 api-key=<% $SECRET %>
+default-soa-content=<% "$SOA_CONTENT" %>
+<% "$PRIMARY_SECONDARY" %>
