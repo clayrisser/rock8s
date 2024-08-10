@@ -6,10 +6,10 @@ if [ "$SSH_PRIVATE_KEY_B64" = "" ]; then
 fi
 
 export TF_VAR_clone="$CLONE"
+export TF_VAR_cores="$CORES"
 export TF_VAR_count="$COUNT"
 export TF_VAR_cpu="$CPU"
 export TF_VAR_disk_size="$DISK_SIZE"
-export TF_VAR_max_vcpus="$MAX_VCPUS"
 export TF_VAR_memory="$MEMORY"
 export TF_VAR_network_bridge="$NETWORK_BRIDGE"
 export TF_VAR_os_disk_storage="$OS_DISK_STORAGE"

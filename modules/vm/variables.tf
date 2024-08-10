@@ -34,7 +34,7 @@ variable "sockets" {
   default = 1
 }
 
-variable "max_vcpus" {
+variable "cores" {
   default = 2
 }
 
