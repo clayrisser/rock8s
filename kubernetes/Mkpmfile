@@ -28,6 +28,22 @@ apply: init
 install: apply
 	@cd $(APP_DIR)/kubespray && \
 		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root cluster.yml
+	@$(call mkpm) login
+
+.PHONY: login
+login:
+	@which kubectl >/dev/null 2>&1 || ( \
+		curl -LO "https://dl.k8s.io/release/$$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+		sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
+	)
+	@mkdir -p $(HOME)/.kube
+	@HOST_NUMBER="$$(echo "$$(hostname)" | sed 's/[^0-9]//g')"; \
+		NODE_IP="$$(cat $(APP_DIR)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$HOST_NUMBER].value[0]" | cut -d' ' -f1)"; \
+		ssh admin@$$NODE_IP "sudo cat /etc/kubernetes/admin.conf" | \
+		perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(do { local $$/; <STDIN> }))' | \
+		jq ".clusters[0].cluster.server = \"https://$$NODE_IP:6443\"" | \
+		perl -MYAML::XS=Dump -MJSON=decode_json -E 'say Dump(decode_json(do { local $$/; <STDIN> }))' > $(HOME)/.kube/config
+	@chmod 600 $(HOME)/.kube/config
 
 .PHONY: reset
 reset: apply
