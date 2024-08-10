@@ -1,10 +1,10 @@
 module "nodes-minio-gw" {
   source              = "../modules/vm"
   clone               = var.clone
+  cores               = var.cores
   count_per_node      = 1
   cpu                 = var.cpu
   ipv6                = true
-  max_vcpus           = var.max_vcpus
   memory              = var.memory
   network_bridge      = var.network_bridge
   nodes               = var.proxmox_nodes

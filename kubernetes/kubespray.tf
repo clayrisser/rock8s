@@ -1,10 +1,4 @@
 locals {
-  setup_kubespray_script_content = templatefile(
-    "${path.module}/scripts/setup_kubespray.sh",
-    {
-      kubespray_data_dir = var.kubespray_data_dir
-    }
-  )
   kubespray_inventory_content = templatefile(
     "${path.module}/kubespray/inventory.ini",
     {
@@ -38,14 +32,13 @@ locals {
 resource "null_resource" "setup_kubespray" {
   provisioner "local-exec" {
     command = <<-EOT
-      ${local.setup_kubespray_script_content}
-      cat <<EOF > ${var.kubespray_data_dir}/kubespray/inventory/sample/inventory.ini
+      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/inventory.ini
       ${local.kubespray_inventory_content}
       EOF
-      cat <<EOF > ${var.kubespray_data_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml
+      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml
       ${local.kubespray_k8s_config_content}
       EOF
-      cat <<EOF > ${var.kubespray_data_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/addons.yml
+      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/addons.yml
       ${local.kubespray_addon_config_content}
       EOF
     EOT

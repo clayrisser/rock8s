@@ -55,7 +55,7 @@ variable "sockets" {
   default = 1
 }
 
-variable "max_vcpus" {
+variable "cores" {
   default = 2
 }
 
@@ -147,6 +147,6 @@ variable "argocd_version" {
   default = "v2.4.12"
 }
 
-variable "kubespray_data_dir" {
+variable "app_dir" {
   type = string
 }
