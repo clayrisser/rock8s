@@ -1,0 +1,69 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+include $(MKPM)/chain
+
+TERRAFORM ?= terraform
+ANSIBLE_PLAYBOOK ?= $(APP_DIR)/env/bin/ansible-playbook
+export LANG := C.UTF-8
+export LC_ALL := C.UTF-8
+
+.PHONY: format
+format:
+	@$(TERRAFORM) fmt --recursive
+
+ACTIONS += prepare
+$(ACTION)/prepare:
+	@sh $(CURDIR)/scripts/prepare.sh
+	@$(call done,$@)
+
+ACTIONS += init~prepare
+$(ACTION)/init:
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/../variables.sh && \
+		$(TERRAFORM) init -migrate-state -backend-config="path=$(APP_DIR)/kubespray.tfstate" && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
+	@$(call done,$@)
+
+ACTIONS += apply~init
+$(ACTION)/apply:
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/../variables.sh && \
+		$(TERRAFORM) apply -auto-approve && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
+	@$(call done,$@)
+
+ACTIONS += install~apply
+$(ACTION)/install:
+	@cd $(APP_DIR)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root cluster.yml
+	@$(call done,$@)
+
+.PHONY: login
+login:
+	@which kubectl >/dev/null 2>&1 || ( \
+		curl -LO "https://dl.k8s.io/release/$$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+		sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
+	)
+	@mkdir -p $(HOME)/.kube
+	@HOST_NUMBER="$$(echo "$$(hostname)" | sed 's/[^0-9]//g')"; \
+		NODE_IP="$$(cat $(APP_DIR)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$HOST_NUMBER].value[0]" | cut -d' ' -f1)"; \
+		ssh admin@$$NODE_IP "sudo cat /etc/kubernetes/admin.conf" | \
+		perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(do { local $$/; <STDIN> }))' | \
+		jq ".clusters[0].cluster.server = \"https://$$NODE_IP:6443\"" | \
+		perl -MYAML::XS=Dump -MJSON=decode_json -E 'say Dump(decode_json(do { local $$/; <STDIN> }))' > $(HOME)/.kube/config
+	@chmod 600 $(HOME)/.kube/config
+
+.PHONY: reset
+reset: apply
+	@cd $(APP_DIR)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root reset.yml
+
+ACTIONS += destroy
+$(ACTION)/destroy:
+	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
+		. $(CURDIR)/../variables.sh && \
+		$(TERRAFORM) destroy && \
+		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
+	@$(call done,$@)
+
+-include $(call chain)

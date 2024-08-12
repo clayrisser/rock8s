@@ -1,0 +1,23 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+TERRAFORM ?= terraform
+
+.PHONY: format
+format:
+	@$(TERRAFORM) fmt --recursive
+
+.PHONY: init
+init:
+	@. $(CURDIR)/../variables.sh && \
+		$(TERRAFORM) init -migrate-state -backend-config="path=$(APP_DIR)/cluster.tfstate"
+
+.PHONY: apply
+apply: init
+	@. $(CURDIR)/../variables.sh && \
+		$(TERRAFORM) apply -auto-approve
+
+.PHONY: destroy
+destroy: init
+	@. $(CURDIR)/../variables.sh && \
+		$(TERRAFORM) destroy

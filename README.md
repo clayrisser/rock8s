@@ -140,14 +140,16 @@ make -sC ~/yaps kubernetes/apply
 
 ### Network Topology
 
-| description    | ipv4                        | ipv6                                |
-| -------------- | --------------------------- | ----------------------------------- |
-| LAN virtual    | `172.20.0.1`                | `fd00::20:0:1`                      |
-| LAN primary    | `172.20.0.2`                | `fd00::20:0:2`                      |
-| LAN secondary  | `172.20.0.3`                | `fd00::20:0:3`                      |
-| LAN DHCP range | `172.20.1.1-172.20.255.254` | `fd00::20.1.1-fd00::ffff:ffff:ffff` |
-| SYNC primary   | `172.22.0.1`                |                                     |
-| SYNC secondary | `172.22.0.2`                |                                     |
+| description        | ipv4                        | ipv6           |
+| ------------------ | --------------------------- | -------------- |
+| LAN virtual        | `172.20.0.1`                | `fd00::20:0:1` |
+| LAN primary        | `172.20.0.2`                | `fd00::20:0:2` |
+| LAN secondary      | `172.20.0.3`                | `fd00::20:0:3` |
+| LAN static range   | `172.20.1.1-172.20.1.254`   |                |
+| LAN DHCP range     | `172.20.2.1-172.20.9.254`   |                |
+| LAN metallb ranges | `172.20.10.1-172.20.99.254` |                |
+| SYNC primary       | `172.22.0.1`                |                |
+| SYNC secondary     | `172.22.0.2`                |                |
 
 ## Reference
 
