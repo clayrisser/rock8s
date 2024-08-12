@@ -211,6 +211,12 @@ sudo ip route
 sudo ip -6 route
 ```
 
+#### Network Interface Status
+
+```sh
+ethtool <NIC>
+```
+
 #### List Bridges
 
 ```sh
@@ -234,8 +240,10 @@ sudo lsblk
 #### Clear
 
 ```sh
-sudo sfdisk --delete /dev/<ID>
-sudo wipefs -af /dev/<ID>
+for d in $(lsblk -dn -o NAME | grep -E "^nvme" | sort); do
+    echo "sudo sfdisk --delete /dev/$d"
+    echo "sudo wipefs -af /dev/$d"
+done
 ```
 
 ### Logs
