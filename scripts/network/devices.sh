@@ -31,7 +31,7 @@ _LINKED_INTERFACES=""
 _UNLINKED_INTERFACES=""
 for _IFACE in $(ls /sys/class/net); do
     if [ -e "/sys/class/net/$_IFACE/device" ]; then
-        _ALTNAME="$(ip link show "$_IFACE" | grep -E '^ *altname ' | sed 's|^ *altname *||g' | head -n1)"
+        _ALTNAME="$(ip link show "$_IFACE" | grep -E '^ *altname ' | sed 's|^ *altname *||g' | head -n1 | sed 's|np[0-9]*$||')"
         _LINK_STATUS=$(ethtool "$_IFACE" 2>/dev/null | grep "Link detected" | awk '{print $3}')
         _MAX_SPEED=$(get_max_speed "$_IFACE")
         _NUMERIC_SPEED=$(convert_speed "$_MAX_SPEED")
