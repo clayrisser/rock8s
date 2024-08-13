@@ -4,7 +4,6 @@ module "k8s_control_plane_nodes" {
   count_per_node      = 1
   cpu                 = var.cpu
   ipv6                = true
-  cores               = var.cores
   memory              = var.control_plane_memory
   network_bridge      = var.internal_network_bridge
   nodes               = var.proxmox_nodes
@@ -24,7 +23,6 @@ module "k8s_worker_nodes" {
   count_per_node      = 1
   cpu                 = var.cpu
   ipv6                = true
-  cores               = var.cores
   memory              = var.worker_memory
   network_bridge      = var.internal_network_bridge
   nodes               = var.proxmox_nodes

@@ -10,7 +10,6 @@ if [ "$PROXMOX_NODES" = "" ]; then
 fi
 
 export TF_VAR_clone="$CLONE"
-export TF_VAR_cores="$CORES"
 export TF_VAR_count="$COUNT"
 export TF_VAR_cpu="$CPU"
 export TF_VAR_disk_size="$DISK_SIZE"
