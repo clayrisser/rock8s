@@ -49,10 +49,6 @@ variable "sockets" {
   default = 1
 }
 
-variable "cores" {
-  default = 2
-}
-
 variable "cpu" {
   default = "host"
 }

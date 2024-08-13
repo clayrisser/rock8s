@@ -17,7 +17,7 @@ resource "proxmox_vm_qemu" "vm" {
   bios             = "seabios"
   bootdisk         = "virtio0"
   clone            = var.clone
-  cores            = var.cores
+  cores            = var.cores > 0 ? var.cores : var.vcpus
   cpu              = var.cpu
   hotplug          = "network,disk,usb,memory,cpu"
   memory           = var.memory

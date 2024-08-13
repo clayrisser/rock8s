@@ -1,7 +1,6 @@
 module "nodes-minio-gw" {
   source              = "../modules/vm"
   clone               = var.clone
-  cores               = var.cores
   count_per_node      = 1
   cpu                 = var.cpu
   ipv6                = true
