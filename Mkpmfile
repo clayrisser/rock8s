@@ -38,3 +38,7 @@ pfsense/%:
 .PHONY: powerdns/%
 powerdns/%:
 	@$(call make,powerdns) $*
+
+.PHONY: mailcow/%
+mailcow/%:
+	@$(call make,mailcow) $*

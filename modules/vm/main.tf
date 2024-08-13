@@ -9,7 +9,7 @@ terraform {
 }
 
 resource "proxmox_vm_qemu" "vm" {
-  count            = var.count_per_node * length(var.nodes)
+  count            = var.node_count > 0 ? var.node_count : (var.count_per_node * length(var.nodes))
   target_node      = var.nodes[count.index / var.count_per_node]
   agent            = 1
   automatic_reboot = true

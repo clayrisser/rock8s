@@ -50,7 +50,8 @@ login:
 		ssh admin@$$NODE_IP "sudo cat /etc/kubernetes/admin.conf" | \
 		perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(do { local $$/; <STDIN> }))' | \
 		jq ".clusters[0].cluster.server = \"https://$$NODE_IP:6443\"" | \
-		perl -MYAML::XS=Dump -MJSON=decode_json -E 'say Dump(decode_json(do { local $$/; <STDIN> }))' > $(HOME)/.kube/config
+		perl -MYAML::XS=Dump -MJSON=decode_json -E 'say Dump(decode_json(do { local $$/; <STDIN> }))' > $(HOME)/.kube/config && \
+		echo "logged into $$NODE_IP"
 	@chmod 600 $(HOME)/.kube/config
 
 .PHONY: reset
