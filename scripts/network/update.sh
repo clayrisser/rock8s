@@ -68,7 +68,13 @@ if [ -f $HOME/.env ]; then
     rm $HOME/.env
 else
     GATEWAY="$(ip route | grep default | grep "dev vmbr0" | awk '{ print $3 }')"
+    if [ "$GATEWAY" = "" ]; then
+        GATEWAY="$(ip route | grep default | head -n1 | awk '{ print $3 }')"
+    fi
     IPV6_GATEWAY="$(ip -6 route | grep default | grep "dev vmbr0" | awk '{ print $3 }')"
+    if [ "$IPV6_GATEWAY" = "" ]; then
+        IPV6_GATEWAY="$(ip -6 route | grep default | head -n1 | awk '{ print $3 }')"
+    fi
     PUBLIC_IP_ADDRESS_CIDR="$(ip addr show "$(ip route | awk '/default via/ {print $5}')" | \
         grep -E "^ *inet" | awk '{ print $2 }' | head -n1)"
     PUBLIC_IPV6_ADDRESS_CIDR="$(ip -6 addr show vmbr0 | \
