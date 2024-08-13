@@ -198,6 +198,12 @@ traceroute6 -n 2001:4860:4860::8888
 
 ### Networking
 
+#### Validate Interfaces Config
+
+```sh
+sudo ifup --no-act --all
+```
+
 #### List Networks
 
 ```sh
@@ -240,9 +246,10 @@ sudo lsblk
 #### Clear
 
 ```sh
+SUDO="$(which sudo >/dev/null 2>&1 && echo sudo || true)"
 for d in $(lsblk -dn -o NAME | grep -E "^nvme" | sort); do
-    echo "sudo sfdisk --delete /dev/$d"
-    echo "sudo wipefs -af /dev/$d"
+    echo "\$SUDO sfdisk --delete /dev/$d"
+    echo "\$SUDO wipefs -af /dev/$d"
 done
 ```
 
