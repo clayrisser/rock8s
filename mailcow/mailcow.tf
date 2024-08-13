@@ -1,7 +1,6 @@
 module "nodes" {
   source              = "../modules/vm"
   clone               = var.clone
-  cores               = var.cores
   cpu                 = var.cpu
   ipv6                = true
   memory              = var.memory

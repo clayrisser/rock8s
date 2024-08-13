@@ -35,7 +35,7 @@ variable "sockets" {
 }
 
 variable "cores" {
-  default = 2
+  default = 0
 }
 
 variable "vcpus" {
