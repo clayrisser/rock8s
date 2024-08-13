@@ -82,3 +82,7 @@ variable "protection" {
 variable "display" {
   default = "qxl"
 }
+
+variable "node_count" {
+  default = 0
+}

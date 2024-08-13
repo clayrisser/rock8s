@@ -13,14 +13,14 @@ format:
 init:
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) init -migrate-state -backend-config="path=$(APP_DIR)/ceph.tfstate" && \
+		$(TERRAFORM) init -migrate-state -backend-config="path=$(APP_DIR)/mailcow.tfstate" && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: apply
 apply: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/variables.sh && \
-		$(TERRAFORM) apply -auto-approve  && \
+		$(TERRAFORM) apply -auto-approve && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: install
@@ -35,7 +35,3 @@ destroy: init
 		. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) destroy && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
-
-.PHONY: %
-%:
-	@sh scripts/$*.sh

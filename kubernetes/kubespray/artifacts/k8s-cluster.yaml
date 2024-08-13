@@ -340,16 +340,15 @@ auto_renew_certificates: false
 # First Monday of each month
 # auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
 
-# metallb_enabled: true
-# metallb_speaker_enabled: true
-# metallb_config:
-#   controller: {}
-#   speaker: {}
-#   address_pools:
-#     primary:
-#       ip_range:
-#         - ${ip_range}
-
+metallb_enabled: true
+metallb_speaker_enabled: true
+metallb_config:
+  controller: {}
+  speaker: {}
+  address_pools:
+    primary:
+      ip_range:
+        - ${ip_range}
 # ingress_nginx_enabled: true
 # ingress_nginx_namespace: "ingress-nginx"
 # ingress_nginx_insecure_port: 80
