@@ -32,7 +32,7 @@ variable "proxmox_nodes" {
 }
 
 variable "proxmox_parallel" {
-  default = 2
+  default = 1
 }
 
 variable "proxmox_timeout" {
