@@ -1,0 +1,6 @@
+helm_enabled: true
+kube_proxy_mode: iptables
+kube_version: ${kube_version}
+# kube_apiserver_port: 8443
+# loadbalancer_apiserver_port: 6443
+# loadbalancer_apiserver_localhost: true

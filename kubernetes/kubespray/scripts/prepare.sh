@@ -7,11 +7,15 @@ sudo apt-get install -y \
 mkdir -p "$APP_DIR"
 chmod 700 "$APP_DIR"
 if [ ! -d "$APP_DIR/kubespray" ]; then
-    curl -Lo kubespray.tar.gz \
-        "https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v$KUBESPRAY_VERSION.tar.gz"
-    tar -xzvf kubespray.tar.gz
-    rm kubespray.tar.gz
-    mv "kubespray-$KUBESPRAY_VERSION" "$APP_DIR/kubespray"
+    _TMP_DIR=$(mktemp -d)
+    (
+        cd "$_TMP_DIR"
+        curl -Lo kubespray.tar.gz \
+            "https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v$KUBESPRAY_VERSION.tar.gz"
+        tar -xzvf kubespray.tar.gz
+        mv "kubespray-$KUBESPRAY_VERSION" "$APP_DIR/kubespray"
+    )
+    rm -rf "$_TMP_DIR"
 fi
 sed -i 's|^minimal_master_memory_mb:.*|minimal_master_memory_mb: 0|g' "$APP_DIR/kubespray/roles/kubernetes/preinstall/defaults/main.yml"
 sed -i 's|^minimal_node_memory_mb:.*|minimal_node_memory_mb: 0|g' "$APP_DIR/kubespray/roles/kubernetes/preinstall/defaults/main.yml"
