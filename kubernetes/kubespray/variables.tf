@@ -1,13 +1,9 @@
 variable "cluster_prefix" {
-  default = "test"
+  type = string
 }
 
 variable "iteration" {
   default = "0"
-}
-
-variable "cluster_domain" {
-  default = "local"
 }
 
 variable "proxmox_host" {
@@ -32,7 +28,7 @@ variable "proxmox_nodes" {
 }
 
 variable "proxmox_parallel" {
-  default = 1
+  default = 2
 }
 
 variable "proxmox_timeout" {
@@ -117,30 +113,6 @@ variable "kube_network_plugin" {
 
 variable "enable_nodelocaldns" {
   default = false
-}
-
-variable "podsecuritypolicy_enabled" {
-  default = false
-}
-
-variable "persistent_volumes_enabled" {
-  default = false
-}
-
-variable "helm_enabled" {
-  default = false
-}
-
-variable "ingress_nginx_enabled" {
-  default = false
-}
-
-variable "argocd_enabled" {
-  default = false
-}
-
-variable "argocd_version" {
-  default = "v2.4.12"
 }
 
 variable "app_dir" {

@@ -9,7 +9,7 @@ module "k8s_control_plane_nodes" {
   nodes               = var.proxmox_nodes
   os_disk_size        = var.control_plane_disk_size
   os_disk_storage     = var.os_disk_storage
-  prefix              = "vm-${local.cluster_name}-cp"
+  prefix              = "${local.cluster_name}-control-plane"
   sockets             = var.sockets
   ssh_public_keys_b64 = var.ssh_public_keys_b64
   tags                = "${var.cluster_prefix};terraform;k8s_control_plane"
@@ -28,14 +28,12 @@ module "k8s_worker_nodes" {
   nodes               = var.proxmox_nodes
   os_disk_size        = var.worker_disk_size
   os_disk_storage     = var.os_disk_storage
-  prefix              = "vm-${local.cluster_name}-worker"
+  prefix              = "${local.cluster_name}-worker"
   sockets             = var.sockets
   ssh_public_keys_b64 = var.ssh_public_keys_b64
   tags                = "${var.cluster_prefix};terraform;k8s_worker"
   user                = var.user
   vcpus               = var.worker_vcpus
-  # worker_node_data_disk_storage = var.worker_node_data_disk_storage
-  # worker_node_data_disk_size    = var.worker_node_data_disk_size
 }
 
 output "k8s_control_plane" {
