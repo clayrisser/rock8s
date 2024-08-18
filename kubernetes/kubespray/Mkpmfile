@@ -3,7 +3,7 @@ include $(MKPM)/dotenv
 include $(MKPM)/chain
 
 TERRAFORM ?= terraform
-ANSIBLE_PLAYBOOK ?= $(APP_DIR)/env/bin/ansible-playbook
+ANSIBLE_PLAYBOOK ?= $(APPS_DIR)/$(APP)/env/bin/ansible-playbook
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
@@ -16,11 +16,13 @@ $(ACTION)/prepare:
 	@sh $(CURDIR)/scripts/prepare.sh
 	@$(call done,$@)
 
+$(info H $(APPS_DIR)/$(APP)/kubespray.tfstate)
+
 ACTIONS += init~prepare
 $(ACTION)/init:
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/../variables.sh && \
-		$(TERRAFORM) init -migrate-state -backend-config="path=$(APP_DIR)/kubespray.tfstate" && \
+		$(TERRAFORM) init -migrate-state -backend-config="path=$(APPS_DIR)/$(APP)/kubespray.tfstate" && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 	@$(call done,$@)
 
@@ -34,10 +36,9 @@ $(ACTION)/apply:
 
 ACTIONS += install~apply
 $(ACTION)/install:
-	@cd $(APP_DIR)/kubespray && \
+	@cd $(APPS_DIR)/$(APP)/kubespray && \
 		$(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
-			-e inventory/sample/cluster-variables.yaml \
 			-u admin --become --become-user=root \
 			cluster.yml
 	@$(call done,$@)
@@ -50,7 +51,7 @@ login:
 	)
 	@mkdir -p $(HOME)/.kube
 	@HOST_NUMBER="$$(echo "$$(hostname)" | sed 's/[^0-9]//g')"; \
-		NODE_IP="$$(cat $(APP_DIR)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$HOST_NUMBER].value[0]" | cut -d' ' -f1)"; \
+		NODE_IP="$$(cat $(APPS_DIR)/$(APP)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$HOST_NUMBER].value[0]" | cut -d' ' -f1)"; \
 		ssh admin@$$NODE_IP "sudo cat /etc/kubernetes/admin.conf" | \
 		perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(do { local $$/; <STDIN> }))' | \
 		jq ".clusters[0].cluster.server = \"https://$$NODE_IP:6443\"" | \
@@ -59,9 +60,12 @@ login:
 	@chmod 600 $(HOME)/.kube/config
 
 .PHONY: reset
-reset: apply
-	@cd $(APP_DIR)/kubespray && \
-		$(ANSIBLE_PLAYBOOK) -i inventory/sample/inventory.ini -u admin --become --become-user=root reset.yml
+reset: ~apply
+	@cd $(APPS_DIR)/$(APP)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) \
+			-i inventory/sample/inventory.ini \
+			-u admin --become --become-user=root \
+			reset.yml
 
 ACTIONS += destroy
 $(ACTION)/destroy:

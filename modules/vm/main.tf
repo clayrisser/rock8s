@@ -19,7 +19,7 @@ resource "proxmox_vm_qemu" "vm" {
   clone            = var.clone
   cores            = var.cores > 0 ? var.cores : var.vcpus
   cpu              = var.cpu
-  hotplug          = "network,disk,usb,memory,cpu"
+  hotplug          = "network,disk,usb"
   memory           = var.memory
   name             = "${var.prefix}-${format("%02d", count.index + 1)}"
   numa             = true

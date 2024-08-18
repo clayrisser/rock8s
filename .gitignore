@@ -1,19 +1,13 @@
-# terraform
+!.env.example
+*.iso
 *.tfplan
 *.tfstate
 *.tfstate.*
-.terraform
-cloud.tf
-tmp
-
-# os
-Icon*
 .DS_Store
 .env
-
-# app
-*.iso
-.env
-
-# mkpm
+.env.*
 .mkpm/mkpm
+.terraform
+Icon*
+cloud.tf
+tmp
