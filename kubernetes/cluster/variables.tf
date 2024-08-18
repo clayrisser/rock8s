@@ -26,26 +26,6 @@ variable "rancher_admin_password" {
   default = "rancherP@ssw0rd"
 }
 
-variable "main_bucket" {
-  default = ""
-}
-
-variable "oidc_bucket" {
-  default = ""
-}
-
-variable "tempo_bucket" {
-  default = ""
-}
-
-variable "thanos_bucket" {
-  default = ""
-}
-
-variable "loki_bucket" {
-  default = ""
-}
-
 variable "kanister_bucket" {
   default = ""
 }
@@ -63,11 +43,11 @@ variable "api_strategy" {
 # }
 
 variable "rancher" {
-  default = true
+  default = false
 }
 
 variable "cluster_issuer" {
-  default = true
+  default = false
 }
 
 variable "external_dns" {
@@ -106,24 +86,16 @@ variable "rancher_monitoring" {
   default = false
 }
 
-variable "thanos" {
-  default = false
-}
-
-variable "tempo" {
-  default = false
-}
-
 variable "longhorn" {
   default = false
 }
 
 variable "autoscaler" {
-  default = true
+  default = false
 }
 
 variable "reloader" {
-  default = true
+  default = false
 }
 
 variable "argocd" {
@@ -135,10 +107,14 @@ variable "karpenter" {
 }
 
 variable "kyverno" {
-  default = false
+  default = true
 }
 
 variable "crossplane" {
+  default = false
+}
+
+variable "tempo" {
   default = false
 }
 
@@ -166,10 +142,14 @@ variable "ingress_ports" {
 #   type = string
 # }
 
-# variable "email" {
-#   type = string
-# }
+variable "email" {
+  type = string
+}
 
-# variable "rancher_token" {
-#   type = string
-# }
+variable "rancher_token" {
+  type = string
+}
+
+variable "rancher_hostname" {
+  default = ""
+}
