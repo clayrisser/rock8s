@@ -9,8 +9,8 @@ terraform {
       version = "2.10.1"
     }
     kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "1.14.0"
+      source  = "alekc/kubectl"
+      version = ">= 2.0.2"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -34,7 +34,7 @@ terraform {
     }
     rancher2 = {
       source  = "rancher/rancher2"
-      version = "3.2.0"
+      version = ">= 3.2.0"
     }
     tls = {
       source  = "hashicorp/tls"

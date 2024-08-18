@@ -1,5 +1,4 @@
 locals {
-  cluster_name = "${var.cluster_prefix}-${var.iteration}"
   kubespray_inventory_content = templatefile(
     "${path.module}/artifacts/inventory.ini",
     {
@@ -14,7 +13,6 @@ locals {
   kubespray_k8s_cluster_yml = templatefile(
     "${path.module}/artifacts/k8s-cluster.yml",
     {
-      cluster_name                        = local.cluster_name
       kube_version                        = var.kube_version
       supplementary_addresses_in_ssl_keys = length(split(",", var.public_ips)) > 1 ? jsonencode(compact(split(",", var.public_ips))) : "[]"
     }

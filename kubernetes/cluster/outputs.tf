@@ -1,3 +1,3 @@
-output "kubeconfig" {
-  value = local.kubeconfig_json
+output "cluster_entrypoint" {
+  value = local.cluster_entrypoint
 }

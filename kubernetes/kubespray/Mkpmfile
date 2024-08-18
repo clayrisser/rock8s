@@ -16,8 +16,6 @@ $(ACTION)/prepare:
 	@sh $(CURDIR)/scripts/prepare.sh
 	@$(call done,$@)
 
-$(info H $(APPS_DIR)/$(APP)/kubespray.tfstate)
-
 ACTIONS += init~prepare
 $(ACTION)/init:
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \

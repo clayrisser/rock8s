@@ -1,4 +1,4 @@
-variable "cluster_prefix" {
+variable "prefix" {
   type = string
 }
 

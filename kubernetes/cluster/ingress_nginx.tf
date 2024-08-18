@@ -27,27 +27,38 @@ module "ingress-nginx" {
   load_balancer = true
 }
 
-# resource "null_resource" "wait-for-ingress-nginx" {
-#   count = var.ingress_nginx ? 1 : 0
-#   provisioner "local-exec" {
-#     command     = <<EOF
-# s=5
-# while [ "$s" -ge "5" ]; do
-#   _s=$(echo $(curl -v $CLUSTER_ENTRYPOINT 2>&1 | grep -E '^< HTTP') | awk '{print $3}' | head -c 1)
-#   if [ "$_s" != "" ]; then
-#     s=$_s
-#   fi
-#   if [ "$s" -ge "5" ]; then
-#     sleep 10
-#   fi
-# done
-# EOF
-#     interpreter = ["bash", "-c"]
-#     environment = {
-#       CLUSTER_ENTRYPOINT = local.cluster_entrypoint
-#     }
-#   }
-#   depends_on = [
-#     module.ingress-nginx
-#   ]
-# }
+data "kubernetes_service" "ingress_nginx" {
+  count = var.ingress_nginx ? 1 : 0
+  metadata {
+    name      = "ingress-nginx-controller"
+    namespace = "ingress-nginx"
+  }
+  depends_on = [
+    module.ingress-nginx
+  ]
+}
+ 
+resource "null_resource" "wait-for-ingress-nginx" {
+  count = var.ingress_nginx ? 1 : 0
+  provisioner "local-exec" {
+    command     = <<EOF
+s=5
+while [ "$s" -ge "5" ]; do
+  _s=$(echo $(curl -v $CLUSTER_ENTRYPOINT 2>&1 | grep -E '^< HTTP') | awk '{print $3}' | head -c 1)
+  if [ "$_s" != "" ]; then
+    s=$_s
+  fi
+  if [ "$s" -ge "5" ]; then
+    sleep 10
+  fi
+done
+EOF
+    interpreter = ["bash", "-c"]
+    environment = {
+      CLUSTER_ENTRYPOINT = local.cluster_entrypoint
+    }
+  }
+  depends_on = [
+    module.ingress-nginx
+  ]
+}
