@@ -126,3 +126,7 @@ variable "ip_range" {
 variable "public_ips" {
   default = ""
 }
+
+variable "single_control_plane" {
+  default = false
+}
