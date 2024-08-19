@@ -130,3 +130,15 @@ variable "public_ips" {
 variable "single_control_plane" {
   default = false
 }
+
+variable "cephfs_provisioner_monitors" {
+  default = ""
+}
+
+variable "cephfs_provisioner_admin_id" {
+  default = ""
+}
+
+variable "cephfs_provisioner_secret" {
+  default = ""
+}

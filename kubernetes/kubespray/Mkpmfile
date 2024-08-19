@@ -57,7 +57,7 @@ login:
 	)
 	@mkdir -p $(HOME)/.kube
 	@HOST_NUMBER="$$(echo "$$(hostname)" | sed 's/[^0-9]//g')"; \
-		NODE_IP="$$(cat $(APPS_DIR)/$(APP)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$HOST_NUMBER].value[0]" | cut -d' ' -f1)"; \
+		NODE_IP="$$(cat $(APPS_DIR)/$(APP)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$((HOST_NUMBER - 1))].value[0]" | cut -d' ' -f1)"; \
 		ssh admin@$$NODE_IP "sudo cat /etc/kubernetes/admin.conf" | \
 		perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(do { local $$/; <STDIN> }))' | \
 		jq ".clusters[0].cluster.server = \"https://$$NODE_IP:6443\"" | \

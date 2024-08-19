@@ -7,7 +7,7 @@ variable "namespace" {
 }
 
 variable "chart_version" {
-  default = "102.0.2+up40.1.2"
+  default = "103.1.1+up45.31.1"
 }
 
 variable "endpoint" {

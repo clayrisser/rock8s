@@ -4,6 +4,12 @@ fi
 if [ "$PROXMOX_NODES" = "" ]; then
     PROXMOX_NODES="$(sudo pvesh get /nodes --output-format json | jq -r '[.[].node] | sort | tojson')"
 fi
+if [ "$CEPHFS_PROVISIONER_MONITORS" = "" ]; then
+    CEPHFS_PROVISIONER_MONITORS="$(sudo ceph mon dump 2>/dev/null | grep "mon\." | cut -d',' -f2 | sed 's|/0].*||g' | sed 's|^v[0-9]:||g'  | tr '\n' ',' | sed 's/,$//')"
+fi
+if [ "$CEPHFS_PROVISIONER_SECRET" = "" ]; then
+    CEPHFS_PROVISIONER_SECRET="$(sudo ceph auth get-key client.$CEPHFS_PROVISIONER_ADMIN_ID)"
+fi
 
 export TF_VAR_app_dir="$APPS_DIR/$APP"
 export TF_VAR_clone="$CLONE"
@@ -40,6 +46,9 @@ export TF_VAR_worker_node_count="$WORKER_NODE_COUNT"
 export TF_VAR_worker_node_data_disk_size="$WORKER_NODE_DATA_DISK_SIZE"
 export TF_VAR_worker_node_data_disk_storage="$WORKER_NODE_DATA_DISK_STORAGE"
 export TF_VAR_worker_vcpus="$WORKER_VCPUS"
+export TF_VAR_cephfs_provisioner_monitors="$CEPHFS_PROVISIONER_MONITORS"
+export TF_VAR_cephfs_provisioner_admin_id="$CEPHFS_PROVISIONER_ADMIN_ID"
+export TF_VAR_cephfs_provisioner_secret="$CEPHFS_PROVISIONER_SECRET"
 
 export TF_VAR_email="$EMAIL"
 export TF_VAR_ingress_nginx="$INGRESS_NGINX"
