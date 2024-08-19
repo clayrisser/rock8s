@@ -6,7 +6,7 @@ module "k8s_control_plane_nodes" {
   ipv6                = true
   memory              = var.control_plane_memory
   network_bridge      = var.internal_network_bridge
-  nodes               = var.proxmox_nodes
+  nodes               = var.single_control_plane ? [var.proxmox_nodes[0]] : var.proxmox_nodes
   os_disk_size        = var.control_plane_disk_size
   os_disk_storage     = var.os_disk_storage
   prefix              = "${var.prefix}-${var.iteration}-control-plane"
