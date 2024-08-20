@@ -1,10 +1,27 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
+.PHONY: kubespray
+kubespray: \
+	kubespray/prepare \
+	kubespray/apply \
+	kubespray/install \
+	kubespray/login
+.PHONY: kubespray/%
+kubespray/%:
+	@$(call make,kubespray) $*
+
+.PHONY: cluster
+cluster: cluster/apply
 .PHONY: cluster/%
 cluster/%:
 	@$(call make,cluster) $*
 
-.PHONY: kubespray/%
-kubespray/%:
-	@$(call make,kubespray) $*
+.PHONY: create
+create: kubespray cluster
+
+.PHONY: reset
+reset: kubespray/reset
+
+.PHONY: destroy
+destroy: kubespray/destroy

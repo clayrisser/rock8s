@@ -1,6 +1,8 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
+CLOC ?= cloc
+
 .PHONY: network/%
 network/%:
 	@sh $(PROJECT_ROOT)/scripts/network/$*.sh
@@ -10,9 +12,7 @@ setup:
 	@sh $(PROJECT_ROOT)/scripts/setup.sh
 
 .PHONY: kubernetes
-kubernetes:
-	@sh $(PROJECT_ROOT)/scripts/kubernetes.sh
-
+kubernetes: kubernetes/create
 .PHONY: kubernetes/%
 kubernetes/%:
 	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
@@ -42,3 +42,7 @@ powerdns/%:
 .PHONY: mailcow/%
 mailcow/%:
 	@$(call make,mailcow) $*
+
+.PHONY: count
+count:
+	@$(CLOC) $(shell ($(GIT) ls-files && ($(GIT) lfs ls-files | $(CUT) -d' ' -f3)) | $(SORT) | $(UNIQ) -u)
