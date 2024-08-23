@@ -20,26 +20,18 @@ csiConfig:
 nodeplugin:
   httpMetrics:
     containerPort: 8082
+provisioner:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+topology:
+  domainLabels:
+    - topology.kubernetes.io/zone
 storageClass:
   create: true
-  name: csi-cephfs-sc
-  annotations: {}
   clusterID: ${var.cluster_id}
-  fsName: myfs
-  pool: ""
-  fuseMountOptions: ""
-  kernelMountOptions: ""
-  mounter: ""
-  volumeNamePrefix: ""
-  provisionerSecret: csi-cephfs-secret
-  provisionerSecretNamespace: ""
-  controllerExpandSecret: csi-cephfs-secret
-  controllerExpandSecretNamespace: ""
-  nodeStageSecret: csi-cephfs-secret
-  nodeStageSecretNamespace: ""
-  reclaimPolicy: Delete
-  allowVolumeExpansion: true
-  mountOptions: []
+  fsName: ${var.fs_name}
 EOF
   ]
 }
@@ -66,37 +58,20 @@ csiConfig:
 nodeplugin:
   httpMetrics:
     containerPort: 8083
+provisioner:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+topology:
+  domainLabels:
+    - topology.kubernetes.io/zone
 storageClass:
   create: true
-  name: csi-rbd-sc
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
   clusterID: ${var.cluster_id}
-  dataPool: ""
-  pool: replicapool
-  imageFeatures: "layering"
-  mounter: ""
-  cephLogDir: ""
-  cephLogStrategy: ""
-  volumeNamePrefix: ""
-  encrypted: ""
-  encryptionKMSID: ""
-  topologyConstrainedPools: []
-  mapOptions: ""
-  unmapOptions: ""
-  stripeUnit: ""
-  stripeCount: ""
-  objectSize: ""
-  provisionerSecret: csi-rbd-secret
-  provisionerSecretNamespace: ""
-  controllerExpandSecret: csi-rbd-secret
-  controllerExpandSecretNamespace: ""
-  nodeStageSecret: csi-rbd-secret
-  nodeStageSecretNamespace: ""
-  fstype: ext4
-  reclaimPolicy: Delete
-  allowVolumeExpansion: true
-  mountOptions: []
+  annotations:
+    storageclass.kubernetes.io/is-default-class: 'true'
+  pool: ${var.pool}
 EOF
   ]
 }

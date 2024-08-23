@@ -173,3 +173,11 @@ variable "ceph_admin_key" {
 variable "ceph_cluster_id" {
   default = ""
 }
+
+variable "ceph_rbd_pool" {
+  default = "rbd"
+}
+
+variable "ceph_fs_name" {
+  default = "cephfs"
+}

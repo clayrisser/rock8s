@@ -25,3 +25,11 @@ variable "admin_key" {
 variable "cluster_id" {
   default = ""
 }
+
+variable "pool" {
+  default = "rbd"
+}
+
+variable "fs_name" {
+  default = "cephfs"
+}

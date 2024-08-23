@@ -16,8 +16,9 @@ module "rancher-monitoring" {
   retention_resolution_5m = "8766h" # 1 year
   retention_size          = "1GiB"
   depends_on = [
+    module.ceph,
     module.rancher,
     module.rancher-logging,
-    module.tempo
+    module.tempo,
   ]
 }
