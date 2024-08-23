@@ -20,8 +20,6 @@ cluster/%:
 .PHONY: create
 create: kubespray cluster
 
-.PHONY: reset
-reset: kubespray/reset
-
-.PHONY: destroy
-destroy: kubespray/destroy
+.PHONY: %
+%:
+	@$(call make) kubespray/$@

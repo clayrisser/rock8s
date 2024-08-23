@@ -42,11 +42,12 @@ $(ACTION)/apply:
 
 ACTIONS += install~apply
 $(ACTION)/install:
+
 	@cd $(APPS_DIR)/$(APP)/kubespray && \
-		$(ANSIBLE_PLAYBOOK) \
+		 $(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
 			-u admin --become --become-user=root \
-			cluster.yml
+			cluster.yml 
 	@$(call done,$@)
 
 .PHONY: login
