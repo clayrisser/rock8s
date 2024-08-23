@@ -61,40 +61,40 @@ local_volume_provisioner_enabled: false
 # CSI Volume Snapshot Controller deployment, set this to true if your CSI is able to manage snapshots
 # currently, setting cinder_csi_enabled=true would automatically enable the snapshot controller
 # Longhorn is an extenal CSI that would also require setting this to true but it is not included in kubespray
-# csi_snapshot_controller_enabled: false
+csi_snapshot_controller_enabled: true
 # csi snapshot namespace
-# snapshot_controller_namespace: kube-system
+snapshot_controller_namespace: kube-system
 
 # CephFS provisioner deployment
-cephfs_provisioner_enabled: true
-cephfs_provisioner_namespace: "cephfs-provisioner"
-cephfs_provisioner_cluster: ceph
-cephfs_provisioner_monitors: "${cephfs_provisioner_monitors}"
-cephfs_provisioner_admin_id: "${cephfs_provisioner_admin_id}"
-cephfs_provisioner_secret: "${cephfs_provisioner_secret}"
-cephfs_provisioner_storage_class: cephfs
-cephfs_provisioner_reclaim_policy: Delete
-cephfs_provisioner_claim_root: /volumes
-cephfs_provisioner_deterministic_names: true
+# cephfs_provisioner_enabled: true
+# cephfs_provisioner_namespace: "cephfs-provisioner"
+# cephfs_provisioner_cluster: ceph
+# cephfs_provisioner_monitors: "${ceph_provisioner_monitors}"
+# cephfs_provisioner_admin_id: "${ceph_provisioner_admin_id}"
+# cephfs_provisioner_secret: "${ceph_provisioner_secret}"
+# cephfs_provisioner_storage_class: cephfs
+# cephfs_provisioner_reclaim_policy: Delete
+# cephfs_provisioner_claim_root: /volumes
+# cephfs_provisioner_deterministic_names: true
 
 # RBD provisioner deployment
-rbd_provisioner_enabled: true
-rbd_provisioner_namespace: rbd-provisioner
-rbd_provisioner_replicas: 2
-rbd_provisioner_monitors: "${cephfs_provisioner_monitors}"
-rbd_provisioner_pool: kube
-rbd_provisioner_admin_id: "${cephfs_provisioner_admin_id}"
+# rbd_provisioner_enabled: true
+# rbd_provisioner_namespace: rbd-provisioner
+# rbd_provisioner_replicas: 2
+# rbd_provisioner_monitors: "${ceph_provisioner_monitors}"
+# rbd_provisioner_pool: kube
+# rbd_provisioner_admin_id: "${ceph_provisioner_admin_id}"
 # rbd_provisioner_secret_name: ceph-secret-admin
-rbd_provisioner_secret: "${cephfs_provisioner_secret}"
-rbd_provisioner_user_id: kube
+# rbd_provisioner_secret: "${ceph_provisioner_secret}"
+# rbd_provisioner_user_id: kube
 # rbd_provisioner_user_secret_name: ceph-secret-user
-rbd_provisioner_user_secret: ceph-key-user
-rbd_provisioner_user_secret_namespace: rbd-provisioner
-rbd_provisioner_fs_type: ext4
-rbd_provisioner_image_format: "2"
-rbd_provisioner_image_features: layering
-rbd_provisioner_storage_class: rbd
-rbd_provisioner_reclaim_policy: Delete
+# rbd_provisioner_user_secret: ceph-key-user
+# rbd_provisioner_user_secret_namespace: rbd-provisioner
+# rbd_provisioner_fs_type: ext4
+# rbd_provisioner_image_format: "2"
+# rbd_provisioner_image_features: layering
+# rbd_provisioner_storage_class: rbd
+# rbd_provisioner_reclaim_policy: Delete
 
 # Nginx ingress controller deployment
 ingress_nginx_enabled: false
