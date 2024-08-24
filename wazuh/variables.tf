@@ -54,15 +54,7 @@ variable "cpu" {
 }
 
 variable "os_disk_storage" {
-  default = "rbd"
-}
-
-variable "worker_node_data_disk_storage" {
-  default = "rbd"
-}
-
-variable "worker_node_data_disk_size" {
-  default = 10
+  default = "local-zfs"
 }
 
 variable "clone" {
@@ -74,7 +66,7 @@ variable "vcpus" {
 }
 
 variable "memory" {
-  default = 1536
+  default = 4096
 }
 
 variable "disk_size" {
