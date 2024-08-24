@@ -57,14 +57,6 @@ variable "os_disk_storage" {
   default = "rbd"
 }
 
-variable "worker_node_data_disk_storage" {
-  default = "rbd"
-}
-
-variable "worker_node_data_disk_size" {
-  default = 10
-}
-
 variable "clone" {
   default = "template-debian-12-docker"
 }
