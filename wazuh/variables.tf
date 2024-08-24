@@ -66,7 +66,7 @@ variable "worker_node_data_disk_size" {
 }
 
 variable "clone" {
-  default = "template-debian-12-docker"
+  default = "template-debian-12"
 }
 
 variable "vcpus" {
@@ -79,8 +79,4 @@ variable "memory" {
 
 variable "disk_size" {
   default = 20
-}
-
-variable "mail_hostname" {
-  type = string
 }

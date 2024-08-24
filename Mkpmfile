@@ -31,17 +31,25 @@ images/%:
 ceph/%:
 	@$(call make,ceph) $*
 
-.PHONY: pfsense/%
+.PHONY: pfsense pfsense/%
+pfsense: pfsense/apply
 pfsense/%:
 	@$(call make,pfsense) $*
 
-.PHONY: powerdns/%
+.PHONY: powerdns powerdns/%
+powerdns: powerdns/install
 powerdns/%:
 	@$(call make,powerdns) $*
 
-.PHONY: mailcow/%
+.PHONY: mailcow mailcow/%
+mailcow: mailcow/apply
 mailcow/%:
 	@$(call make,mailcow) $*
+
+.PHONY: wazuh wazuh/%
+wazuh: wazuh/apply
+wazuh/%:
+	@$(call make,wazuh) $*
 
 .PHONY: count
 count:
