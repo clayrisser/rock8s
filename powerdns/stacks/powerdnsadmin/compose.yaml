@@ -1,0 +1,13 @@
+services:
+  powerdnsadmin:
+    image: docker.io/powerdnsadmin/pda-legacy:latest
+    network_mode: host
+    environment:
+      BIND_ADDRESS: "0.0.0.0:9191"
+      PORT: 9191
+      SECRET_KEY: "${POWERDNS_SECRET}"
+    volumes:
+      - pdns-data:/data
+
+volumes:
+  pdns-data: {}
