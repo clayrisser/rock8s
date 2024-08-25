@@ -59,23 +59,22 @@ rm post-install.sh
 Power off the the proxmox system and then reboot the recovery system. Make sure to wait for the
 proxmox system to fully power off.
 
-### VII. Setup
+### VII. Create Proxmox and Ceph Cluster with CephFS
+
+Details on how to create the proxmox cluster and ceph cluster are beyond the scope of these docs.
+Make sure that a cephfs filesystem called `cephfs` is created.
+
+You can learn more about how to setup a proxmox and ceph cluster at the following links.
+
+https://www.virtualizationhowto.com/2024/01/cephfs-configuration-in-proxmox-step-by-step
+https://rdr-it.io/en/proxmox-configure-a-cluster-with-ceph-storage
+
+### VIII. Setup
 
 SSH into the proxmox system as admin and run the following setup script.
 
 ```sh
 make -sC ~/yaps setup
-```
-
-### VIII. Deploy Kubernetes
-
-SSH into the proxmox system as admin and run the following setup script.
-
-```sh
-$(curl --version >/dev/null 2>/dev/null && echo curl -fL || echo wget --content-on-error -O-) \
-    https://gitlab.com/bitspur/rock8s/yaps/-/raw/main/scripts/deploy_kubernetes.sh > deploy_kubernetes.sh
-sh deploy_kubernetes.sh
-rm deploy_kubernetes.sh
 ```
 
 ## Debian Install
@@ -112,7 +111,17 @@ rm post-install.sh
 Power off the the proxmox system and then reboot the recovery system. Make sure to wait for the
 proxmox system to fully power off.
 
-### V. Setup
+### V. Create Proxmox and Ceph Cluster
+
+Details on how to create the proxmox cluster and ceph cluster are beyond the scope of these docs.
+Make sure that a cephfs filesystem called `cephfs` is created.
+
+You can learn more about how to setup a proxmox and ceph cluster at the following links.
+
+https://www.virtualizationhowto.com/2024/01/cephfs-configuration-in-proxmox-step-by-step
+https://rdr-it.io/en/proxmox-configure-a-cluster-with-ceph-storage
+
+### VI. Setup
 
 SSH into the proxmox system as admin and run the following setup script.
 
@@ -120,17 +129,14 @@ SSH into the proxmox system as admin and run the following setup script.
 make -sC ~/yaps setup
 ```
 
-### VI. Deploy Kubernetes
 
-SSH into the proxmox system as admin and run the following setup script.
+## Additional Applications
 
-```sh
-make -sC ~/yaps kubernetes/apply
-```
+After setting up proxmox, the following applications are highly recommended.
 
-## PFSense Install
+### PFSense
 
-### Setup
+#### Setup
 
 1. Install pfsense from the iso
 2. Set the WAN to `vtnet1` and the LAN to `vtnet0`
@@ -138,7 +144,7 @@ make -sC ~/yaps kubernetes/apply
 4. Disable the firewall `pfctl -d`
 5. Go to the WAN gateway ip and login with user `admin` and password `pfsense`
 
-### Network Topology
+#### Network Topology
 
 | description        | ipv4                        | ipv6           |
 | ------------------ | --------------------------- | -------------- |
@@ -150,6 +156,24 @@ make -sC ~/yaps kubernetes/apply
 | LAN metallb ranges | `172.20.10.1-172.20.99.254` |                |
 | SYNC primary       | `172.22.0.1`                |                |
 | SYNC secondary     | `172.22.0.2`                |                |
+
+### Powerdns
+
+```sh
+make powerdns
+```
+
+### Radosgw
+
+```sh
+make radosgw
+```
+
+### Kubernetes
+
+```sh
+make kubernetes
+```
 
 ## Reference
 
