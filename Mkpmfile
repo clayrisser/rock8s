@@ -37,7 +37,7 @@ pfsense/%:
 	@$(call make,pfsense) $*
 
 .PHONY: powerdns powerdns/%
-powerdns: powerdns/install
+powerdns: powerdns/apply
 powerdns/%:
 	@$(call make,powerdns) $*
 
