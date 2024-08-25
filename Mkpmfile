@@ -18,11 +18,6 @@ kubernetes/%:
 	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*
 
-.PHONY: traefik/%
-traefik/%:
-	@$(MKDIR) -p $(HOME)/shared/apps/traefik
-	@$(call make,traefik) $*
-
 .PHONY: images/%
 images/%:
 	@$(call make,images) $*
