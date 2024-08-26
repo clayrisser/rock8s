@@ -25,6 +25,7 @@ build: init
 		if [ "$$VMID" != "" ]; then \
 			sudo qm set $$VMID --ciuser admin && \
 			sudo qm set $$VMID --sshkey "$(HOME)/.ssh/id_rsa.pub" && \
-			sudo qm set $$VMID --ipconfig0 "ip=dhcp,ip6=auto"; \
+			sudo qm set $$VMID --ipconfig0 "ip=dhcp,ip6=auto" && \
+			sudo qm set $$VMID --protection 1; \
 		fi; done && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
