@@ -85,13 +85,11 @@ sudo apt-get install -y \
     docker-ce-cli \
     docker-compose-plugin
 EOF
-      ,
-      "sudo /sbin/usermod -aG docker admin"
     ]
   }
   provisioner "file" {
     destination = "/etc/cloud/cloud.cfg"
-    source      = "http/cloud.cfg"
+    source      = "docker/cloud.cfg"
   }
   provisioner "file" {
     destination = "/etc/cloud/cloud.cfg.d/99-pve.cfg"

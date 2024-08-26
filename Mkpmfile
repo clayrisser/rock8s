@@ -11,14 +11,14 @@ network/%:
 setup:
 	@sh $(PROJECT_ROOT)/scripts/setup.sh
 
-.PHONY: kubernetes
+.PHONY: kubernetes kubernetes/%
 kubernetes: kubernetes/create
-.PHONY: kubernetes/%
 kubernetes/%:
 	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*
 
-.PHONY: images/%
+.PHONY: images images/%
+images: images/build
 images/%:
 	@$(call make,images) $*
 
