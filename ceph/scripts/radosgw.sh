@@ -71,6 +71,74 @@ if sudo radosgw-admin user info --uid=s3 > /dev/null 2>&1; then
 else
     sudo radosgw-admin user create --uid=s3 --display-name="S3" --email="s3@$_DOMAIN"
 fi
+if ! which s3cmd >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y s3cmd
+fi
+cat > /home/admin/.s3cfg <<EOF
+[default]
+access_key = $(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].access_key')
+secret_key = $(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].secret_key')
+host_base = 127.0.0.1:7480
+host_bucket = 127.0.0.1:7480/%(bucket)
+check_ssl_certificate = True
+check_ssl_hostname = True
+connection_max_age = 5
+connection_pooling = True
+default_mime_type = binary/octet-stream
+delay_updates = False
+delete_after = False
+delete_after_fetch = False
+delete_removed = False
+dry_run = False
+enable_multipart = True
+encoding = UTF-8
+encrypt = False
+follow_symlinks = False
+force = False
+get_continue = False
+guess_mime_type = True
+human_readable_sizes = False
+invalidate_default_index_on_cf = False
+invalidate_default_index_root_on_cf = True
+invalidate_on_cf = False
+limit = -1
+limitrate = 0
+list_allow_unordered = False
+list_md5 = False
+long_listing = False
+max_delete = -1
+multipart_chunk_size_mb = 15
+multipart_copy_chunk_size_mb = 1024
+multipart_max_chunks = 10000
+preserve_attrs = True
+progress_meter = True
+proxy_port = 0
+public_url_use_https = False
+put_continue = False
+recursive = False
+recv_chunk = 65536
+reduced_redundancy = False
+requester_pays = False
+restore_days = 1
+restore_priority = Standard
+send_chunk = 65536
+server_side_encryption = False
+signature_v2 = False
+signurl_use_https = False
+skip_existing = False
+socket_timeout = 300
+stats = False
+stop_on_error = False
+throttle_max = 100
+urlencoding_mode = normal
+use_http_expect = False
+use_https = False
+use_mime_magic = True
+verbosity = WARNING
+website_index = index.html
+EOF
+sudo chmod 600 /home/admin/.s3cfg
 sudo ceph osd pool application enable .rgw.root rgw || true
 sudo ceph osd pool application enable default.rgw.control rgw || true
 sudo ceph osd pool application enable default.rgw.data.root rgw || true
