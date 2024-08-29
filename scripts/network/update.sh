@@ -194,14 +194,14 @@ for EXTRA_SUBNET in $_EXTRA_SUBNETS; do
     _INTERFACE="vmbr$(echo $_VLAN_ID | sed 's|^40||')"
     cat <<EOF | $SUDO tee -a /etc/network/interfaces >/dev/null
 
-auto $UPLINK_DEVICE.$_VLAN_ID
-iface $UPLINK_DEVICE.$_VLAN_ID inet manual
+auto vlan$_VLAN_ID
+iface vlan$_VLAN_ID inet manual
+    vlan-raw-device $UPLINK_DEVICE
 
 auto $_INTERFACE
 iface $_INTERFACE inet static
     address         $(echo $EXTRA_SUBNET | sed "s|^\(.*\)\.\([0-9]\)*\/\([0-9]*\)$|\1.$((HOST_NUMBER + 10))/\3|g")
-    bridge-ports    $UPLINK_DEVICE.$_VLAN_ID
-    vlan-raw-device $UPLINK_DEVICE
+    bridge-ports    vlan$_VLAN_ID
     bridge-stp      off
     bridge-fd       0
     mtu             $VSWITCH_MTU
