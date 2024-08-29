@@ -19,10 +19,10 @@ locals {
   )
   kubespray_addons_yml = templatefile(
     "${path.module}/artifacts/addons.yml", {
-      ip_range                            = var.ip_range
-      cephfs_provisioner_monitors         = var.cephfs_provisioner_monitors
-      cephfs_provisioner_admin_id         = var.cephfs_provisioner_admin_id
-      cephfs_provisioner_secret           = var.cephfs_provisioner_secret
+      ip_range                  = var.ip_range
+      ceph_provisioner_monitors = var.ceph_provisioner_monitors
+      ceph_provisioner_admin_id = var.ceph_provisioner_admin_id
+      ceph_provisioner_secret   = var.ceph_provisioner_secret
     }
   )
   kubespray_k8s_net_calico_yml = templatefile(

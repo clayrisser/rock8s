@@ -153,3 +153,31 @@ variable "rancher_token" {
 variable "rancher_hostname" {
   default = ""
 }
+
+variable "ceph" {
+  default = true
+}
+
+variable "ceph_monitors" {
+  default = ""
+}
+
+variable "ceph_admin_id" {
+  default = ""
+}
+
+variable "ceph_admin_key" {
+  default = ""
+}
+
+variable "ceph_cluster_id" {
+  default = ""
+}
+
+variable "ceph_rbd_pool" {
+  default = "rbd"
+}
+
+variable "ceph_fs_name" {
+  default = "cephfs"
+}

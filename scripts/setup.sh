@@ -23,6 +23,7 @@ if ! [ -d "/mnt/pve/cephfs" ]; then
     exit 1
 fi
 sudo true
+sudo ceph fs subvolumegroup create cephfs csi
 export DEBIAN_FRONTEND=noninteractive
 wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ceph.gpg >/dev/null
 sudo apt-add-repository -y "deb https://download.ceph.com/debian-reef/ $(lsb_release -cs) main"

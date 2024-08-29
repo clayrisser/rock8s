@@ -54,11 +54,11 @@ variable "cpu" {
 }
 
 variable "os_disk_storage" {
-  default = "rbd"
+  default = "local-zfs"
 }
 
 variable "clone" {
-  default = "template-debian-12-docker"
+  default = "template-debian-12"
 }
 
 variable "vcpus" {
@@ -66,13 +66,9 @@ variable "vcpus" {
 }
 
 variable "memory" {
-  default = 1536
+  default = 4096
 }
 
 variable "disk_size" {
   default = 20
-}
-
-variable "mail_hostname" {
-  type = string
 }
