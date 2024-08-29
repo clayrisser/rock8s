@@ -5,8 +5,9 @@ module "cluster-issuer" {
   issuers = {
     letsencrypt = true
     selfsigned  = true
-    route53 = {
-      region = var.region
+    pdns = {
+      api_url = var.pdns_api_url
+      api_key = var.pdns_api_key
     }
   }
   depends_on = [

@@ -7,8 +7,8 @@ module "nodes-minio-gw" {
   memory              = var.memory
   network_bridge      = var.network_bridge
   nodes               = var.proxmox_nodes
-  os_disk_size        = var.disk_size
-  os_disk_storage     = var.os_disk_storage
+  disk_size           = var.disk_size
+  disk_storage        = var.disk_storage
   prefix              = "minio-gw"
   protection          = true
   sockets             = var.sockets

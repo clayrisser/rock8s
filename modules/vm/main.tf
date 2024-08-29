@@ -35,18 +35,18 @@ resource "proxmox_vm_qemu" "vm" {
     scsi {
       scsi0 {
         disk {
-          storage  = var.os_disk_storage
-          size     = "${var.os_disk_size}G"
+          storage  = var.disk_storage
+          size     = "${var.disk_size}G"
           iothread = true
-          discard = true
-          cache   = "writethrough"
+          discard  = true
+          cache    = "writethrough"
         }
       }
     }
     ide {
       ide0 {
         cloudinit {
-          storage = var.os_disk_storage
+          storage = var.disk_storage
         }
       }
       ide2 {

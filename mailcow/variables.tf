@@ -53,7 +53,7 @@ variable "cpu" {
   default = "host"
 }
 
-variable "os_disk_storage" {
+variable "disk_storage" {
   default = "rbd"
 }
 

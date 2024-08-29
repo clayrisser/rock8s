@@ -10,7 +10,7 @@ module "rancher-monitoring" {
   enabled                 = var.rancher_monitoring
   create_namespace        = false
   namespace               = try(kubernetes_namespace.rancher_monitoring[0].metadata[0].name, "")
-  endpoint                = "s3.${var.region}.amazonaws.com"
+  endpoint                = "s3.us-east-1.amazonaws.com"
   retention               = "168h"  # 7 days
   retention_resolution_1h = "720h"  # 30 days
   retention_resolution_5m = "8766h" # 1 year

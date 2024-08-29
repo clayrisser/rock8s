@@ -1,25 +1,9 @@
-variable "public_api_ports" {
-  default = "22,443"
-}
-
-variable "public_nodes_ports" {
-  default = "22,80,443,30000-32768"
-}
-
-variable "region" {
-  default = "us-east-2"
-}
-
 variable "cluster_prefix" {
   default = "kops"
 }
 
 variable "iteration" {
   default = 0
-}
-
-variable "gitlab_hostname" {
-  default = "gitlab.com"
 }
 
 variable "rancher_admin_password" {
@@ -37,10 +21,6 @@ variable "api_strategy" {
     error_message = "Allowed values for entrypoint_strategy are \"DNS\" or \"LB\"."
   }
 }
-
-# variable "dns_zone" {
-#   type = string
-# }
 
 variable "rancher" {
   default = false
@@ -130,18 +110,6 @@ variable "ingress_ports" {
   default = "80,443"
 }
 
-# variable "gitlab_username" {
-#   type = string
-# }
-
-# variable "gitlab_token" {
-#   type = string
-# }
-
-# variable "gitlab_project_id" {
-#   type = string
-# }
-
 variable "email" {
   type = string
 }
@@ -190,6 +158,22 @@ variable "pdns_api_key" {
   default = ""
 }
 
-variable "pdns_api_port" {
-  default = 8081
+variable "cluster_entrypoint" {
+  default = ""
+}
+
+variable "gitlab_hostname" {
+  default = "gitlab.com"
+}
+
+variable "gitlab_username" {
+  default = ""
+}
+
+variable "gitlab_token" {
+  default = ""
+}
+
+variable "gitlab_repo" {
+  default = ""
 }

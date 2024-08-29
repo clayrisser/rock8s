@@ -43,19 +43,19 @@ variable "vcpus" {
 }
 
 variable "cpu" {
-  type        = string
-  default     = "kvm64"
+  type    = string
+  default = "kvm64"
 }
 
 variable "memory" {
   default = 2048
 }
 
-variable "os_disk_size" {
+variable "disk_size" {
   default = 20
 }
 
-variable "os_disk_storage" {
+variable "disk_storage" {
   default = "rbd"
 }
 

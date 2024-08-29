@@ -53,7 +53,7 @@ variable "cpu" {
   default = "host"
 }
 
-variable "os_disk_storage" {
+variable "disk_storage" {
   default = "rbd"
 }
 
@@ -82,7 +82,7 @@ variable "node_count" {
 }
 
 variable "nameservers" {
-  type        = string
+  type = string
   validation {
     condition     = length(var.nameservers) > 0
     error_message = "must not be empty"

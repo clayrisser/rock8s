@@ -55,10 +55,6 @@ variable "cpu" {
   default = "kvm64"
 }
 
-variable "os_disk_storage" {
-  default = "rbd"
-}
-
 variable "worker_node_data_disk_storage" {
   default = "rbd"
 }
@@ -87,6 +83,10 @@ variable "control_plane_disk_size" {
   default = 20
 }
 
+variable "control_plane_disk_storage" {
+  default = "rbd"
+}
+
 variable "worker_node_count" {
   default = 2
 }
@@ -101,6 +101,10 @@ variable "worker_memory" {
 
 variable "worker_disk_size" {
   default = 20
+}
+
+variable "worker_disk_storage" {
+  default = "rbd"
 }
 
 variable "kube_version" {

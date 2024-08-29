@@ -46,19 +46,19 @@ provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(
 aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
       region = var.dns_providers.route53.region
       credentials = {
-        secretKey = lookup(var.dns_providers.route53, "secretKey", null)
-        accessKey = lookup(var.dns_providers.route53, "accessKey", null)
+        secretKey = lookup(var.dns_providers.route53, "secret_key", null)
+        accessKey = lookup(var.dns_providers.route53, "access_key", null)
       }
       }) : "{}"}
 cloudflare: ${lookup(var.dns_providers, "cloudflare", null) != null ? jsonencode({
-      apiKey  = var.dns_providers.cloudflare.apiKey
+      apiKey  = var.dns_providers.cloudflare.api_key
       email   = var.dns_providers.cloudflare.email
       proxied = false
       }) : "{}"}
 pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
-      apiUrl  = var.dns_providers.pdns.apiUrl
-      apiPort = var.dns_providers.pdns.apiPort
-      apiKey  = var.dns_providers.pdns.apiKey
+      apiUrl  = regex("^(https?://[^:]+)(?::\\d+)?", var.dns_providers.pdns.api_url)[0]
+      apiPort = try(regex(":(\\d+)$", var.dns_providers.pdns.api_url)[0], startswith(lower(var.dns_providers.pdns.api_url), "https") ? 443 : 80)
+      apiKey  = var.dns_providers.pdns.api_key
 }) : "{}"}
 sources:
   - ingress
