@@ -6,7 +6,7 @@ module "tempo" {
   rancher_cluster_id = local.rancher_cluster_id
   rancher_project_id = local.rancher_project_id
   bucket             = ""
-  endpoint           = "s3.${var.region}.amazonaws.com"
+  endpoint           = "s3.us-east-1.amazonaws.com"
   access_key         = ""
   secret_key         = ""
   grafana_repo       = ""

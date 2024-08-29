@@ -33,6 +33,7 @@ variable "issuers" {
     letsencrypt = true
     route53     = null
     selfsigned  = true
+    pdns        = null
   }
 }
 

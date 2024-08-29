@@ -26,7 +26,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: cloudflare
-  namespace: kube-system
+  namespace: ${var.namespace}
 type: Opaque
 stringData:
   cloudflare_api_key: '${lookup(var.issuers, "cloudflare", null) != null ?

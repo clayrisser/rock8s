@@ -3,9 +3,8 @@ module "external-dns" {
   enabled = var.external_dns
   dns_providers = {
     pdns = {
-      apiUrl  = var.pdns_api_url
-      apiPort = var.pdns_api_port
-      apiKey  = var.pdns_api_key
+      api_url = var.pdns_api_url
+      api_key = var.pdns_api_key
     }
   }
 }

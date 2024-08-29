@@ -7,8 +7,8 @@ module "nodes" {
   network_bridge      = var.network_bridge
   node_count          = var.node_count
   nodes               = var.proxmox_nodes
-  os_disk_size        = var.disk_size
-  os_disk_storage     = var.os_disk_storage
+  disk_size           = var.disk_size
+  disk_storage        = var.disk_storage
   prefix              = "powerdns"
   protection          = var.protection
   sockets             = var.sockets
@@ -22,8 +22,8 @@ locals {
   setup_script_content = templatefile(
     "${path.module}/scripts/setup.sh",
     {
-      nameservers = var.nameservers
-      primary_ip = module.nodes.list[0].ip
+      nameservers   = var.nameservers
+      primary_ip    = module.nodes.list[0].ip
       secondary_ips = join(",", [for i, node in module.nodes.list : node.ip if i != 0])
     }
   )

@@ -7,7 +7,7 @@ module "rancher-logging" {
   rancher_project_id = local.rancher_project_id
   bucket             = ""
   endpoint           = ""
-  region             = var.region
+  region             = "us-east-1"
   access_key         = ""
   secret_key         = ""
   grafana_repo       = try(rancher2_catalog_v2.grafana[0].name, "")
