@@ -4,14 +4,24 @@ fi
 if [ "$PROXMOX_NODES" = "" ]; then
     PROXMOX_NODES="$(sudo pvesh get /nodes --output-format json | jq -r '[.[].node] | sort | tojson')"
 fi
-if [ "$CEPHFS_PROVISIONER_MONITORS" = "" ]; then
-    CEPHFS_PROVISIONER_MONITORS="$(sudo ceph mon dump 2>/dev/null | grep "mon\." | cut -d',' -f2 | sed 's|/0].*||g' | sed 's|^v[0-9]:||g'  | tr '\n' ',' | sed 's/,$//')"
+if [ "$CEPH_MONITORS" = "" ]; then
+    CEPH_MONITORS="$(sudo ceph mon dump 2>/dev/null | grep "mon\." | cut -d',' -f2 | sed 's|/0].*||g' | sed 's|^v[0-9]:||g' | jq -Rsc 'split("\n")[:-1]')"
 fi
-if [ "$CEPHFS_PROVISIONER_SECRET" = "" ]; then
-    CEPHFS_PROVISIONER_SECRET="$(sudo ceph auth get-key client.$CEPHFS_PROVISIONER_ADMIN_ID)"
+if [ "$CEPH_CLUSTER_ID" = "" ]; then
+    CEPH_CLUSTER_ID="$(sudo ceph mon dump 2>/dev/null | grep "fsid" | sed -e 's/.*fsid \(.*\)/\1/')"
+fi
+if [ "$CEPH_ADMIN_KEY" = "" ]; then
+    CEPH_ADMIN_KEY="$(sudo ceph auth get-key client.$CEPH_ADMIN_ID)"
 fi
 
 export TF_VAR_app_dir="$APPS_DIR/$APP"
+export TF_VAR_ceph="$CEPH"
+export TF_VAR_ceph_admin_id="$CEPH_ADMIN_ID"
+export TF_VAR_ceph_admin_key="$CEPH_ADMIN_KEY"
+export TF_VAR_ceph_cluster_id="$CEPH_CLUSTER_ID"
+export TF_VAR_ceph_fs_name="$CEPH_FS_NAME"
+export TF_VAR_ceph_monitors="$CEPH_MONITORS"
+export TF_VAR_ceph_rbd_pool="$CEPH_RBD_POOL"
 export TF_VAR_clone="$CLONE"
 export TF_VAR_cluster_domain="$CLUSTER_DOMAIN"
 export TF_VAR_control_plane_disk_size="$CONTROL_PLANE_DISK_SIZE"
@@ -46,9 +56,6 @@ export TF_VAR_worker_node_count="$WORKER_NODE_COUNT"
 export TF_VAR_worker_node_data_disk_size="$WORKER_NODE_DATA_DISK_SIZE"
 export TF_VAR_worker_node_data_disk_storage="$WORKER_NODE_DATA_DISK_STORAGE"
 export TF_VAR_worker_vcpus="$WORKER_VCPUS"
-export TF_VAR_cephfs_provisioner_monitors="$CEPHFS_PROVISIONER_MONITORS"
-export TF_VAR_cephfs_provisioner_admin_id="$CEPHFS_PROVISIONER_ADMIN_ID"
-export TF_VAR_cephfs_provisioner_secret="$CEPHFS_PROVISIONER_SECRET"
 
 export TF_VAR_email="$EMAIL"
 export TF_VAR_ingress_nginx="$INGRESS_NGINX"

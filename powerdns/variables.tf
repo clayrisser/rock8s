@@ -66,13 +66,25 @@ variable "vcpus" {
 }
 
 variable "memory" {
-  default = 1536
+  default = 2048
 }
 
 variable "disk_size" {
   default = 20
 }
 
-variable "mail_hostname" {
-  type = string
+variable "protection" {
+  default = false
+}
+
+variable "node_count" {
+  default = 2
+}
+
+variable "nameservers" {
+  type        = string
+  validation {
+    condition     = length(var.nameservers) > 0
+    error_message = "must not be empty"
+  }
 }

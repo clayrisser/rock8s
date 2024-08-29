@@ -1,4 +1,3 @@
-!.env.example
 *.iso
 *.tfplan
 *.tfstate
@@ -11,3 +10,4 @@
 Icon*
 cloud.tf
 tmp
+!.env.example
