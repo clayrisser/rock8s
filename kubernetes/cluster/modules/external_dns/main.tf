@@ -42,27 +42,28 @@ EOF
     ] : []),
     [
       <<EOF
-provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : "cloudflare"}
-aws:
-  region: ${lookup(var.dns_providers, "route53", null) != null ?
-      var.dns_providers.route53.region : ""}
-  credentials:
-    secretKey: ${lookup(var.dns_providers, "route53", null) != null ?
-      (lookup(var.dns_providers.route53, "secretKey", null) != null ?
-      var.dns_providers.route53.secretKey : "") : ""}
-    accessKey: ${lookup(var.dns_providers, "route53", null) != null ?
-      (lookup(var.dns_providers.route53, "accessKey", null) != null ?
-      var.dns_providers.route53.accessKey : "") : ""}
-cloudflare:
-  apiKey: ${lookup(var.dns_providers, "cloudflare", null) != null ?
-      var.dns_providers.cloudflare.apiKey : ""}
-  email: ${lookup(var.dns_providers, "cloudflare", null) != null ?
-    var.dns_providers.cloudflare.email : ""}
-  proxied: false
+provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : "pdns"}
+aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
+      region = var.dns_providers.route53.region
+      credentials = {
+        secretKey = lookup(var.dns_providers.route53, "secretKey", null)
+        accessKey = lookup(var.dns_providers.route53, "accessKey", null)
+      }
+      }) : "{}"}
+cloudflare: ${lookup(var.dns_providers, "cloudflare", null) != null ? jsonencode({
+      apiKey  = var.dns_providers.cloudflare.apiKey
+      email   = var.dns_providers.cloudflare.email
+      proxied = false
+      }) : "{}"}
+pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
+      apiUrl  = var.dns_providers.pdns.apiUrl
+      apiPort = var.dns_providers.pdns.apiPort
+      apiKey  = var.dns_providers.pdns.apiKey
+}) : "{}"}
 sources:
   - ingress
 EOF
-    ,
-    var.values
+,
+var.values
 ])
 }

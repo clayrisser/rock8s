@@ -181,3 +181,15 @@ variable "ceph_rbd_pool" {
 variable "ceph_fs_name" {
   default = "cephfs"
 }
+
+variable "pdns_api_url" {
+  default = ""
+}
+
+variable "pdns_api_key" {
+  default = ""
+}
+
+variable "pdns_api_port" {
+  default = 8081
+}

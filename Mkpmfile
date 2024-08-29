@@ -13,7 +13,7 @@ setup:
 
 .PHONY: kubernetes kubernetes/%
 kubernetes: kubernetes/create
-kubernetes/%:
+kubernetes/%: force
 	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*
 
@@ -49,3 +49,6 @@ wazuh/%:
 .PHONY: count
 count:
 	@$(CLOC) $(shell ($(GIT) ls-files && ($(GIT) lfs ls-files | $(CUT) -d' ' -f3)) | $(SORT) | $(UNIQ) -u)
+
+.PHONY: force
+force: ;

@@ -11,9 +11,8 @@ kubespray: \
 kubespray/%:
 	@$(call make,kubespray) $*
 
-.PHONY: cluster
+.PHONY: cluster cluster/%
 cluster: cluster/apply
-.PHONY: cluster/%
 cluster/%:
 	@$(call make,cluster) $*
 
