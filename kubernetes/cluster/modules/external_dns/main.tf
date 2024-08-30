@@ -33,11 +33,16 @@ resource "helm_release" "this" {
   namespace        = var.namespace
   create_namespace = true
   values = concat(
-    (local.route53_role_arn != "" ? [
-      <<EOF
+    (local.route53_role_arn != "" ? [<<EOF
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: ${local.route53_role_arn}
+EOF
+    ] : []),
+    (var.target != "" ? [<<EOF
+service:
+  annotations:
+    external-dns.alpha.kubernetes.io/target: ${var.target}
 EOF
     ] : []),
     [
