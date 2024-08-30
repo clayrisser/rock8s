@@ -41,3 +41,7 @@ variable "dns_providers" {
     aws        = null
   }
 }
+
+variable "target" {
+  default = ""
+}
