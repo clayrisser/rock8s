@@ -22,11 +22,11 @@ OLM_VERSION ?= 0.25.0
 ARTIFACTS += $(MODULES)/olm/artifacts/olm/crds.yaml
 $(MODULES)/olm/artifacts/olm/crds.yaml:
 	@mkdir -p $(@D)
-	@$(DOWNLOAD) \
-		https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v$(OLM_VERSION)/crds.yaml > $@
+	@$(DOWNLOAD) $@ \
+		https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v$(OLM_VERSION)/crds.yaml
 
 ARTIFACTS += $(MODULES)/olm/artifacts/olm/olm.yaml
 $(MODULES)/olm/artifacts/olm/olm.yaml:
 	@mkdir -p $(@D)
-	@$(DOWNLOAD) \
-		https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${OLM_VERSION}/olm.yaml > $@
+	@$(DOWNLOAD) $@ \
+		https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${OLM_VERSION}/olm.yaml
