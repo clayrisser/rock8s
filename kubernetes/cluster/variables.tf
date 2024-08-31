@@ -70,10 +70,6 @@ variable "longhorn" {
   default = false
 }
 
-variable "autoscaler" {
-  default = false
-}
-
 variable "reloader" {
   default = false
 }

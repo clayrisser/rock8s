@@ -19,6 +19,36 @@
  * limitations under the License.
  */
 
+resource "kubernetes_cluster_role" "cert_manager_webhook_pdns_configmap_reader" {
+  count = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  metadata {
+    name = "cert-manager-webhook-pdns-configmap-reader"
+  }
+  rule {
+    api_groups     = [""]
+    resources      = ["configmaps"]
+    verbs          = ["get", "list", "watch"]
+    resource_names = ["extension-apiserver-authentication"]
+  }
+}
+
+resource "kubernetes_cluster_role_binding" "cert_manager_webhook_pdns_configmap_reader" {
+  count = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  metadata {
+    name = "cert-manager-webhook-pdns-configmap-reader"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cert-manager-webhook-pdns-configmap-reader"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "cert-manager-webhook-pdns"
+    namespace = "cert-manager"
+  }
+}
+
 resource "helm_release" "cert-manager-webhook-pdns" {
   count            = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
   name             = "cert-manager-webhook-pdns"
@@ -31,6 +61,10 @@ image:
   repository: docker.io/zachomedia/cert-manager-webhook-pdns
   tag: latest
 EOF
+  ]
+  depends_on = [
+    kubernetes_cluster_role.cert_manager_webhook_pdns_configmap_reader,
+    kubernetes_cluster_role_binding.cert_manager_webhook_pdns_configmap_reader
   ]
 }
 
