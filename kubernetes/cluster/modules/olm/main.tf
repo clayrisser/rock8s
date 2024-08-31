@@ -49,14 +49,14 @@ resource "kubectl_manifest" "olm" {
   yaml_body         = var.enabled ? element(data.kubectl_path_documents.olm[0].documents, count.index) : null
   force_conflicts   = true
   server_side_apply = true
-  depends_on = [
-    kubectl_manifest.olm-crds
-  ]
   lifecycle {
     ignore_changes = [
       yaml_body
     ]
   }
+  depends_on = [
+    kubectl_manifest.olm-crds
+  ]
 }
 
 resource "kubectl_manifest" "auth-delegator" {

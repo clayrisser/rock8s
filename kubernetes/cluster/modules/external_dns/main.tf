@@ -32,21 +32,19 @@ resource "helm_release" "this" {
   chart            = "external-dns"
   namespace        = var.namespace
   create_namespace = true
-  values = concat(
-    (local.route53_role_arn != "" ? [<<EOF
+  values = [
+    local.route53_role_arn != "" ? <<EOF
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: ${local.route53_role_arn}
 EOF
-    ] : []),
-    (var.target != "" ? [<<EOF
-service:
-  annotations:
-    external-dns.alpha.kubernetes.io/target: ${var.target}
+    : "",
+    var.targets != "" ? <<EOF
+extraArgs:
+  default-targets: ${var.targets}
 EOF
-    ] : []),
-    [
-      <<EOF
+    : "",
+    <<EOF
 provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : "pdns"}
 aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
       region = var.dns_providers.route53.region
@@ -68,7 +66,7 @@ pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
 sources:
   - ingress
 EOF
-,
-var.values
-])
+    ,
+    var.values
+  ]
 }

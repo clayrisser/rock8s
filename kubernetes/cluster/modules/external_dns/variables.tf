@@ -42,6 +42,6 @@ variable "dns_providers" {
   }
 }
 
-variable "target" {
+variable "targets" {
   default = ""
 }
