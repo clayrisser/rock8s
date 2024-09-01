@@ -146,3 +146,7 @@ variable "ceph_provisioner_secret" {
 variable "cluster_entrypoint" {
   type = string
 }
+
+variable "protection" {
+  default = false
+}
