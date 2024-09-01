@@ -29,7 +29,7 @@ resource "proxmox_vm_qemu" "vm" {
   qemu_os          = "l26"
   scsihw           = "virtio-scsi-single"
   sockets          = var.sockets
-  tags             = var.tags
+  tags             = replace(lower(var.tags), "/[^a-z0-9_;]/", "_")
   vcpus            = var.vcpus
   disks {
     scsi {

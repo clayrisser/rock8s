@@ -127,10 +127,6 @@ variable "ip_range" {
   type = string
 }
 
-variable "public_ips" {
-  default = ""
-}
-
 variable "single_control_plane" {
   default = false
 }
@@ -145,4 +141,8 @@ variable "ceph_provisioner_admin_id" {
 
 variable "ceph_provisioner_secret" {
   default = ""
+}
+
+variable "cluster_entrypoint" {
+  type = string
 }

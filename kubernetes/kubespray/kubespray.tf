@@ -14,7 +14,7 @@ locals {
     "${path.module}/artifacts/k8s-cluster.yml",
     {
       kube_version                        = var.kube_version
-      supplementary_addresses_in_ssl_keys = length(split(",", var.public_ips)) > 1 ? jsonencode(compact(split(",", var.public_ips))) : "[]"
+      supplementary_addresses_in_ssl_keys = jsonencode([var.cluster_entrypoint])
     }
   )
   kubespray_addons_yml = templatefile(
