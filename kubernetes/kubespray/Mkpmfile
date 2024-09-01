@@ -68,7 +68,7 @@ reset:
 			reset.yml
 
 .PHONY: destroy
-destroy:
+destroy: init
 	@. $(HOME)/yaps/scripts/proxmox-auth.sh && \
 		. $(CURDIR)/../variables.sh && \
 		$(TERRAFORM) destroy && \
