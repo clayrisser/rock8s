@@ -129,7 +129,6 @@ SSH into the proxmox system as admin and run the following setup script.
 make -sC ~/yaps setup
 ```
 
-
 ## Additional Applications
 
 After setting up proxmox, the following applications are highly recommended.
@@ -289,4 +288,14 @@ sudo journalctl -xef
 
 ```sh
 sudo dmesg
+```
+
+### Ceph
+
+List orphaned volumes
+
+_WARNING: this only finds orphaned volumes against a single kubernetes cluster_
+
+```sh
+(kubectl get pv -o json | jq -r '.items[].spec.csi.volumeAttributes.imageName' && (sudo rbd ls | grep -E "^csi")) | sort | uniq -u
 ```
