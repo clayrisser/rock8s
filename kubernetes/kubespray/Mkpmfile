@@ -36,7 +36,8 @@ apply: init
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
 .PHONY: install
-install: apply
+install: apply +install
++install:
 	@cd $(APPS_DIR)/$(APP)/kubespray && \
 		 $(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
