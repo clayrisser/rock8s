@@ -5,6 +5,7 @@ set -e
 export _TMP_PATH="${XDG_RUNTIME_DIR:-$([ -d "/run/user/$(id -u $USER)" ] && echo "/run/user/$(id -u $USER)" || echo ${TMP:-${TEMP:-/tmp}})}/cody/wizard/$$"
 export _STATE_PATH="${XDG_STATE_HOME:-$HOME/.local/state}/dotstow"
 export RETRIES=-1
+export DEBUG=0
 
 main() {
     if [ "$_COMMAND" = "backup" ]; then
@@ -15,10 +16,16 @@ main() {
 }
 
 _backup() {
+    if [ "$DEBUG" -eq 1 ]; then
+        set -x
+    fi
     exec sh "./scripts/backup.sh" $@
 }
 
 _restore() {
+    if [ "$DEBUG" -eq 1 ]; then
+        set -x
+    fi
     exec sh "./scripts/restore.sh" $@
 }
 
@@ -35,11 +42,16 @@ while test $# -gt 0; do
             echo " "
             echo "options:"
             echo "    -h, --help      show brief help"
+            echo "    -d, --debug     enable debug mode"
             echo " "
             echo "commands:"
             echo "    b, backup       backup data"
             echo "    r, restore      restore data"
             exit 0
+        ;;
+        -d|--debug)
+            export DEBUG=1
+            shift
         ;;
         -*)
             echo "invalid option $1" 1>&2

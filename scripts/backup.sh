@@ -2,6 +2,13 @@
 
 set -e
 
+YAML2JSON=$(which yq 2>&1 >/dev/null && \
+    ((yq --version | grep -q "github.com/mikefarah/yq") && echo 'yq -o json' || echo yq) || \
+    echo 'ruby -ryaml -rjson -e "puts JSON.pretty_generate(YAML.load(ARGF))"')
+JSON2YAML=$(which yq 2>&1 >/dev/null && \
+    ((yq --version | grep -q "github.com/mikefarah/yq") && echo 'yq eval -P' || echo 'yq -y') || \
+    echo 'ruby -ryaml -rjson -e "puts YAML.dump(JSON.parse(STDIN.read))"')
+
 main() {
     _prepare
     if [ "$_ALL" = "1" ]; then
@@ -55,13 +62,14 @@ _backup_namespace() {
 
 _backup_secrets() {
     mkdir -p $BACKUP_DIR/secrets
-    for i in $(kubectl get secrets -n $NAMESPACE | tail -n +2 | sed 's| \+|:|g'); do
-        n=$(echo $i | cut -d':' -f1)
-        t=$(echo $i | cut -d':' -f2)
+    kubectl get secrets -n "$NAMESPACE" | tail -n +2 | while IFS= read -r line; do
+        n=$(echo "$line" | awk '{print $1}')
+        t=$(echo "$line" | awk '{print $2}')
         if [ "$t" != "helm.sh/release.v1" ]; then
             echo "backing up secret $NAMESPACE/$n"
-            kubectl get -o yaml secret $n -n $NAMESPACE | \
-                yq ' .data |= map_values(@base64d) | .stringData = .data | del(.data, .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.selfLink, .metadata.uid, .status)' \
+            kubectl get -o json secret $n -n $NAMESPACE | \
+                jq '.data |= map_values(@base64d) | .stringData = .data | del(.data, .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.selfLink, .metadata.uid, .status)' | \
+                $JSON2YAML \
                 > $BACKUP_DIR/secrets/$n.yaml
         fi
     done

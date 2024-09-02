@@ -3,15 +3,12 @@
 set -e
 
 DEPLOYMENT_NAME="postgres"
-POD_NAME=$(kubectl get pods -l deployment-name=$DEPLOYMENT_NAME -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pods -l deployment-name=$DEPLOYMENT_NAME -n "$NAMESPACE" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
 if [ -z "$POD_NAME" ]; then
-    echo "no pod found" >&2
+    echo "no running pod found for deployment $DEPLOYMENT_NAME" >&2
     exit 1
 fi
-if [ -z "$POD_NAME" ]; then
-    echo "no pod found for deployment $DEPLOYMENT_NAME" >&2
-    exit 1
-fi
+
 SECRET_RESOURCE="
 $(kubectl get secret postgres-postgres-secret -o json -n "$NAMESPACE")
 "
@@ -38,8 +35,12 @@ fi
 for d in $DATABASES; do
     echo backing up database $d
     kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-        "PGPASSWORD='$POSTGRES_PASSWORD' pg_dump --no-owner --no-acl -p '$POSTGRES_PORT' -U '$POSTGRES_USER' $d > /tmp/$d.sql"
-    kubectl cp --retries="$RETRIES" "$NAMESPACE/$POD_NAME:/tmp/$d.sql" "$BACKUP_DIR/$d.sql"
+        "rm -rf /pgdata/_backup_tmp >/dev/null 2>&1 || true"
     kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-        "rm /tmp/$d.sql"
+        "mkdir -p /pgdata/_backup_tmp"
+    kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
+        "PGPASSWORD='$POSTGRES_PASSWORD' pg_dump --no-owner --no-acl -p '$POSTGRES_PORT' -U '$POSTGRES_USER' $d > /pgdata/_backup_tmp/$d.sql"
+    kubectl cp --retries="$RETRIES" "$NAMESPACE/$POD_NAME:/pgdata/_backup_tmp/$d.sql" "$BACKUP_DIR/$d.sql"
+    kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c \
+        "rm -rf /pgdata/_backup_tmp"
 done
