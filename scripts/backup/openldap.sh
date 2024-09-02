@@ -40,9 +40,9 @@ if [ -z "$STATEFULSET_NAME" ]; then
     echo "no statefulset found" >&2
     exit 1
 fi
-POD_NAME=$(kubectl get pods -l app.kubernetes.io/instance=$STATEFULSET_NAME -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pods -l app.kubernetes.io/instance=$STATEFULSET_NAME -n "$NAMESPACE" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
 if [ -z "$POD_NAME" ]; then
-    echo "no pod found" >&2
+    echo "no running pod found for statefulset $STATEFULSET_NAME" >&2
     exit 1
 fi
 SECRET_RESOURCE="

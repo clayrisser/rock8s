@@ -2,17 +2,22 @@
 
 set -e
 
-DEPLOYMENT_NAME=$(kubectl get deployment -n "$NAMESPACE" | grep release-worker-d | cut -d' ' -f1)
-if [ -z "$DEPLOYMENT_NAME" ]; then
+DEPLOYMENT_NAMES=$(kubectl get deployment -n "$NAMESPACE" | grep -E 'release-worker-(d|l|s)' | cut -d' ' -f1)
+if [ -z "$DEPLOYMENT_NAMES" ]; then
     echo "no deployment found" >&2
     exit 1
 fi
-
-POD_NAME=$(kubectl get pods -l app.kubernetes.io/instance=$DEPLOYMENT_NAME -n "$NAMESPACE" -o json | \
-    jq -r '.items[] | select(.status.containerStatuses? and all(.status.containerStatuses[].ready?; . == true)) | .metadata.name' | \
-    head -n 1)
-if [ -z "$POD_NAME" ]; then
-    echo "no pod found for deployment $DEPLOYMENT_NAME" >&2
+DEPLOYMENT_NAME=""
+POD_NAME=""
+for _deployment_name in $DEPLOYMENT_NAMES; do
+    DEPLOYMENT_NAME="$_deployment_name"
+    POD_NAME="$(kubectl get pods -l app.kubernetes.io/instance=$DEPLOYMENT_NAME -n "$NAMESPACE" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+    if [ "$POD_NAME" != "" ]; then
+        break
+    fi
+done
+if [ "$POD_NAME" = "" ]; then
+    echo "no running pod found for deployments $DEPLOYMENT_NAMES" >&2
     exit 1
 fi
 
