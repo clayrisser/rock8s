@@ -173,3 +173,19 @@ variable "gitlab_token" {
 variable "gitlab_repo" {
   default = ""
 }
+
+variable "s3" {
+  default = false
+}
+
+variable "s3_endpoint" {
+  default = ""
+}
+
+variable "s3_access_key" {
+  default = ""
+} 
+
+variable "s3_secret_key" {
+  default = ""
+}
