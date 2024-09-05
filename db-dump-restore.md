@@ -93,6 +93,18 @@ export POSTGRES_PORT="5432"
 cat dump.sql | kubectl exec -i "$POD_NAME" -- sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -h localhost -p '$POSTGRES_PORT' -U '$POSTGRES_USER' -d '$POSTGRES_DATABASE'"
 ```
 
+#### Local
+
+```sh
+export POSTGRES_PASSWORD=""
+export POSTGRES_DATABASE=""
+export POSTGRES_USER="postgres"
+export POSTGRES_HOST="localhost"
+export POSTGRES_PORT="5432"
+
+PGPASSWORD="$POSTGRES_PASSWORD" psql -f dump.sql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DATABASE"
+```
+
 ## MongoDB
 
 ### Dump All Databases
@@ -197,6 +209,18 @@ cat dump.sql | kubectl exec -i "$POD_NAME" -- sh -c \
 ```
 
 ### Restore Database
+
+#### Local
+
+```sh
+export MYSQL_PWD=""
+export MYSQL_DATABASE=""
+export MYSQL_USER="root"
+export MYSQL_HOST="localhost"
+export MYSQL_PORT="3306"
+
+mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" "$MYSQL_DATABASE" < dump.sql
+```
 
 #### Kubernetes
 
