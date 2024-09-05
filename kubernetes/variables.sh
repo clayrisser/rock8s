@@ -23,6 +23,14 @@ if [ "$PDNS_API_URL" = "" ]; then
         PDNS_API_KEY="$(ssh admin@$POWERDNS_IP 'sudo cat /var/lib/powerdns/secret')"
     fi
 fi
+if [ "$S3_ENDPOINT" != "" ]; then
+    if [ "$S3_ACCESS_KEY" = "" ]; then
+        S3_ACCESS_KEY="$(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].access_key')"
+    fi
+    if [ "$S3_SECRET_KEY" = "" ]; then
+        S3_SECRET_KEY="$(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].secret_key')"
+    fi
+fi
 
 export TF_VAR_app_dir="$APPS_DIR/$APP"
 export TF_VAR_argocd="$ARGOCD"
@@ -80,6 +88,10 @@ export TF_VAR_rancher_logging="$RANCHER_LOGGING"
 export TF_VAR_rancher_monitoring="$RANCHER_MONITORING"
 export TF_VAR_rancher_token="$RANCHER_TOKEN"
 export TF_VAR_reloader="$RELOADER"
+export TF_VAR_s3="$S3"
+export TF_VAR_s3_access_key="$S3_ACCESS_KEY"
+export TF_VAR_s3_endpoint="$S3_ENDPOINT"
+export TF_VAR_s3_secret_key="$S3_SECRET_KEY"
 export TF_VAR_single_control_plane="$SINGLE_CONTROL_PLANE"
 export TF_VAR_sockets="$SOCKETS"
 export TF_VAR_ssh_public_keys_b64="$SSH_PUBLIC_KEYS_B64"
