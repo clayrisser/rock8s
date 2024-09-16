@@ -184,8 +184,12 @@ variable "s3_endpoint" {
 
 variable "s3_access_key" {
   default = ""
-} 
+}
 
 variable "s3_secret_key" {
   default = ""
+}
+
+variable "vault" {
+  default = false
 }
