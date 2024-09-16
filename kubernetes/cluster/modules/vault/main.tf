@@ -9,6 +9,7 @@ EOF
 }
 
 resource "kubernetes_config_map" "init" {
+  count = var.enabled ? 1 : 0
   metadata {
     name      = "init"
     namespace = var.namespace
@@ -51,6 +52,7 @@ EOF
 }
 
 resource "helm_release" "vault" {
+  count = var.enabled ? 1 : 0
   repository       = "https://helm.releases.hashicorp.com"
   chart            = "vault"
   name             = "vault"
