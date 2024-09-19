@@ -31,14 +31,6 @@ variable "chart_version" {
   default = "0.93.0"
 }
 
-variable "rancher_cluster_id" {
-  type = string
-}
-
-variable "rancher_project_id" {
-  type = string
-}
-
 variable "region" {
   type = string
 }
@@ -48,10 +40,6 @@ variable "prefix" {
 }
 
 variable "bucket" {
-  type = string
-}
-
-variable "rock8s_repo" {
   type = string
 }
 
@@ -66,4 +54,8 @@ variable "secret_key" {
 
 variable "endpoint" {
   type = string
+}
+
+variable "values" {
+  default = ""
 }
