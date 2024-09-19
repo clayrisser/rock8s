@@ -19,22 +19,28 @@
  * limitations under the License.
  */
 
-resource "rancher2_namespace" "this" {
-  count      = var.enabled ? 1 : 0
-  name       = var.namespace
-  project_id = var.rancher_project_id
+resource "helm_release" "operator" {
+  count            = var.enabled ? 1 : 0
+  name             = "kanister-operator"
+  chart            = "kanister-operator"
+  version          = var.chart_version
+  repository       = "https://charts.rock8s.com"
+  namespace        = var.namespace
+  create_namespace = true
+  wait             = true
 }
 
-resource "rancher2_app_v2" "this" {
-  count         = var.enabled ? 1 : 0
-  chart_name    = "kanister"
-  chart_version = var.chart_version
-  cluster_id    = var.rancher_cluster_id
-  name          = "kanister"
-  namespace     = rancher2_namespace.this[0].name
-  repo_name     = var.rock8s_repo
-  wait          = true
-  values        = <<EOF
+resource "helm_release" "this" {
+  count            = var.enabled ? 1 : 0
+  name             = "kanister"
+  chart            = "kanister"
+  version          = var.chart_version
+  repository       = "https://charts.rock8s.com"
+  namespace        = var.namespace
+  create_namespace = true
+  wait             = true
+  values = [
+    <<EOF
 config:
   s3:
     accessKey: '${var.access_key}'
@@ -44,4 +50,10 @@ config:
     region: '${var.region}'
     secretKey: '${var.secret_key}'
 EOF
+    ,
+    var.values
+  ]
+  depends_on = [
+    helm_release.operator
+  ]
 }

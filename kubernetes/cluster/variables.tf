@@ -11,7 +11,7 @@ variable "rancher_admin_password" {
 }
 
 variable "kanister_bucket" {
-  default = ""
+  type = string
 }
 
 variable "api_strategy" {
