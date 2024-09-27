@@ -43,6 +43,8 @@ global:
 configs:
   params:
     server.disable.auth: true
+dex:
+  enabled: false
 EOF
     ,
     var.values
