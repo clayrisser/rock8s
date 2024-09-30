@@ -35,7 +35,7 @@ apply: init
 		$(TERRAFORM) apply -auto-approve && \
 		sh $(HOME)/yaps/scripts/proxmox-deauth.sh
 
-.PHONY: install
+.PHONY: install +install
 install: apply +install
 +install:
 	@cd $(APPS_DIR)/$(APP)/kubespray && \
@@ -43,6 +43,25 @@ install: apply +install
 			-i inventory/sample/inventory.ini \
 			-u admin --become --become-user=root \
 			cluster.yml
+
+.PHONY: remove/%
+remove/%:
+	@cd $(APPS_DIR)/$(APP)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) \
+			-i inventory/sample/inventory.ini \
+			-e node=$* \
+			-e reset_nodes=false \
+			-e allow_ungraceful_removal=true \
+			-u admin --become --become-user=root \
+			remove-node.yml
+
+.PHONY: scale
+scale:
+	@cd $(APPS_DIR)/$(APP)/kubespray && \
+		$(ANSIBLE_PLAYBOOK) \
+			-i inventory/sample/inventory.ini \
+			-u admin --become --become-user=root \
+			scale.yml
 
 .PHONY: login
 login:
