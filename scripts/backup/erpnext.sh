@@ -36,7 +36,7 @@ for s in $SITES; do
         "rm -rf \"$_SITE_PATH/private/backups\""
     _STDOUT="$(kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c "bench --site $s backup --with-files" 2>&1 || true)"
     echo "$_STDOUT"
-    for f in $(echo "$_STDOUT" | grep -E '^((Config)|(Database)|(Public)|(Private)) *: \.\/' | sed 's|^\w\+ *: \.||g' | cut -d' ' -f1); do
+    for f in $(printf "%s\n" "$_STDOUT" | grep '^Config\|^Database\|^Public\|^Private *: \./' | sed 's|^[^ ]* *: \.||g' | cut -d' ' -f1); do
         if echo "$f" | grep -qE '\-site_config_backup\.json$'; then
             _BACKUP_NAME="$(echo "$f" | sed 's|.*\/\([0-9]\+_[0-9]\+-.*\)-site_config_backup\.json$|\1|g')"
         fi
