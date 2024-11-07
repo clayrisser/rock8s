@@ -47,26 +47,26 @@ EOF
     <<EOF
 provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : "pdns"}
 aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
-      region = var.dns_providers.route53.region
-      credentials = {
-        secretKey = lookup(var.dns_providers.route53, "secret_key", null)
-        accessKey = lookup(var.dns_providers.route53, "access_key", null)
-      }
-      }) : "{}"}
+    region = var.dns_providers.route53.region
+    credentials = {
+      secretKey = lookup(var.dns_providers.route53, "secret_key", null)
+      accessKey = lookup(var.dns_providers.route53, "access_key", null)
+    }
+    }) : "{}"}
 cloudflare: ${lookup(var.dns_providers, "cloudflare", null) != null ? jsonencode({
-      apiKey  = var.dns_providers.cloudflare.api_key
-      email   = var.dns_providers.cloudflare.email
-      proxied = false
-      }) : "{}"}
+    apiKey  = var.dns_providers.cloudflare.api_key
+    email   = var.dns_providers.cloudflare.email
+    proxied = false
+    }) : "{}"}
 pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
-      apiUrl  = regex("^(https?://[^:]+)(?::\\d+)?", var.dns_providers.pdns.api_url)[0]
-      apiPort = try(regex(":(\\d+)$", var.dns_providers.pdns.api_url)[0], startswith(lower(var.dns_providers.pdns.api_url), "https") ? 443 : 80)
-      apiKey  = var.dns_providers.pdns.api_key
+    apiUrl  = try(regex("^(https?://[^:]+)(?::\\d+)?", var.dns_providers.pdns.api_url)[0], null)
+    apiPort = try(regex(":(\\d+)$", var.dns_providers.pdns.api_url)[0], startswith(lower(var.dns_providers.pdns.api_url), "https") ? 443 : 80)
+    apiKey  = var.dns_providers.pdns.api_key
 }) : "{}"}
 sources:
   - ingress
 EOF
-    ,
-    var.values
-  ]
+,
+var.values
+]
 }
