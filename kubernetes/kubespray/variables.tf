@@ -150,3 +150,7 @@ variable "cluster_entrypoint" {
 variable "protection" {
   default = false
 }
+
+variable "dualstack" {
+  default = true
+}
