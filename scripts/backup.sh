@@ -35,7 +35,7 @@ _backup_all_namespaces() {
 _backup_namespace() {
     SECRETS="$(kubectl get secrets -n $NAMESPACE 2>/dev/null)"
     DEPLOYMENTS="$(kubectl get deployments -n $NAMESPACE 2>/dev/null)"
-    _backup_app
+    _backup_releases
     _backup_configmaps
     _backup_secrets
     if echo "$SECRETS" | grep -q postgres-postgres-secret; then
@@ -83,11 +83,11 @@ _backup_configmaps() {
     done
 }
 
-_backup_app() {
-    mkdir -p $BACKUP_DIR/apps
-    for n in $(kubectl get apps.catalog.cattle.io -n $NAMESPACE | tail -n +2 | cut -d' ' -f1); do
-        echo "backing up app $NAMESPACE/$n"
-        kubectl get -o yaml apps.catalog.cattle.io $n -n $NAMESPACE > $BACKUP_DIR/apps/$n.yaml
+_backup_releases() {
+    mkdir -p $BACKUP_DIR/releases
+    for n in $(kubectl get helmreleases.helm.toolkit.fluxcd.io -n $NAMESPACE | tail -n +2 | cut -d' ' -f1); do
+        echo "backing up helm release $NAMESPACE/$n"
+        kubectl get -o yaml helmreleases.helm.toolkit.fluxcd.io $n -n $NAMESPACE > $BACKUP_DIR/releases/$n.yaml
     done
 }
 
