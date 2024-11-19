@@ -46,6 +46,11 @@ wazuh: wazuh/apply
 wazuh/%:
 	@$(call make,wazuh) $*
 
+.PHONY: cron cron/%
+cron: cron/activate
+cron/%:
+	@$(call make,cron) $*
+
 .PHONY: count
 count:
 	@$(CLOC) $(shell ($(GIT) ls-files && ($(GIT) lfs ls-files | $(CUT) -d' ' -f3)) | $(SORT) | $(UNIQ) -u)
