@@ -29,11 +29,12 @@ variable "namespace" {
 
 variable "issuers" {
   default = {
-    cloudflare  = null
+    cloudflare  = true
     letsencrypt = true
     route53     = null
     selfsigned  = true
     pdns        = null
+    hetzner     = null
   }
 }
 

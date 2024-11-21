@@ -62,7 +62,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: selfsigned-ca
-  namespace: kube-system
+  namespace: cert-manager 
 type: kubernetes.io/tls
 data:
   tls.crt: ${base64encode(tls_self_signed_cert.selfsigned-ca[0].cert_pem)}

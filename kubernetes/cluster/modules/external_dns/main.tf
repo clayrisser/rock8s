@@ -24,9 +24,23 @@ locals {
   var.dns_providers.route53.roleArn : "") : "")
 }
 
+resource "kubectl_manifest" "hetzner-credentials" {
+  count     = var.enabled && contains(keys(var.dns_providers), "hetzner") ? 1 : 0
+  yaml_body = <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hetzner-credentials
+  namespace: ${var.namespace}
+type: Opaque
+stringData:
+  api-key: ${var.dns_providers.hetzner.api_key}
+EOF
+}
+
 resource "helm_release" "this" {
   count            = var.enabled ? 1 : 0
-  name             = "external-dns"
+  name             = "bitnami"
   version          = var.chart_version
   repository       = "https://charts.bitnami.com/bitnami"
   chart            = "external-dns"
@@ -34,39 +48,97 @@ resource "helm_release" "this" {
   create_namespace = true
   values = [
     local.route53_role_arn != "" ? <<EOF
-serviceAccount:
-  annotations:
-    eks.amazonaws.com/role-arn: ${local.route53_role_arn}
-EOF
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: ${local.route53_role_arn}
+    EOF
     : "",
+
     var.targets != "" ? <<EOF
-extraArgs:
-  default-targets: ${var.targets}
-EOF
+    extraArgs:
+      default-targets: ${var.targets}
+    EOF
     : "",
+
     <<EOF
-provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : "pdns"}
-aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
-      region = var.dns_providers.route53.region
-      credentials = {
-        secretKey = lookup(var.dns_providers.route53, "secret_key", null)
-        accessKey = lookup(var.dns_providers.route53, "access_key", null)
-      }
-      }) : "{}"}
-cloudflare: ${lookup(var.dns_providers, "cloudflare", null) != null ? jsonencode({
-      apiKey  = var.dns_providers.cloudflare.api_key
-      email   = var.dns_providers.cloudflare.email
-      proxied = false
-      }) : "{}"}
-pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
-      apiUrl  = regex("^(https?://[^:]+)(?::\\d+)?", var.dns_providers.pdns.api_url)[0]
-      apiPort = try(regex(":(\\d+)$", var.dns_providers.pdns.api_url)[0], startswith(lower(var.dns_providers.pdns.api_url), "https") ? 443 : 80)
-      apiKey  = var.dns_providers.pdns.api_key
+    provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : lookup(var.dns_providers, "pdns", null) != null ? "pdns" : "webhook"}
+    aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
+    region = var.dns_providers.route53.region
+    credentials = {
+      secretKey = lookup(var.dns_providers.route53, "secret_key", null)
+      accessKey = lookup(var.dns_providers.route53, "access_key", null)
+    }
+    }) : "{}"}
+    cloudflare: ${lookup(var.dns_providers, "cloudflare", null) != null ? jsonencode({
+    apiKey  = var.dns_providers.cloudflare.api_key
+    email   = var.dns_providers.cloudflare.email
+    proxied = false
+    }) : "{}"}
+    pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
+    apiUrl  = regex("^(https?://[^:]+)(?::\\d+)?", var.dns_providers.pdns.api_url)[0]
+    apiPort = try(regex(":(\\d+)$", var.dns_providers.pdns.api_url)[0], startswith(lower(var.dns_providers.pdns.api_url), "https") ? 443 : 80)
+    apiKey  = var.dns_providers.pdns.api_key
 }) : "{}"}
-sources:
-  - ingress
-EOF
-    ,
-    var.values
+    EOF
+,
+lookup(var.dns_providers, "cloudflare", null) != null ? <<EOF
+    extraArgs:
+      txt-prefix: "cloudflare-"
+    sources:
+      - ingress
+    EOF
+: "",
+lookup(var.dns_providers, "hetzner", null) != null ? <<EOF
+    image: ${jsonencode({
+registry   = "registry.k8s.io",
+repository = "external-dns/external-dns",
+tag        = "v0.14.0"
+})}
+    sidecars: ${jsonencode([{
+  name  = "hetzner-webhook",
+  image = "ghcr.io/mconfalonieri/external-dns-hetzner-webhook:v0.6.0",
+  ports = [
+    {
+      containerPort = 8888,
+      name          = "webhook"
+    },
+    {
+      containerPort = 8080,
+      name          = "http"
+    }
+  ],
+  livenessProbe = {
+    httpGet = {
+      path = "/health",
+      port = "http"
+    },
+    initialDelaySeconds = 10,
+    timeoutSeconds      = 5
+  },
+  readinessProbe = {
+    httpGet = {
+      path = "/ready",
+      port = "http"
+    },
+    initialDelaySeconds = 10,
+    timeoutSeconds      = 5
+  },
+  env = [
+    {
+      name = "HETZNER_API_KEY",
+      valueFrom = {
+        secretKeyRef = {
+          name = "hetzner-credentials",
+          key  = "api-key"
+        }
+      }
+    }
   ]
+}])}
+    EOF
+: "",
+
+var.values
+]
 }
+
