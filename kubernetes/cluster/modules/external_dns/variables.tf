@@ -28,7 +28,7 @@ variable "namespace" {
 }
 
 variable "chart_version" {
-  default = "6.26.1"
+  default = "8.4.0"
 }
 
 variable "values" {
@@ -39,6 +39,7 @@ variable "dns_providers" {
   default = {
     cloudflare = null
     aws        = null
+    pdns       = null
   }
 }
 

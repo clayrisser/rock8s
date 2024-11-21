@@ -67,7 +67,7 @@ provider "kubernetes" {
 
 provider "kubectl" {
   # host     = local.cluster_endpoint
-  insecure = true
+  insecure    = true
   config_path = var.kubeconfig
   # exec {
   #   api_version = local.user_exec.api_version

@@ -142,6 +142,10 @@ variable "ceph_rbd_pool" {
   default = "rbd"
 }
 
+variable "hetzner_api_key" {
+  default = ""
+}
+
 variable "ceph_fs_name" {
   default = "cephfs"
 }
@@ -151,6 +155,14 @@ variable "pdns_api_url" {
 }
 
 variable "pdns_api_key" {
+  default = ""
+}
+
+variable "cloudflare_api_key" {
+  default = ""
+}
+
+variable "cloudflare_email" {
   default = ""
 }
 
