@@ -4,23 +4,29 @@ fi
 if [ "$PROXMOX_NODES" = "" ]; then
     PROXMOX_NODES="$(sudo pvesh get /nodes --output-format json | jq -r '[.[].node] | sort | tojson')"
 fi
-if [ "$CEPH_MONITORS" = "" ]; then
-    CEPH_MONITORS="$(sudo ceph mon dump 2>/dev/null | grep "mon\." | cut -d',' -f2 | sed 's|/0].*||g' | sed 's|^v[0-9]:||g' | jq -Rsc 'split("\n")[:-1]')"
-fi
-if [ "$CEPH_CLUSTER_ID" = "" ]; then
-    CEPH_CLUSTER_ID="$(sudo ceph mon dump 2>/dev/null | grep "fsid" | sed -e 's/.*fsid \(.*\)/\1/')"
-fi
-if [ "$CEPH_ADMIN_KEY" = "" ]; then
-    CEPH_ADMIN_KEY="$(sudo ceph auth get-key client.$CEPH_ADMIN_ID)"
+if ! (sudo ceph -s 2>&1 | grep -q "RADOS object not found"); then
+    if [ "$CEPH_MONITORS" = "" ]; then
+        CEPH_MONITORS="$(sudo ceph mon dump 2>/dev/null | grep "mon\." | cut -d',' -f2 | sed 's|/0].*||g' | sed 's|^v[0-9]:||g' | jq -Rsc 'split("\n")[:-1]')"
+    fi
+    if [ "$CEPH_CLUSTER_ID" = "" ]; then
+        CEPH_CLUSTER_ID="$(sudo ceph mon dump 2>/dev/null | grep "fsid" | sed -e 's/.*fsid \(.*\)/\1/')"
+    fi
+    if [ "$CEPH_ADMIN_KEY" = "" ]; then
+        CEPH_ADMIN_KEY="$(sudo ceph auth get-key client.$CEPH_ADMIN_ID)" 
+    fi
 fi
 if [ "$PDNS_API_URL" = "" ]; then
     _POWERDNS_VM_INFO=$(sudo pvesh get /cluster/resources --type vm --output-format json | jq -r '.[] | select(.name == "powerdns-01") | {vmid, node}')
     _POWERDNS_VM_ID=$(echo "$_POWERDNS_VM_INFO" | jq -r '.vmid')
     _POWERDNS_VM_NODE=$(echo "$_POWERDNS_VM_INFO" | jq -r '.node')
-    POWERDNS_IP=$(sudo pvesh get /nodes/$_POWERDNS_VM_NODE/qemu/$_POWERDNS_VM_ID/agent/network-get-interfaces --output-format json | jq -r '.result[] | select(.name == "eth0") | ."ip-addresses"[]? | select(.["ip-address-type"] == "ipv4") | ."ip-address"')
-    PDNS_API_URL="http://$POWERDNS_IP:8081"
-    if [ "$PDNS_API_KEY" = "" ]; then
-        PDNS_API_KEY="$(ssh admin@$POWERDNS_IP 'sudo cat /var/lib/powerdns/secret')"
+    if [ "$_POWERDNS_VM_ID" != "" ] && [ "$_POWERDNS_VM_NODE" != "" ]; then
+        POWERDNS_IP=$(sudo pvesh get /nodes/$_POWERDNS_VM_NODE/qemu/$_POWERDNS_VM_ID/agent/network-get-interfaces --output-format json | jq -r '.result[] | select(.name == "eth0") | ."ip-addresses"[]? | select(.["ip-address-type"] == "ipv4") | ."ip-address"')
+    fi
+    if [ "$POWERDNS_IP" != "" ]; then
+        PDNS_API_URL="http://$POWERDNS_IP:8081"
+        if [ "$PDNS_API_KEY" = "" ]; then
+            PDNS_API_KEY="$(ssh admin@$POWERDNS_IP 'sudo cat /var/lib/powerdns/secret')"
+        fi
     fi
 fi
 if [ "$S3_ENDPOINT" != "" ]; then
@@ -108,3 +114,4 @@ export TF_VAR_worker_vcpus="$WORKER_VCPUS"
 export TF_VAR_hetzner_api_key="$HETZNER_API_KEY"
 export TF_VAR_cloudflare_api_key="$CLOUDFLARE_API_KEY"
 export TF_VAR_cloudflare_email="$CLOUDFLARE_EMAIL"
+export TF_VAR_dualstack="$DUALSTACK"
