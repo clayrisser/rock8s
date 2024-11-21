@@ -14,16 +14,21 @@ if [ ! "$USER" = "admin" ]; then
     echo "this script must be run as admin user" 1>&2
     exit 1
 fi
-if ! sudo pvesh get /cluster/status --output-format json | jq -e '.[0].quorate' >/dev/null; then
+if [ -d /home/admin/shared ] && [ ! -L /home/admin/shared ] && [ -L /home/admin/yaps ]; then
+    _STANDALONE=1
+fi
+if [ "$_STANDALONE" != "1" ] && ! sudo pvesh get /cluster/status --output-format json | jq -e '.[0].quorate' >/dev/null; then
     echo "this script must be run on a proxmox cluster" 1>&2
     exit 1
 fi
-if ! [ -d "/mnt/pve/cephfs" ]; then
+if [ "$_STANDALONE" != "1" ] && ! [ -d "/mnt/pve/cephfs" ]; then
     echo "cephfs filesystem is required" 1>&2
     exit 1
 fi
 sudo true
-sudo ceph fs subvolumegroup create cephfs csi
+if [ "$_STANDALONE" != "1" ]; then
+    sudo ceph fs subvolumegroup create cephfs csi
+fi
 export DEBIAN_FRONTEND=noninteractive
 wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ceph.gpg >/dev/null
 sudo apt-add-repository -y "deb https://download.ceph.com/debian-reef/ $(lsb_release -cs) main"
@@ -67,11 +72,13 @@ mkdir -p "$HOME/.ssh"
 if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -b 4096 -C "$(whoami)@$_DOMAIN" -N "" -f "$HOME/.ssh/id_rsa"
 fi
-sudo rm -rf /mnt/pve/cephfs/shared/tmp 2>/dev/null || true
-sudo mkdir -p /mnt/pve/cephfs/shared/tmp
-sudo chown -R $USER:$USER /mnt/pve/cephfs/shared
-sudo cp "$HOME/.ssh/id_rsa" /mnt/pve/cephfs/shared/tmp
-sudo cp "$HOME/.ssh/id_rsa.pub" /mnt/pve/cephfs/shared/tmp
+if [ "$_STANDALONE" != "1" ]; then
+    sudo rm -rf /mnt/pve/cephfs/shared/tmp 2>/dev/null || true
+    sudo mkdir -p /mnt/pve/cephfs/shared/tmp
+    sudo chown -R $USER:$USER /mnt/pve/cephfs/shared
+    sudo cp "$HOME/.ssh/id_rsa" /mnt/pve/cephfs/shared/tmp
+    sudo cp "$HOME/.ssh/id_rsa.pub" /mnt/pve/cephfs/shared/tmp
+fi
 if [ ! -f "$HOME/.ssh/authorized_keys" ]; then
     touch "$HOME/.ssh/authorized_keys"
     chmod 600 "$HOME/.ssh/authorized_keys"
@@ -79,7 +86,7 @@ fi
 if ! grep -qxF "$(cat "$HOME/.ssh/id_rsa.pub")" "$HOME/.ssh/authorized_keys"; then
     cat "$HOME/.ssh/id_rsa.pub" >> "$HOME/.ssh/authorized_keys"
 fi
-if [ ! -d $HOME/shared ]; then
+if [ "$_STANDALONE" != "1" ] && [ ! -d $HOME/shared ]; then
     ln -s /mnt/pve/cephfs/shared $HOME/shared
 fi
 if [ ! -L "$HOME/yaps" ]; then
@@ -88,61 +95,63 @@ if [ ! -L "$HOME/yaps" ]; then
     ln -s /mnt/pve/cephfs/shared/yaps "$HOME/yaps"
 fi
 (cd "$HOME/yaps" && git pull origin main)
-_NODES=$(sudo pvesh get /nodes --output-format json | jq -r '.[].node' | sort)
-for _NODE in $_NODES; do
-    _NODE_ID=$(sudo corosync-cmapctl | grep -oP "(?<=nodelist.node.)\d+(?=.name \(str\) = $_NODE)")
-    _NODE_IP=$(sudo corosync-cmapctl | grep "nodelist.node.$_NODE_ID.ring0_addr" | awk -F' = ' '{print $2}')
-    if [ "$_NODE_IP" != "" ]; then
-        if ! grep -q "$_NODE_IP" /etc/hosts; then
-            ssh $USER@$_NODE_IP "
-                wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ceph.gpg >/dev/null
-                sudo apt-add-repository -y \"deb https://download.ceph.com/debian-reef/ \$(lsb_release -cs) main\"
-                sudo systemctl mask rpcbind
-                export DEBIAN_FRONTEND=noninteractive
-                curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-                sudo apt-add-repository -y \"deb [arch=amd64] https://apt.releases.hashicorp.com \$(lsb_release -cs) main\"
-                sudo apt-get update
-                sudo apt-get install -y \
-                    packer \
-                    podman \
-                    terraform
-                echo '#!/bin/sh' | sudo tee /usr/local/bin/overlayzfsmount >/dev/null
-                echo 'exec /bin/mount -t overlay overlay \"\$@\"' | sudo tee -a /usr/local/bin/overlayzfsmount >/dev/null
-                sudo chmod +x /usr/local/bin/overlayzfsmount
-                if [ ! -f /etc/containers/storage.conf ]; then
-                    echo '[storage]' | sudo tee /etc/containers/storage.conf >/dev/null
-                    echo 'driver = \"overlay\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
-                    echo 'runroot = \"/run/containers/storage\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
-                    echo 'graphroot = \"/var/lib/containers/storage\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
-                    echo | sudo tee -a /etc/containers/storage.conf >/dev/null
-                    echo '[storage.options]' | sudo tee -a /etc/containers/storage.conf >/dev/null
-                    echo 'mount_program = \"/usr/local/bin/overlayzfsmount\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
-                fi
-                sudo systemctl restart podman*
-                sudo mkdir -p /home/$USER/.ssh
-                sudo chown -R $USER:$USER /home/$USER/.ssh
-                sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa /home/$USER/.ssh/id_rsa
-                sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa.pub /home/$USER/.ssh/id_rsa.pub
-                sudo chown -R $USER:$USER /home/$USER/.ssh
-                sudo chmod 600 /home/$USER/.ssh/id_rsa
-                sudo chmod 644 /home/$USER/.ssh/id_rsa.pub
-                if [ ! -f /home/$USER/.ssh/authorized_keys ]; then
-                    touch /home/$USER/.ssh/authorized_keys
-                    chmod 600 /home/$USER/.ssh/authorized_keys
-                fi
-                if ! grep -qxF \"\$(cat /home/$USER/.ssh/id_rsa.pub)\" /home/$USER/.ssh/authorized_keys; then
-                    sudo cat /home/$USER/.ssh/id_rsa.pub >> /home/$USER/.ssh/authorized_keys
-                fi
-                if [ ! -d /home/$USER/shared ]; then
-                    ln -s /mnt/pve/cephfs/shared /home/$USER/shared
-                fi
-                if [ ! -L "/home/$USER/yaps" ]; then
-                    sudo rm -rf "/home/$USER/yaps"
-                    ln -s /mnt/pve/cephfs/shared/yaps /home/$USER/yaps
-                fi
-            "
+if [ "$_STANDALONE" != "1" ]; then
+    _NODES=$(sudo pvesh get /nodes --output-format json | jq -r '.[].node' | sort)
+    for _NODE in $_NODES; do
+        _NODE_ID=$(sudo corosync-cmapctl | grep -oP "(?<=nodelist.node.)\d+(?=.name \(str\) = $_NODE)")
+        _NODE_IP=$(sudo corosync-cmapctl | grep "nodelist.node.$_NODE_ID.ring0_addr" | awk -F' = ' '{print $2}')
+        if [ "$_NODE_IP" != "" ]; then
+            if ! grep -q "$_NODE_IP" /etc/hosts; then
+                ssh $USER@$_NODE_IP "
+                    wget -qO- https://download.ceph.com/keys/release.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ceph.gpg >/dev/null
+                    sudo apt-add-repository -y \"deb https://download.ceph.com/debian-reef/ \$(lsb_release -cs) main\"
+                    sudo systemctl mask rpcbind
+                    export DEBIAN_FRONTEND=noninteractive
+                    curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+                    sudo apt-add-repository -y \"deb [arch=amd64] https://apt.releases.hashicorp.com \$(lsb_release -cs) main\"
+                    sudo apt-get update
+                    sudo apt-get install -y \
+                        packer \
+                        podman \
+                        terraform
+                    echo '#!/bin/sh' | sudo tee /usr/local/bin/overlayzfsmount >/dev/null
+                    echo 'exec /bin/mount -t overlay overlay \"\$@\"' | sudo tee -a /usr/local/bin/overlayzfsmount >/dev/null
+                    sudo chmod +x /usr/local/bin/overlayzfsmount
+                    if [ ! -f /etc/containers/storage.conf ]; then
+                        echo '[storage]' | sudo tee /etc/containers/storage.conf >/dev/null
+                        echo 'driver = \"overlay\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                        echo 'runroot = \"/run/containers/storage\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                        echo 'graphroot = \"/var/lib/containers/storage\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                        echo | sudo tee -a /etc/containers/storage.conf >/dev/null
+                        echo '[storage.options]' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                        echo 'mount_program = \"/usr/local/bin/overlayzfsmount\"' | sudo tee -a /etc/containers/storage.conf >/dev/null
+                    fi
+                    sudo systemctl restart podman*
+                    sudo mkdir -p /home/$USER/.ssh
+                    sudo chown -R $USER:$USER /home/$USER/.ssh
+                    sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa /home/$USER/.ssh/id_rsa
+                    sudo cp /mnt/pve/cephfs/shared/tmp/id_rsa.pub /home/$USER/.ssh/id_rsa.pub
+                    sudo chown -R $USER:$USER /home/$USER/.ssh
+                    sudo chmod 600 /home/$USER/.ssh/id_rsa
+                    sudo chmod 644 /home/$USER/.ssh/id_rsa.pub
+                    if [ ! -f /home/$USER/.ssh/authorized_keys ]; then
+                        touch /home/$USER/.ssh/authorized_keys
+                        chmod 600 /home/$USER/.ssh/authorized_keys
+                    fi
+                    if ! grep -qxF \"\$(cat /home/$USER/.ssh/id_rsa.pub)\" /home/$USER/.ssh/authorized_keys; then
+                        sudo cat /home/$USER/.ssh/id_rsa.pub >> /home/$USER/.ssh/authorized_keys
+                    fi
+                    if [ ! -d /home/$USER/shared ]; then
+                        ln -s /mnt/pve/cephfs/shared /home/$USER/shared
+                    fi
+                    if [ ! -L "/home/$USER/yaps" ]; then
+                        sudo rm -rf "/home/$USER/yaps"
+                        ln -s /mnt/pve/cephfs/shared/yaps /home/$USER/yaps
+                    fi
+                "
+            fi
         fi
-    fi
-done
-sudo rm -rf /mnt/pve/cephfs/shared/tmp
+    done
+    sudo rm -rf /mnt/pve/cephfs/shared/tmp
+fi
 cd "$HOME"

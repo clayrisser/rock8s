@@ -1,0 +1,36 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+export CRONDIR=/home/admin/cron
+
+.PHONY: sync
+sync:
+	@[ "$$(hostname)" = "pve1" ] || (echo "crontab only supported on pve1" && exit 1)
+	@mkdir -p $(CRONDIR)/crons
+	@mkdir -p $(CRONDIR)/scripts
+	@rsync -a --ignore-existing $(CURDIR)/crons/*.sh $(CRONDIR)/crons/
+	@rsync -a --ignore-existing $(CURDIR)/scripts/*.sh $(CRONDIR)/scripts/
+	@cp $(CURDIR)/crontab $(CRONDIR)/crontab
+
+.PHONY: crons/%
+crons/%: sync
+	@cd $(PROJECT_ROOT) && \
+		CRON_NAME=$$(ls $(CRONDIR)/crons | sed 's| |\n|g' | grep -E "[0-9][0-9]_$*\.sh$$" 2>/dev/null | sed 's|.sh$$||' | head -n1) && \
+		(if [ "$$CRON_NAME" = "" ]; then \
+			echo "$* cron not found" 2>/dev/null && exit 1; \
+		else \
+			echo "running cron $$CRON_NAME..." && \
+			{ sh $(CRONDIR)/crons/$$CRON_NAME.sh || export _FAILED=1; } && \
+			cat /tmp/$$CRON_NAME.log && \
+			[ "$$_FAILED" = "" ] || exit 1; \
+		fi)
+
+.PHONY: activate
+activate: sync
+	@crontab -r 2>/dev/null || true
+	@crontab $(CRONDIR)/crontab
+
+.PHONY: %
+%:
+	@cd $(PROJECT_ROOT) && \
+		sh $(CURDIR)/scripts/$*.sh

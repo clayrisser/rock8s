@@ -14,6 +14,7 @@ locals {
     "${path.module}/artifacts/k8s-cluster.yml",
     {
       kube_version                        = var.kube_version
+      dualstack                           = var.dualstack
       supplementary_addresses_in_ssl_keys = jsonencode([var.cluster_entrypoint])
     }
   )

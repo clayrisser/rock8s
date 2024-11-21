@@ -1,0 +1,10 @@
+* * * * * cd /home/admin/yaps && sh /home/admin/cron/crons/00_minutely.sh
+*/30 * * * * cd /home/admin/yaps && sh /home/admin/cron/crons/01_bi-hourly.sh
+0 * * * * cd /home/admin/yaps && sh /home/admin/cron/crons/02_hourly.sh
+0 */12 * * * cd /home/admin/yaps && sh /home/admin/cron/crons/03_bi-daily.sh
+0 0 * * * cd /home/admin/yaps && sh /home/admin/cron/crons/04_daily.sh
+0 0 * * 0 cd /home/admin/yaps && sh /home/admin/cron/crons/05_weekly.sh
+0 0 1 */2 * cd /home/admin/yaps && sh /home/admin/cron/crons/06_bi-monthly.sh
+0 0 1 * * cd /home/admin/yaps && sh /home/admin/cron/crons/07_monthly.sh
+0 0 1 */6 * cd /home/admin/yaps && sh /home/admin/cron/crons/08_bi-yearly.sh
+0 0 1 1 * cd /home/admin/yaps && sh /home/admin/cron/crons/09_yearly.sh
