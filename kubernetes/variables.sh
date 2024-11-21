@@ -14,6 +14,9 @@ if ! (sudo ceph -s 2>&1 | grep -q "RADOS object not found"); then
     if [ "$CEPH_ADMIN_KEY" = "" ]; then
         CEPH_ADMIN_KEY="$(sudo ceph auth get-key client.$CEPH_ADMIN_ID)" 
     fi
+else
+    CEPH="0"
+    LONGHORN="1"
 fi
 if [ "$PDNS_API_URL" = "" ]; then
     _POWERDNS_VM_INFO=$(sudo pvesh get /cluster/resources --type vm --output-format json | jq -r '.[] | select(.name == "powerdns-01") | {vmid, node}')
@@ -37,6 +40,9 @@ if [ "$S3_ENDPOINT" != "" ]; then
         S3_SECRET_KEY="$(sudo radosgw-admin user info --uid=s3 | jq -r '.keys[0].secret_key')"
     fi
 fi
+if [ "$EMAIL" = "" ] && [ "$CLOUDFLARE_EMAIL" != "" ]; then
+    EMAIL="$CLOUDFLARE_EMAIL"
+fi
 
 export TF_VAR_app_dir="$APPS_DIR/$APP"
 export TF_VAR_argocd="$ARGOCD"
@@ -48,6 +54,8 @@ export TF_VAR_ceph_fs_name="$CEPH_FS_NAME"
 export TF_VAR_ceph_monitors="$CEPH_MONITORS"
 export TF_VAR_ceph_rbd_pool="$CEPH_RBD_POOL"
 export TF_VAR_clone="$CLONE"
+export TF_VAR_cloudflare_api_key="$CLOUDFLARE_API_KEY"
+export TF_VAR_cloudflare_email="$CLOUDFLARE_EMAIL"
 export TF_VAR_cluster_domain="$CLUSTER_DOMAIN"
 export TF_VAR_cluster_entrypoint="$CLUSTER_ENTRYPOINT"
 export TF_VAR_cluster_issuer="$CLUSTER_ISSUER"
@@ -57,6 +65,7 @@ export TF_VAR_control_plane_memory="$CONTROL_PLANE_MEMORY"
 export TF_VAR_control_plane_node_count="$CONTROL_PLANE_NODE_COUNT"
 export TF_VAR_control_plane_vcpus="$CONTROL_PLANE_VCPUS"
 export TF_VAR_cpu="$CPU"
+export TF_VAR_dualstack="$DUALSTACK"
 export TF_VAR_email="$EMAIL"
 export TF_VAR_external_dns="$EXTERNAL_DNS"
 export TF_VAR_flux="$FLUX"
@@ -64,6 +73,7 @@ export TF_VAR_gitlab_hostname="$GITLAB_HOSTNAME"
 export TF_VAR_gitlab_repo="$GITLAB_REPO"
 export TF_VAR_gitlab_token="$GITLAB_TOKEN"
 export TF_VAR_gitlab_username="$GITLAB_USERNAME"
+export TF_VAR_hetzner_api_key="$HETZNER_API_KEY"
 export TF_VAR_ingress_nginx="$INGRESS_NGINX"
 export TF_VAR_ingress_ports="$INGRESS_PORTS"
 export TF_VAR_integration_operator="$INTEGRATION_OPERATOR"
@@ -111,7 +121,3 @@ export TF_VAR_worker_node_count="$WORKER_NODE_COUNT"
 export TF_VAR_worker_node_data_disk_size="$WORKER_NODE_DATA_DISK_SIZE"
 export TF_VAR_worker_node_data_disk_storage="$WORKER_NODE_DATA_DISK_STORAGE"
 export TF_VAR_worker_vcpus="$WORKER_VCPUS"
-export TF_VAR_hetzner_api_key="$HETZNER_API_KEY"
-export TF_VAR_cloudflare_api_key="$CLOUDFLARE_API_KEY"
-export TF_VAR_cloudflare_email="$CLOUDFLARE_EMAIL"
-export TF_VAR_dualstack="$DUALSTACK"

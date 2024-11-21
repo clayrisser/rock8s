@@ -20,7 +20,7 @@
  */
 
 resource "kubernetes_cluster_role" "cert_manager_webhook_pdns_configmap_reader" {
-  count = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  count = (var.enabled && try(var.issuers.pdns.api_url != "" && var.issuers.pdns.api_key != "", false)) ? 1 : 0
   metadata {
     name = "cert-manager-webhook-pdns-configmap-reader"
   }
@@ -33,7 +33,7 @@ resource "kubernetes_cluster_role" "cert_manager_webhook_pdns_configmap_reader" 
 }
 
 resource "kubernetes_cluster_role_binding" "cert_manager_webhook_pdns_configmap_reader" {
-  count = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  count = (var.enabled && try(var.issuers.pdns.api_url != "" && var.issuers.pdns.api_key != "", false)) ? 1 : 0
   metadata {
     name = "cert-manager-webhook-pdns-configmap-reader"
   }
@@ -50,7 +50,7 @@ resource "kubernetes_cluster_role_binding" "cert_manager_webhook_pdns_configmap_
 }
 
 resource "helm_release" "cert-manager-webhook-pdns" {
-  count            = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  count            = (var.enabled && try(var.issuers.pdns.api_url != "" && var.issuers.pdns.api_key != "", false)) ? 1 : 0
   name             = "cert-manager-webhook-pdns"
   repository       = "https://zachomedia.github.io/cert-manager-webhook-pdns"
   chart            = "cert-manager-webhook-pdns"
@@ -69,7 +69,7 @@ EOF
 }
 
 resource "kubectl_manifest" "pdns-secret" {
-  count     = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.pdns.api_url != "" && var.issuers.pdns.api_key != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: v1
 kind: Secret
@@ -78,12 +78,12 @@ metadata:
   namespace: ${var.namespace}
 type: Opaque
 stringData:
-  key: '${lookup(var.issuers, "pdns", null) != null ? var.issuers.pdns.api_key : ""}'
+  key: '${try(var.issuers.pdns.api_key, "")}'
 EOF
 }
 
 resource "kubectl_manifest" "pdns-prod" {
-  count     = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.pdns.api_url != "" && var.issuers.pdns.api_key != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -101,7 +101,7 @@ spec:
             groupName: acme.zacharyseguin.ca
             solverName: pdns
             config:
-              host: ${lookup(var.issuers, "pdns", null) != null ? var.issuers.pdns.api_url : ""}
+              host: ${try(var.issuers.pdns.api_url, "")}
               apiKeySecretRef:
                 name: pdns-api-key
                 key: key
@@ -113,7 +113,7 @@ EOF
 }
 
 resource "kubectl_manifest" "pdns-staging" {
-  count     = (lookup(var.issuers, "pdns", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.pdns.api_url != "" && var.issuers.pdns.api_key != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -131,7 +131,7 @@ spec:
             groupName: acme.zacharyseguin.ca
             solverName: pdns
             config:
-              host: ${lookup(var.issuers, "pdns", null) != null ? var.issuers.pdns.api_url : ""}
+              host: ${try(var.issuers.pdns.api_url, "")}
               apiKeySecretRef:
                 name: pdns-api-key
                 key: key
