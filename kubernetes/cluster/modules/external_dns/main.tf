@@ -18,14 +18,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 locals {
-  route53_role_arn = (lookup(var.dns_providers, "route53", null) != null ?
-    (lookup(var.dns_providers.route53, "roleArn", null) != null ?
-  var.dns_providers.route53.roleArn : "") : "")
+  route53_role_arn = try(var.dns_providers.route53.roleArn, "")
+  provider = try(
+    var.dns_providers.route53 != null ? "aws" :
+    var.dns_providers.cloudflare.api_key != "" && var.dns_providers.cloudflare.email != "" ? "cloudflare" :
+    var.dns_providers.pdns.api_key != "" && var.dns_providers.pdns.api_url != "" ? "pdns" :
+    var.dns_providers.hetzner.api_key != "" ? "webhook" : "aws", "aws"
+  )
 }
 
 resource "kubectl_manifest" "hetzner-credentials" {
-  count     = var.enabled && contains(keys(var.dns_providers), "hetzner") ? 1 : 0
+  count     = var.enabled && try(var.dns_providers.hetzner.api_key != "", false) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: v1
 kind: Secret
@@ -34,7 +39,7 @@ metadata:
   namespace: ${var.namespace}
 type: Opaque
 stringData:
-  api-key: ${var.dns_providers.hetzner.api_key}
+  api-key: ${try(var.dns_providers.hetzner.api_key, "")}
 EOF
 }
 
@@ -53,92 +58,77 @@ resource "helm_release" "this" {
         eks.amazonaws.com/role-arn: ${local.route53_role_arn}
     EOF
     : "",
-
-    var.targets != "" ? <<EOF
-    extraArgs:
-      default-targets: ${var.targets}
-    EOF
-    : "",
-
     <<EOF
-    provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : lookup(var.dns_providers, "pdns", null) != null ? "pdns" : "webhook"}
-    aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
+    provider: ${local.provider}
+    aws: ${try(jsonencode({
     region = var.dns_providers.route53.region
     credentials = {
-      secretKey = lookup(var.dns_providers.route53, "secret_key", null)
-      accessKey = lookup(var.dns_providers.route53, "access_key", null)
+      secretKey = try(var.dns_providers.route53.secret_key, null)
+      accessKey = try(var.dns_providers.route53.access_key, null)
     }
-    }) : "{}"}
-    cloudflare: ${lookup(var.dns_providers, "cloudflare", null) != null ? jsonencode({
+    }), "{}")}
+    cloudflare: ${try(jsonencode({
     apiKey  = var.dns_providers.cloudflare.api_key
     email   = var.dns_providers.cloudflare.email
     proxied = false
-    }) : "{}"}
-    pdns: ${lookup(var.dns_providers, "pdns", null) != null ? jsonencode({
+    }), "{}")}
+    pdns: ${try(jsonencode({
     apiUrl  = regex("^(https?://[^:]+)(?::\\d+)?", var.dns_providers.pdns.api_url)[0]
     apiPort = try(regex(":(\\d+)$", var.dns_providers.pdns.api_url)[0], startswith(lower(var.dns_providers.pdns.api_url), "https") ? 443 : 80)
     apiKey  = var.dns_providers.pdns.api_key
-}) : "{}"}
+}), "{}")}
     EOF
 ,
-lookup(var.dns_providers, "cloudflare", null) != null ? <<EOF
-    extraArgs:
-      txt-prefix: "cloudflare-"
-    sources:
-      - ingress
-    EOF
-: "",
-lookup(var.dns_providers, "hetzner", null) != null ? <<EOF
+try(var.dns_providers.hetzner.api_key != "" ? <<EOF
     image: ${jsonencode({
-registry   = "registry.k8s.io",
-repository = "external-dns/external-dns",
-tag        = "v0.14.0"
-})}
+  registry   = "registry.k8s.io",
+  repository = "external-dns/external-dns",
+  tag        = "v0.14.0"
+  })}
     sidecars: ${jsonencode([{
-  name  = "hetzner-webhook",
-  image = "ghcr.io/mconfalonieri/external-dns-hetzner-webhook:v0.6.0",
-  ports = [
-    {
-      containerPort = 8888,
-      name          = "webhook"
+    name  = "hetzner-webhook",
+    image = "ghcr.io/mconfalonieri/external-dns-hetzner-webhook:v0.6.0",
+    ports = [
+      {
+        containerPort = 8888,
+        name          = "webhook"
+      },
+      {
+        containerPort = 8080,
+        name          = "http"
+      }
+    ],
+    livenessProbe = {
+      httpGet = {
+        path = "/health",
+        port = "http"
+      },
+      initialDelaySeconds = 10,
+      timeoutSeconds      = 5
     },
-    {
-      containerPort = 8080,
-      name          = "http"
-    }
-  ],
-  livenessProbe = {
-    httpGet = {
-      path = "/health",
-      port = "http"
+    readinessProbe = {
+      httpGet = {
+        path = "/ready",
+        port = "http"
+      },
+      initialDelaySeconds = 10,
+      timeoutSeconds      = 5
     },
-    initialDelaySeconds = 10,
-    timeoutSeconds      = 5
-  },
-  readinessProbe = {
-    httpGet = {
-      path = "/ready",
-      port = "http"
-    },
-    initialDelaySeconds = 10,
-    timeoutSeconds      = 5
-  },
-  env = [
-    {
-      name = "HETZNER_API_KEY",
-      valueFrom = {
-        secretKeyRef = {
-          name = "hetzner-credentials",
-          key  = "api-key"
+    env = [
+      {
+        name = "HETZNER_API_KEY",
+        valueFrom = {
+          secretKeyRef = {
+            name = "hetzner-credentials",
+            key  = "api-key"
+          }
         }
       }
-    }
-  ]
+    ]
 }])}
     EOF
-: "",
+: "", ""),
 
 var.values
 ]
 }
-

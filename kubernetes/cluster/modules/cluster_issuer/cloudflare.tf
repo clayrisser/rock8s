@@ -20,7 +20,7 @@
  */
 
 resource "kubectl_manifest" "cloudflare-secret" {
-  count = (lookup(var.issuers, "cloudflare", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.cloudflare.api_key != "" && var.issuers.cloudflare.email != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: v1
 kind: Secret
@@ -29,13 +29,12 @@ metadata:
   namespace: ${var.namespace}
 type: Opaque
 stringData:
-  cloudflare_api_key: '${lookup(var.issuers, "cloudflare", null) != null ?
-lookup(var.issuers.cloudflare, "api_key", "") : ""}'
+  cloudflare_api_key: '${try(var.issuers.cloudflare.api_key, "")}'
 EOF
 }
 
 resource "kubectl_manifest" "cloudflare-prod" {
-  count = (lookup(var.issuers, "cloudflare", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.cloudflare.api_key != "" && var.issuers.cloudflare.email != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -50,20 +49,18 @@ spec:
     solvers:
       - dns01:
           cloudflare:
-            email: ${lookup(var.issuers, "cloudflare", null) != null ?
-  (lookup(var.issuers.cloudflare, "email", null) != null ?
-var.issuers.cloudflare.email : var.letsencrypt_email) : ""}
+            email: ${try(var.issuers.cloudflare.email, var.letsencrypt_email)}
             apiKeySecretRef:
               name: cloudflare
               key: cloudflare_api_key
 EOF
-depends_on = [
-  kubectl_manifest.cloudflare-secret
-]
+  depends_on = [
+    kubectl_manifest.cloudflare-secret
+  ]
 }
 
 resource "kubectl_manifest" "cloudflare-staging" {
-  count = (lookup(var.issuers, "cloudflare", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.cloudflare.api_key != "" && var.issuers.cloudflare.email != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -78,14 +75,12 @@ spec:
     solvers:
       - dns01:
           cloudflare:
-            email: ${lookup(var.issuers, "cloudflare", null) != null ?
-  (lookup(var.issuers.cloudflare, "email", null) != null ?
-var.issuers.cloudflare.email : var.letsencrypt_email) : ""}
+            email: ${try(var.issuers.cloudflare.email, var.letsencrypt_email)}
             apiKeySecretRef:
               name: cloudflare
               key: cloudflare_api_key
 EOF
-depends_on = [
-  kubectl_manifest.cloudflare-secret
-]
+  depends_on = [
+    kubectl_manifest.cloudflare-secret
+  ]
 }
