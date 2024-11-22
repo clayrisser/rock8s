@@ -20,7 +20,7 @@
  */
 
 resource "kubectl_manifest" "route53-prod" {
-  count = (lookup(var.issuers, "route53", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.route53.region != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -35,13 +35,12 @@ spec:
     solvers:
       - dns01:
           route53:
-            region: ${lookup(var.issuers, "route53", null) != null ?
-var.issuers.route53.region : ""}
+            region: ${try(var.issuers.route53.region, "")}
 EOF
 }
 
 resource "kubectl_manifest" "route53-staging" {
-  count = (lookup(var.issuers, "route53", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.route53.region != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -56,7 +55,6 @@ spec:
     solvers:
       - dns01:
           route53:
-            region: ${lookup(var.issuers, "route53", null) != null ?
-var.issuers.route53.region : ""}
+            region: ${try(var.issuers.route53.region, "")}
 EOF
 }

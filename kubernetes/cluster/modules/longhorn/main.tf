@@ -19,21 +19,17 @@
  * limitations under the License.
  */
 
-resource "rancher2_namespace" "this" {
-  count      = var.enabled ? 1 : 0
-  name       = var.namespace
-  project_id = var.rancher_project_id
-}
-
-resource "rancher2_app_v2" "this" {
-  count         = var.enabled ? 1 : 0
-  chart_name    = "longhorn"
-  chart_version = var.chart_version
-  cluster_id    = var.rancher_cluster_id
-  name          = "longhorn"
-  namespace     = rancher2_namespace.this[0].name
-  repo_name     = "rancher-charts"
-  wait          = true
-  values        = <<EOF
+resource "helm_release" "this" {
+  count            = var.enabled ? 1 : 0
+  name             = "longhorn"
+  version          = var.chart_version
+  repository       = "https://charts.longhorn.io"
+  chart            = "longhorn"
+  namespace        = var.namespace
+  create_namespace = true
+  values = [<<EOF
 EOF
+    ,
+    var.values
+  ]
 }

@@ -42,7 +42,3 @@ variable "dns_providers" {
     pdns       = null
   }
 }
-
-variable "targets" {
-  default = ""
-}
