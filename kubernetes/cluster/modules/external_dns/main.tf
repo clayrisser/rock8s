@@ -128,7 +128,6 @@ try(var.dns_providers.hetzner.api_key != "" ? <<EOF
 }])}
     EOF
 : "", ""),
-
 var.values
 ]
 }
