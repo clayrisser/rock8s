@@ -5,7 +5,7 @@ module "k8s_control_plane_nodes" {
   cpu                 = var.cpu
   disk_size           = var.control_plane_disk_size
   disk_storage        = var.control_plane_disk_storage
-  ipv6                = true
+  ipv6                = var.dualstack
   memory              = var.control_plane_memory
   network_bridge      = var.internal_network_bridge
   nodes               = var.single_control_plane ? [var.proxmox_nodes[0]] : var.proxmox_nodes
@@ -25,7 +25,7 @@ module "k8s_worker_nodes" {
   cpu                 = var.cpu
   disk_size           = var.worker_disk_size
   disk_storage        = var.worker_disk_storage
-  ipv6                = true
+  ipv6                = var.dualstack
   memory              = var.worker_memory
   network_bridge      = var.internal_network_bridge
   nodes               = var.proxmox_nodes
