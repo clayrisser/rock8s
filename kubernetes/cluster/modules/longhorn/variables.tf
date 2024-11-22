@@ -28,13 +28,9 @@ variable "namespace" {
 }
 
 variable "chart_version" {
-  default = "100.2.2+up1.3.1"
+  default = "1.7.2"
 }
 
-variable "rancher_cluster_id" {
-  type = string
-}
-
-variable "rancher_project_id" {
-  type = string
+variable "values" {
+  default = ""
 }

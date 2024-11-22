@@ -12,7 +12,7 @@ setup:
 	@sh $(PROJECT_ROOT)/scripts/setup.sh
 
 .PHONY: kubernetes kubernetes/%
-kubernetes: kubernetes/create
+kubernetes: kubernetes/cluster
 kubernetes/%: force
 	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*

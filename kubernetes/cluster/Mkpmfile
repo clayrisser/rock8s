@@ -21,7 +21,7 @@ init: $(ARTIFACTS)
 .PHONY: apply
 apply: init
 	@. $(CURDIR)/../variables.sh && \
-		$(TERRAFORM) apply -auto-approve
+		$(TERRAFORM) apply
 
 .PHONY: destroy
 destroy: init

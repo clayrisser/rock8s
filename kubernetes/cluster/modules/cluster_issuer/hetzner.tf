@@ -1,5 +1,26 @@
+/**
+ * File: /hetzner.tf
+ * Project: cluster_issuer
+ * File Created: 27-09-2023 05:26:35
+ * Author: Clay Risser
+ * -----
+ * BitSpur (c) Copyright 2021 - 2023
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 resource "kubernetes_cluster_role" "cert_manager_webhook_hetzner_configmap_reader" {
-  count = (lookup(var.issuers, "hetzner", null) != null && var.enabled) ? 1 : 0
+  count = (var.enabled && try(var.issuers.hetzner.api_key != "", false)) ? 1 : 0
   metadata {
     name = "cert-manager-webhook-hetzner-configmap-reader"
   }
@@ -12,7 +33,7 @@ resource "kubernetes_cluster_role" "cert_manager_webhook_hetzner_configmap_reade
 }
 
 resource "kubernetes_cluster_role_binding" "cert_manager_webhook_hetzner_configmap_reader" {
-  count = (lookup(var.issuers, "hetzner", null) != null && var.enabled) ? 1 : 0
+  count = (var.enabled && try(var.issuers.hetzner.api_key != "", false)) ? 1 : 0
   metadata {
     name = "cert-manager-webhook-hetzner-configmap-reader"
   }
@@ -29,7 +50,7 @@ resource "kubernetes_cluster_role_binding" "cert_manager_webhook_hetzner_configm
 }
 
 resource "helm_release" "cert-manager-webhook-hetzner" {
-  count            = (lookup(var.issuers, "hetzner", null) != null && var.enabled) ? 1 : 0
+  count            = (var.enabled && try(var.issuers.hetzner.api_key != "", false)) ? 1 : 0
   name             = "cert-manager-webhook-hetzner"
   repository       = "https://vadimkim.github.io/cert-manager-webhook-hetzner"
   chart            = "cert-manager-webhook-hetzner"
@@ -43,7 +64,7 @@ resource "helm_release" "cert-manager-webhook-hetzner" {
 }
 
 resource "kubectl_manifest" "hetzner-secret" {
-  count     = (lookup(var.issuers, "hetzner", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.hetzner.api_key != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: v1
 kind: Secret
@@ -52,13 +73,12 @@ metadata:
   namespace: ${var.namespace}
 type: Opaque
 stringData:
-  api-key: '${lookup(var.issuers, "hetzner", null) != null ? var.issuers.hetzner.api_key : ""}'
+  api-key: '${try(var.issuers.hetzner.api_key, "")}'
 EOF
 }
 
-
 resource "kubectl_manifest" "hetzner-prod" {
-  count     = (lookup(var.issuers, "hetzner", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.hetzner.api_key != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -85,7 +105,7 @@ EOF
 }
 
 resource "kubectl_manifest" "hetzner-staging" {
-  count     = (lookup(var.issuers, "hetzner", null) != null && var.enabled) ? 1 : 0
+  count     = (var.enabled && try(var.issuers.hetzner.api_key != "", false)) ? 1 : 0
   yaml_body = <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -110,5 +130,3 @@ EOF
     kubectl_manifest.hetzner-secret
   ]
 }
-
-
