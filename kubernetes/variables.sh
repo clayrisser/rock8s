@@ -16,6 +16,7 @@ if ! (sudo ceph -s 2>&1 | grep -q "RADOS object not found"); then
     fi
 else
     CEPH="0"
+    CONTROL_PLANE_DISK_STORAGE="local-zfs"
     LONGHORN="1"
 fi
 if [ "$PDNS_API_URL" = "" ]; then
@@ -91,6 +92,7 @@ export TF_VAR_pdns_api_key="$PDNS_API_KEY"
 export TF_VAR_pdns_api_port="$PDNS_API_PORT"
 export TF_VAR_pdns_api_url="$PDNS_API_URL"
 export TF_VAR_prefix="$APP"
+export TF_VAR_protection="$PROTECTION"
 export TF_VAR_proxmox_host="$PROXMOX_HOST"
 export TF_VAR_proxmox_nodes="$PROXMOX_NODES"
 export TF_VAR_proxmox_parallel="$PROXMOX_PARALLEL"
@@ -118,6 +120,4 @@ export TF_VAR_worker_disk_size="$WORKER_DISK_SIZE"
 export TF_VAR_worker_disk_storage="$WORKER_DISK_STORAGE"
 export TF_VAR_worker_memory="$WORKER_MEMORY"
 export TF_VAR_worker_node_count="$WORKER_NODE_COUNT"
-export TF_VAR_worker_node_data_disk_size="$WORKER_NODE_DATA_DISK_SIZE"
-export TF_VAR_worker_node_data_disk_storage="$WORKER_NODE_DATA_DISK_STORAGE"
 export TF_VAR_worker_vcpus="$WORKER_VCPUS"

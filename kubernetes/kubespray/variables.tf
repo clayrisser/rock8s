@@ -55,20 +55,8 @@ variable "cpu" {
   default = "kvm64"
 }
 
-variable "worker_node_data_disk_storage" {
-  default = "rbd"
-}
-
-variable "worker_node_data_disk_size" {
-  default = 10
-}
-
 variable "clone" {
   default = "template-debian-12"
-}
-
-variable "control_plane_node_count" {
-  default = 1
 }
 
 variable "control_plane_vcpus" {
@@ -85,10 +73,6 @@ variable "control_plane_disk_size" {
 
 variable "control_plane_disk_storage" {
   default = "rbd"
-}
-
-variable "worker_node_count" {
-  default = 2
 }
 
 variable "worker_vcpus" {
@@ -152,5 +136,9 @@ variable "protection" {
 }
 
 variable "dualstack" {
+  default = true
+}
+
+variable "duelstack" {
   default = true
 }
