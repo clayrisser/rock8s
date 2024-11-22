@@ -53,13 +53,6 @@ resource "helm_release" "this" {
         eks.amazonaws.com/role-arn: ${local.route53_role_arn}
     EOF
     : "",
-
-    var.targets != "" ? <<EOF
-    extraArgs:
-      default-targets: ${var.targets}
-    EOF
-    : "",
-
     <<EOF
     provider: ${lookup(var.dns_providers, "route53", null) != null ? "aws" : lookup(var.dns_providers, "cloudflare", null) != null ? "cloudflare" : lookup(var.dns_providers, "pdns", null) != null ? "pdns" : "webhook"}
     aws: ${lookup(var.dns_providers, "route53", null) != null ? jsonencode({
@@ -81,13 +74,6 @@ resource "helm_release" "this" {
 }) : "{}"}
     EOF
 ,
-lookup(var.dns_providers, "cloudflare", null) != null ? <<EOF
-    extraArgs:
-      txt-prefix: "cloudflare-"
-    sources:
-      - ingress
-    EOF
-: "",
 lookup(var.dns_providers, "hetzner", null) != null ? <<EOF
     image: ${jsonencode({
 registry   = "registry.k8s.io",
@@ -137,8 +123,6 @@ tag        = "v0.14.0"
 }])}
     EOF
 : "",
-
 var.values
 ]
 }
-
