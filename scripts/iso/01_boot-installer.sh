@@ -23,6 +23,7 @@ for DRIVE in $DRIVES; do
     DRIVE_ARGS="$DRIVE_ARGS -drive file=/dev/$DRIVE,format=raw,media=disk,if=virtio"
 done
 qemu-system-x86_64 -enable-kvm -bios /usr/share/ovmf/OVMF.fd \
+    -enable-kvm -machine type=q35,accel=kvm \
     -k en-us -cpu host -smp 4 -m 4096 -boot d -cdrom ./pve.iso \
     $DRIVE_ARGS \
     -vnc :0
