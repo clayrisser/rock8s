@@ -4,6 +4,8 @@ bitnami
 brctl
 cephfs
 containerd
+corosync
+delnode
 ifup
 journalctl
 jsonencode
@@ -17,10 +19,18 @@ pdns
 pfctl
 pfsense
 powerdns
+pvecm
+pvedaemon
+pvefw
+pveproxy
+pvescheduler
+pvestatd
 radosgw
 risser
 sfdisk
+skiplock
 startswith
+syscalld
 traceroute
 vtnet
 wipefs
