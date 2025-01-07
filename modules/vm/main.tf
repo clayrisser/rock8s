@@ -3,7 +3,7 @@ terraform {
   required_providers {
     proxmox = {
       source  = "telmate/proxmox"
-      version = "3.0.1-rc3"
+      version = "3.0.1-rc6"
     }
   }
 }
@@ -18,7 +18,7 @@ resource "proxmox_vm_qemu" "vm" {
   bootdisk         = "virtio0"
   clone            = var.clone
   cores            = var.cores > 0 ? var.cores : var.vcpus
-  cpu              = var.cpu
+  cpu_type         = var.cpu
   hotplug          = "network,disk,usb"
   memory           = var.memory
   name             = "${var.prefix}-${format("%02d", count.index + 1)}"
@@ -55,6 +55,7 @@ resource "proxmox_vm_qemu" "vm" {
     }
   }
   network {
+    id     = 0
     model  = "virtio"
     bridge = var.network_bridge
     mtu    = 1400
