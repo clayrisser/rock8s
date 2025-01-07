@@ -260,6 +260,16 @@ sudo systemctl restart networking
 
 ### Broken Cluster
 
+#### Force Stop VMs
+
+```sh
+sudo qm list
+```
+
+```sh
+sudo qm stop <QM_ID>
+```
+
 #### Reduce Quarum
 
 ```sh
