@@ -15,6 +15,7 @@ mconfalonieri
 metallb
 ncdu
 nvme
+osds
 pdns
 pfctl
 pfsense

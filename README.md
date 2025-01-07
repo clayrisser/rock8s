@@ -368,8 +368,12 @@ _WARNING: this only finds orphaned volumes against a single kubernetes cluster_
     sudo ceph auth del mds.$NODE_ID
     sudo ceph auth del client.radosgw.$NODE_ID
     ```
+4. remove osds from crush map
+    ```sh
+    sudo ceph osd crush remove osd.#
+    ```
 
-4. reset the services on each node
+5. reset the services on each node
     ```sh
     sudo systemctl restart ceph-mds.target
     sudo systemctl restart ceph-mgr.target
@@ -379,7 +383,7 @@ _WARNING: this only finds orphaned volumes against a single kubernetes cluster_
     sudo systemctl restart pve-cluster
     ```
 
-5. delete the node reference
+6. delete the node reference
     ```sh
     NODE_ID=pve#
     sudo pvecm delnode $NODE_ID
