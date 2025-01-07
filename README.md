@@ -258,6 +258,27 @@ sudo brctl show
 sudo systemctl restart networking
 ```
 
+### Broken Cluster
+
+#### Reduce Quarum
+
+```sh
+sudo pvecm expected <NUMBER_OF_HEALTHY_NODES>
+```
+
+#### Restart PVE
+
+```sh
+sudo systemctl restart corosync
+sudo systemctl restart pve*
+```
+
+#### Restart Ceph
+
+```sh
+sudo systemctl restart ceph*
+```
+
 ### Disks
 
 #### Resize
