@@ -263,30 +263,36 @@ sudo systemctl restart networking
 #### Force Stop VMs
 
 ```sh
-sudo qm list
+for vm in $(sudo qm list | tail -n+2 | awk '{print $1}'); do
+    sudo qm stop $vm --timeout 15 # --skiplock
+done
 ```
+
+#### Reset Quorum
 
 ```sh
-sudo qm stop <QM_ID>
+sudo pvecm expected "$(sudo pvecm status | grep -E '^Total votes:' | sed 's|.* ||g')"
 ```
 
-#### Reduce Quarum
-
-```sh
-sudo pvecm expected <NUMBER_OF_HEALTHY_NODES>
-```
-
-#### Restart PVE
+#### Restart Services
 
 ```sh
 sudo systemctl restart corosync
-sudo systemctl restart pve*
-```
-
-#### Restart Ceph
-
-```sh
-sudo systemctl restart ceph*
+sudo systemctl restart ceph-mon*
+sudo systemctl restart ceph-mgr*
+sudo systemctl restart ceph-mds*
+sudo systemctl restart ceph-osd*
+sudo systemctl restart ceph-radosgw*
+sudo systemctl restart ceph-crash
+sudo systemctl restart pve-cluster
+sudo systemctl restart pve-ha-crm
+sudo systemctl restart pve-ha-lrm
+sudo systemctl restart pve-lxc-syscalld
+sudo systemctl restart pvedaemon
+sudo systemctl restart pvefw-logger
+sudo systemctl restart pveproxy
+sudo systemctl restart pvescheduler
+sudo systemctl restart pvestatd
 ```
 
 ### Disks
@@ -337,3 +343,48 @@ _WARNING: this only finds orphaned volumes against a single kubernetes cluster_
 ```sh
 (kubectl get pv -o json | jq -r '.items[].spec.csi.volumeAttributes.imageName' && (sudo rbd ls | grep -E "^csi")) | sort | uniq -u
 ```
+
+### Removed Dead Node
+
+1. remove the node references from the ceph config
+    ```sh
+    sudo vim /etc/ceph/ceph.conf
+    ```
+
+2. remove the node references from the keyring
+    ```sh
+    sudo vim /etc/ceph/ceph.client.radosgw.keyring
+    ```
+
+3. remove the node references from ceph
+    ```sh
+    NODE_ID=pve#
+    sudo systemctl restart ceph-mds.target
+    sudo systemctl restart ceph-mgr.target
+    sudo systemctl restart ceph-mon.target
+    sudo ceph mon remove $NODE_ID
+    sudo ceph mgr fail $NODE_ID
+    sudo ceph auth del mgr.$NODE_ID
+    sudo ceph auth del mds.$NODE_ID
+    sudo ceph auth del client.radosgw.$NODE_ID
+    ```
+
+4. reset the services on each node
+    ```sh
+    sudo systemctl restart ceph-mds.target
+    sudo systemctl restart ceph-mgr.target
+    sudo systemctl restart ceph-mon.target
+    sudo systemctl restart pveproxy
+    sudo systemctl restart pvedaemon
+    sudo systemctl restart pve-cluster
+    ```
+
+5. delete the node reference
+    ```sh
+    NODE_ID=pve#
+    sudo pvecm delnode $NODE_ID
+    sudo rm -rf /etc/pve/nodes/$NODE_ID
+    sudo systemctl restart corosync
+    sudo systemctl restart pve-cluster
+    sudo pvecm expected "$(sudo pvecm status | grep -E '^Total votes:' | sed 's|.* ||g')"
+    ```
