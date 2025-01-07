@@ -5,6 +5,7 @@ module "k8s_control_plane_nodes" {
   cpu                 = var.cpu
   disk_size           = var.control_plane_disk_size
   disk_storage        = var.control_plane_disk_storage
+  ipv4                = var.control_plane_ipv4
   ipv6                = var.dualstack
   memory              = var.control_plane_memory
   network_bridge      = var.internal_network_bridge

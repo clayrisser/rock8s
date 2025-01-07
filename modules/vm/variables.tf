@@ -71,6 +71,10 @@ variable "worker_node_data_disk_size" {
   default = 10
 }
 
+variable "ipv4" {
+  default = "dhcp"
+}
+
 variable "ipv6" {
   default = false
 }

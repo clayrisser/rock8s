@@ -75,6 +75,10 @@ variable "control_plane_disk_storage" {
   default = "rbd"
 }
 
+variable "control_plane_ipv4" {
+  default = "dhcp"
+}
+
 variable "worker_vcpus" {
   default = 2
 }
