@@ -63,7 +63,7 @@ resource "proxmox_vm_qemu" "vm" {
   vga {
     type = var.display
   }
-  ipconfig0 = "ip=dhcp${var.ipv6 ? ",ip6=auto" : ""}"
+  ipconfig0 = "ip=${var.ipv4}${var.ipv6 ? ",ip6=auto" : ""}"
   ciuser    = var.user
   sshkeys   = base64decode(var.ssh_public_keys_b64)
   lifecycle {
