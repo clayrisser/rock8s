@@ -28,7 +28,7 @@ pvescheduler
 pvestatd
 radosgw
 risser
-sfdisk
+sgdisk
 skiplock
 startswith
 syscalld
