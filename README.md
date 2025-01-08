@@ -315,7 +315,7 @@ sudo lsblk
 ```sh
 SUDO="$(which sudo >/dev/null 2>&1 && echo sudo || true)"
 for d in $(lsblk -dn -o NAME | grep -E "^nvme" | sort); do
-    echo "\$SUDO sfdisk --delete /dev/$d"
+    echo "\$SUDO sfdisk -Z /dev/$d"
     echo "\$SUDO wipefs -af /dev/$d"
 done
 ```
