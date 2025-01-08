@@ -7,6 +7,7 @@ cephfs
 containerd
 corosync
 delnode
+hostfwd
 ifup
 journalctl
 jsonencode
@@ -15,6 +16,7 @@ kubeconfig
 mconfalonieri
 metallb
 ncdu
+netdev
 noninteractive
 nvme
 osds
@@ -32,6 +34,7 @@ pvescheduler
 pvestatd
 radosgw
 risser
+sfdisk
 sgdisk
 skiplock
 startswith
