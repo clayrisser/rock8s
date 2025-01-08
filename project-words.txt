@@ -2,6 +2,7 @@ autoclean
 autoremove
 bitnami
 brctl
+cdrom
 cephfs
 containerd
 corosync
@@ -14,10 +15,13 @@ kubeconfig
 mconfalonieri
 metallb
 ncdu
+noninteractive
 nvme
 osds
+ovmf
 pdns
 pfctl
+pflash
 pfsense
 powerdns
 pvecm
@@ -33,5 +37,6 @@ skiplock
 startswith
 syscalld
 traceroute
+virtio
 vtnet
 wipefs
