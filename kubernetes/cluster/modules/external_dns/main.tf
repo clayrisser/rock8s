@@ -22,7 +22,6 @@
 locals {
   route53_role_arn = try(var.dns_providers.route53.roleArn, "")
   provider = try(
-    var.dns_providers.route53 != null ? "aws" :
     var.dns_providers.cloudflare.api_key != "" && var.dns_providers.cloudflare.email != "" ? "cloudflare" :
     var.dns_providers.pdns.api_key != "" && var.dns_providers.pdns.api_url != "" ? "pdns" :
     var.dns_providers.hetzner.api_key != "" ? "webhook" : "aws", "aws"
