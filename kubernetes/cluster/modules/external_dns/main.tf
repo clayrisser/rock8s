@@ -127,6 +127,16 @@ try(var.dns_providers.hetzner.api_key != "" ? <<EOF
 }])}
     EOF
 : "", ""),
+    <<EOF
+sources:
+  - ingress
+EOF
+,
+length(var.default_targets) > 0 ? <<EOF
+extraArgs:
+  default-targets: ${join(",", var.default_targets)}
+EOF
+: "",
 var.values
 ]
 }

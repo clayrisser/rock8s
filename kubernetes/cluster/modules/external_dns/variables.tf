@@ -42,3 +42,8 @@ variable "dns_providers" {
     pdns       = null
   }
 }
+
+variable "default_targets" {
+  type = list(string)
+  default = []
+}

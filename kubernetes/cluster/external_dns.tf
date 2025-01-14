@@ -1,6 +1,9 @@
 module "external-dns" {
   source  = "./modules/external_dns"
   enabled = var.external_dns
+  default_targets = [
+    local.cluster_entrypoint
+  ]
   dns_providers = {
     pdns = {
       api_url = var.pdns_api_url
