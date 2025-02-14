@@ -3,53 +3,11 @@ include $(MKPM)/dotenv
 
 CLOC ?= cloc
 
-.PHONY: network/%
-network/%:
-	@sh $(PROJECT_ROOT)/scripts/network/$*.sh
-
-.PHONY: setup
-setup:
-	@sh $(PROJECT_ROOT)/scripts/setup.sh
-
 .PHONY: kubernetes kubernetes/%
 kubernetes: kubernetes/cluster
 kubernetes/%: force
 	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*
-
-.PHONY: images images/%
-images: images/build
-images/%:
-	@$(call make,images) $*
-
-.PHONY: ceph/%
-ceph/%:
-	@$(call make,ceph) $*
-
-.PHONY: pfsense pfsense/%
-pfsense: pfsense/apply
-pfsense/%:
-	@$(call make,pfsense) $*
-
-.PHONY: powerdns powerdns/%
-powerdns: powerdns/apply
-powerdns/%:
-	@$(call make,powerdns) $*
-
-.PHONY: mailcow mailcow/%
-mailcow: mailcow/apply
-mailcow/%:
-	@$(call make,mailcow) $*
-
-.PHONY: wazuh wazuh/%
-wazuh: wazuh/apply
-wazuh/%:
-	@$(call make,wazuh) $*
-
-.PHONY: cron cron/%
-cron: cron/activate
-cron/%:
-	@$(call make,cron) $*
 
 .PHONY: count
 count:

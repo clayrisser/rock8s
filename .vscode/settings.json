@@ -1,5 +1,10 @@
 {
   "files.associations": {
     "Mkpmfile": "makefile"
-  }
+  },
+  "cSpell.words": [
+    "dualstack",
+    "kanister",
+    "kyverno"
+  ]
 }

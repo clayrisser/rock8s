@@ -6,93 +6,24 @@ variable "iteration" {
   default = "0"
 }
 
-variable "proxmox_host" {
-  type = string
-}
-
-variable "proxmox_token_id" {
-  type = string
-}
-
-variable "proxmox_token_secret" {
-  type      = string
-  sensitive = true
-}
-
-variable "proxmox_tls_insecure" {
-  type = bool
-}
-
-variable "proxmox_nodes" {
-  type = list(string)
-}
-
-variable "proxmox_parallel" {
-  default = 2
-}
-
-variable "proxmox_timeout" {
-  default = 600
-}
-
-variable "internal_network_bridge" {
-  type = string
-}
-
-variable "ssh_public_keys_b64" {
-  type = string
-}
-
 variable "user" {
   default = "admin"
 }
 
-variable "sockets" {
-  default = 1
+variable "master_ips" {
+  type = list(string)
 }
 
-variable "cpu" {
-  default = "kvm64"
+variable "worker_ips" {
+  type = list(string)
 }
 
-variable "clone" {
-  default = "template-debian-12"
+variable "ssh_private_key" {
+  type = string
 }
 
-variable "control_plane_vcpus" {
-  default = 2
-}
-
-variable "control_plane_memory" {
-  default = 1536
-}
-
-variable "control_plane_disk_size" {
-  default = 20
-}
-
-variable "control_plane_disk_storage" {
-  default = "rbd"
-}
-
-variable "control_plane_ipv4" {
-  default = "dhcp"
-}
-
-variable "worker_vcpus" {
-  default = 2
-}
-
-variable "worker_memory" {
-  default = 2048
-}
-
-variable "worker_disk_size" {
-  default = 20
-}
-
-variable "worker_disk_storage" {
-  default = "rbd"
+variable "kubespray_version" {
+  default = "v2.24.0"
 }
 
 variable "kube_version" {
@@ -103,7 +34,15 @@ variable "kube_network_plugin" {
   default = "calico"
 }
 
-variable "enable_nodelocaldns" {
+variable "pod_network_cidr" {
+  default = "10.244.0.0/16"
+}
+
+variable "service_network_cidr" {
+  default = "10.96.0.0/12"
+}
+
+variable "node_local_dns" {
   default = false
 }
 
@@ -140,9 +79,5 @@ variable "protection" {
 }
 
 variable "dualstack" {
-  default = true
-}
-
-variable "duelstack" {
   default = true
 }
