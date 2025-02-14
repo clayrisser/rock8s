@@ -1,6 +1,10 @@
-# VMK (Virtual Machine Kubernetes)
+# rock8s
 
-A cloud-agnostic Kubernetes cluster deployment solution using Terraform and Kubespray. VMK allows you to deploy and manage Kubernetes clusters on any platform where you have SSH access to virtual machines.
+> a universal kubernetes cluster
+
+![](./rock8t.jpg)
+
+Rock8s is a universal cloud-agnostic Kubernetes cluster deployment solution using Terraform and Kubespray. VMK allows you to deploy and manage Kubernetes clusters on any platform where you have SSH access to virtual machines.
 
 ## Features
 
