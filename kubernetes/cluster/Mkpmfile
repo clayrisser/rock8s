@@ -14,16 +14,17 @@ format:
 	@$(TERRAFORM) fmt --recursive
 
 .PHONY: init
-init: $(ARTIFACTS)
-	@. $(CURDIR)/../variables.sh && \
-		$(TERRAFORM) init -migrate-state -backend-config="path=$(APPS_DIR)/$(APP)/cluster.tfstate"
+init:
+	@$(MKDIR) -p $(CLUSTER_DIR)
+	@. $(CURDIR)/variables.sh && \
+		$(TERRAFORM) init -migrate-state -backend-config="path=$(CLUSTER_DIR)/terraform.tfstate"
 
 .PHONY: apply
 apply: init
-	@. $(CURDIR)/../variables.sh && \
+	@. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) apply
 
 .PHONY: destroy
 destroy: init
-	@. $(CURDIR)/../variables.sh && \
+	@. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) destroy

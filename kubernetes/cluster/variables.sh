@@ -4,6 +4,10 @@ PROVIDER_OUTPUT="$DATA_DIR/$PROVIDER/.env.output"
 if [ -f "$PROVIDER_OUTPUT" ]; then
     . "$PROVIDER_OUTPUT"
 fi
+KUBESPRAY_OUTPUT="$DATA_DIR/kubespray/.env.output"
+if [ -f "$KUBESPRAY_OUTPUT" ]; then
+    . "$KUBESPRAY_OUTPUT"
+fi
 
 export TF_VAR_cluster_name="$CLUSTER_NAME"
 export TF_VAR_email="$EMAIL"
