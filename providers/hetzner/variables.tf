@@ -11,12 +11,12 @@ variable "ssh_key_name" {
   default = "default"
 }
 
-variable "node_count" {
-  default = 3
+variable "masters" {
+  type = string
 }
 
-variable "master_count" {
-  default = 1
+variable "workers" {
+  type = string
 }
 
 variable "cluster_name" {

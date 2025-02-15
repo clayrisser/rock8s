@@ -6,15 +6,16 @@ CLOC ?= cloc
 .PHONY: kubernetes kubernetes/%
 kubernetes: kubernetes/cluster
 kubernetes/%: force
-	@$(MKDIR) -p $(HOME)/shared/apps/kubernetes
 	@$(call make,kubernetes) $*
+
+.PHONY: providers providers/%
+providers: providers/hetzner
+providers/%: force
+	@$(call make,providers) $*
 
 .PHONY: count
 count:
 	@$(CLOC) $(shell ($(GIT) ls-files && ($(GIT) lfs ls-files | $(CUT) -d' ' -f3)) | $(SORT) | $(UNIQ) -u)
-
-.PHONY: force
-force: ;
 
 .PHONY: format
 format:
