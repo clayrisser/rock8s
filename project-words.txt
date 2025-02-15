@@ -10,6 +10,7 @@ corosync
 CROSSPLANE
 delnode
 dotenv
+hetznercloud
 hostfwd
 ifup
 journalctl
@@ -46,6 +47,9 @@ sgdisk
 skiplock
 startswith
 syscalld
+terraformrc
+tfstate
+tfvars
 traceroute
 venv
 virtio
