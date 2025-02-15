@@ -15,3 +15,7 @@ count:
 
 .PHONY: force
 force: ;
+
+.PHONY: format
+format:
+	@$(TERRAFORM) fmt --recursive

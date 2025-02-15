@@ -1,55 +1,21 @@
-# Terraform
-.terraform/
+# mkpm
+/.mkpm/mkpm
+
+# ansible
+*.retry
+
+# terraform
+**/.terraform/*
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
-
-# Kubespray
-kubespray/
-
-# Backups
-/opt/vmk/backups/
-/opt/vmk/restore/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Logs
-*.log
-logs/
+*.tfvars
+*.tfvars.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+.terraformrc
+crash.*.log
+crash.log
+override.tf
+override.tf.json
+terraform.rc

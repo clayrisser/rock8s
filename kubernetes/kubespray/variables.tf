@@ -1,3 +1,7 @@
+variable "cluster_name" {
+  default = "rock8s"
+}
+
 variable "prefix" {
   type = string
 }
@@ -44,10 +48,6 @@ variable "service_network_cidr" {
 
 variable "node_local_dns" {
   default = false
-}
-
-variable "app_dir" {
-  type = string
 }
 
 variable "ip_range" {

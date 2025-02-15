@@ -1,4 +1,6 @@
 locals {
+  data_dir     = pathexpand("~/.local/share/rock8s/${var.cluster_name}")
+  provider_dir = "${local.data_dir}/kubespray"
   kubespray_inventory_content = templatefile(
     "${path.module}/artifacts/inventory.ini",
     {
@@ -34,19 +36,19 @@ locals {
 resource "null_resource" "setup_kubespray" {
   provisioner "local-exec" {
     command = <<-EOT
-      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/inventory.ini
+      cat <<EOF > ${local.provider_dir}/kubespray/inventory/sample/inventory.ini
       ${local.kubespray_inventory_content}
       EOF
-      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/group_vars/all/all.yml
+      cat <<EOF > ${local.provider_dir}/kubespray/inventory/sample/group_vars/all/all.yml
       ${local.kubespray_all_yml}
       EOF
-      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml
+      cat <<EOF > ${local.provider_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-cluster.yml
       ${local.kubespray_k8s_cluster_yml}
       EOF
-      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/addons.yml
+      cat <<EOF > ${local.provider_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/addons.yml
       ${local.kubespray_addons_yml}
       EOF
-      cat <<EOF > ${var.app_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-net-calico.yml
+      cat <<EOF > ${local.provider_dir}/kubespray/inventory/sample/group_vars/k8s_cluster/k8s-net-calico.yml
       ${local.kubespray_k8s_net_calico_yml}
       EOF
     EOT
