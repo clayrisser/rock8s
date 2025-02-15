@@ -127,7 +127,7 @@ try(var.dns_providers.hetzner.api_key != "" ? <<EOF
 }])}
     EOF
 : "", ""),
-    <<EOF
+<<EOF
 sources:
   - ingress
 EOF

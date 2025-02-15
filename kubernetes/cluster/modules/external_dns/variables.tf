@@ -44,6 +44,6 @@ variable "dns_providers" {
 }
 
 variable "default_targets" {
-  type = list(string)
+  type    = list(string)
   default = []
 }

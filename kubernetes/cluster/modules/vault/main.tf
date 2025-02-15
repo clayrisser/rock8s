@@ -52,11 +52,11 @@ EOF
 }
 
 resource "helm_release" "vault" {
-  count = var.enabled ? 1 : 0
-  repository       = "https://helm.releases.hashicorp.com"
-  chart            = "vault"
-  name             = "vault"
-  namespace        = var.namespace
+  count      = var.enabled ? 1 : 0
+  repository = "https://helm.releases.hashicorp.com"
+  chart      = "vault"
+  name       = "vault"
+  namespace  = var.namespace
   values = [<<EOF
   server:
     dataStorage:
@@ -79,7 +79,7 @@ resource "helm_release" "vault" {
   ui:
     enabled: true
 EOF
-  ,
+    ,
   var.values]
   depends_on = [
     kubernetes_config_map.init

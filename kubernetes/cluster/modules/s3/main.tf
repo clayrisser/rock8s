@@ -27,5 +27,5 @@ resource "helm_release" "s3" {
   chart            = "s3"
   namespace        = var.namespace
   create_namespace = true
-  values = [var.values]
+  values           = [var.values]
 }
