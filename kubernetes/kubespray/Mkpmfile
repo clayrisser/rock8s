@@ -1,13 +1,8 @@
 include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
+ANSIBLE_PLAYBOOK ?= $(KUBESPRAY_DIR)/env/bin/ansible-playbook
 TERRAFORM ?= terraform
-CLUSTER_NAME ?= rock8s
-DATA_DIR ?= $(HOME)/.local/share/rock8s/$(CLUSTER_NAME)
-PROVIDER_DIR ?= $(DATA_DIR)/kubespray
-ANSIBLE_PLAYBOOK ?= $(PROVIDER_DIR)/env/bin/ansible-playbook
-export LANG := C.UTF-8
-export LC_ALL := C.UTF-8
 
 .PHONY: format
 format:
@@ -18,23 +13,20 @@ prepare:
 	@sh $(CURDIR)/scripts/prepare.sh
 
 .PHONY: init
-init: prepare $(PROVIDER_DIR)
-	@. $(ROOT_DIR)/.env && \
+init: prepare
+	@. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) init \
-		-backend-config="path=$(PROVIDER_DIR)/terraform.tfstate"
-
-$(PROVIDER_DIR):
-	@mkdir -p $(PROVIDER_DIR)
+		-backend-config="path=$(KUBESPRAY_DIR)/terraform.tfstate"
 
 .PHONY: apply
 apply: init
-	@. $(ROOT_DIR)/.env && \
+	@. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) apply
 
 .PHONY: install +install
 install: apply +install
 +install:
-	@cd $(PROVIDER_DIR)/kubespray && \
+	@cd $(KUBESPRAY_DIR) && \
 		$(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
 			-u admin --become --become-user=root \
@@ -43,7 +35,7 @@ install: apply +install
 
 .PHONY: postinstall
 postinstall:
-	@cd $(PROVIDER_DIR)/kubespray && \
+	@cd $(KUBESPRAY_DIR) && \
 		$(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
 			-e script_path="$(CURDIR)/postinstall.sh" \
@@ -52,7 +44,7 @@ postinstall:
 
 .PHONY: remove/%
 remove/%:
-	@cd $(PROVIDER_DIR)/kubespray && \
+	@cd $(KUBESPRAY_DIR) && \
 		$(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
 			-e node=$* \
@@ -63,7 +55,7 @@ remove/%:
 
 .PHONY: scale
 scale:
-	@cd $(PROVIDER_DIR)/kubespray && \
+	@cd $(KUBESPRAY_DIR) && \
 		$(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
 			-u admin --become --become-user=root \
@@ -77,7 +69,7 @@ login:
 	)
 	@mkdir -p $(HOME)/.kube
 	@HOST_NUMBER="$$(echo "$$(hostname)" | sed 's/[^0-9]//g')"; \
-		NODE_IP="$$(cat $(PROVIDER_DIR)/kubespray/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$((HOST_NUMBER - 1))].value[0]" | cut -d' ' -f1)"; \
+		NODE_IP="$$(cat $(KUBESPRAY_DIR)/inventory/sample/inventory.ini | jc -p --ini-dup | jq -r ".kube_control_plane | to_entries[$$((HOST_NUMBER - 1))].value[0]" | cut -d' ' -f1)"; \
 		ssh admin@$$NODE_IP "sudo cat /etc/kubernetes/admin.conf" | \
 		perl -MYAML::XS=Load -MJSON=encode_json -E 'say encode_json(Load(do { local $$/; <STDIN> }))' | \
 		jq ".clusters[0].cluster.server = \"https://$$NODE_IP:6443\"" | \
@@ -87,7 +79,7 @@ login:
 
 .PHONY: reset
 reset:
-	@cd $(PROVIDER_DIR)/kubespray && \
+	@cd $(KUBESPRAY_DIR) && \
 		$(ANSIBLE_PLAYBOOK) \
 			-i inventory/sample/inventory.ini \
 			-u admin --become --become-user=root \
@@ -95,5 +87,5 @@ reset:
 
 .PHONY: destroy
 destroy: init
-	@. $(ROOT_DIR)/.env && \
+	@. $(CURDIR)/variables.sh && \
 		$(TERRAFORM) destroy

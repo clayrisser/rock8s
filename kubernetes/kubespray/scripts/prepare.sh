@@ -2,6 +2,19 @@
 
 set -e
 
+PROVIDER_OUTPUT="$DATA_DIR/$PROVIDER/.env.output"
+if [ -f "$PROVIDER_OUTPUT" ]; then
+    . "$PROVIDER_OUTPUT"
+fi
+if [ ! -f "$KUBESPRAY_DIR/requirements.txt" ]; then
+    curl -L "https://github.com/kubernetes-sigs/kubespray/archive/$KUBESPRAY_VERSION.tar.gz" | \
+        tar -xz
+    mv kubespray-$KUBESPRAY_VERSION "$KUBESPRAY_DIR"
+fi
+if [ ! -f "$KUBESPRAY_DIR/env/bin/pip3" ]; then
+    python3 -m venv "$KUBESPRAY_DIR/env"
+    "$KUBESPRAY_DIR/env/bin/pip3" install -r "$KUBESPRAY_DIR/requirements.txt"
+fi
 K9S_VERSION=0.32.5
 KUBECTL_VERSION=1.31.0
 export DEBIAN_FRONTEND=noninteractive
@@ -10,19 +23,6 @@ sudo apt-get install -y \
     curl \
     jc \
     python3-venv
-mkdir -p "$APPS_DIR/$APP"
-chmod 700 "$APPS_DIR/$APP"
-if [ ! -d "$APPS_DIR/$APP/kubespray" ]; then
-    _TMP_DIR=$(mktemp -d)
-    (
-        cd "$_TMP_DIR"
-        curl -Lo kubespray.tar.gz \
-            "https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v$KUBESPRAY_VERSION.tar.gz"
-        tar -xzvf kubespray.tar.gz
-        mv "kubespray-$KUBESPRAY_VERSION" "$APPS_DIR/$APP/kubespray"
-    )
-    rm -rf "$_TMP_DIR"
-fi
 if ! which kubectl >/dev/null 2>&1; then
     _TMP_DIR=$(mktemp -d)
     (
@@ -44,7 +44,3 @@ if ! which k9s >/dev/null 2>&1; then
     )
     rm -rf "$_TMP_DIR"
 fi
-if [ ! -f "$APPS_DIR/$APP/env/bin/pip3" ]; then
-    python3 -m venv "$APPS_DIR/$APP/env"
-fi
-"$APPS_DIR/$APP/env/bin/pip3" install -r "$APPS_DIR/$APP/kubespray/requirements.txt"
