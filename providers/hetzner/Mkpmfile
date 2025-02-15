@@ -8,11 +8,11 @@ format:
 	@$(TERRAFORM) fmt --recursive
 
 .PHONY: init
-init: $(PROVIDER_DIR)
-	@$(TERRAFORM) init \
-		-backend-config="path=$(PROVIDER_DIR)/terraform.tfstate"
-$(PROVIDER_DIR):
+init:
 	@$(MKDIR) -p $(PROVIDER_DIR)
+	@. $(CURDIR)/variables.sh && \
+		$(TERRAFORM) init \
+		-backend-config="path=$(PROVIDER_DIR)/terraform.tfstate"
 
 .PHONY: apply
 apply: init

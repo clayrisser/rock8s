@@ -54,7 +54,6 @@ WORKER_IPS=${join(",", local.worker_ips)}
 SSH_PRIVATE_KEY=${var.provider_dir}/id_rsa
 IP_RANGE=${var.network_ip_range}
 CLUSTER_ENTRYPOINT=${var.cluster_entrypoint}
-APP_DIR=${var.data_dir}/apps
 EOT
   filename = "${var.provider_dir}/.env.output"
 }

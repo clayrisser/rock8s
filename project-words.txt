@@ -8,7 +8,7 @@ cephfs
 cloc
 containerd
 corosync
-CROSSPLANE
+crossplane
 delnode
 dotenv
 hetznercloud
@@ -17,7 +17,7 @@ ifup
 journalctl
 jsonencode
 kanister
-KARPENTER
+karpenter
 kbst
 kubeconfig
 kubespray
@@ -25,7 +25,9 @@ kustomization
 kyverno
 mconfalonieri
 metallb
+mjson
 mkpm
+myaml
 ncdu
 netdev
 noninteractive
