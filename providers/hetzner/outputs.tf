@@ -2,7 +2,7 @@ output "master_ips" {
   value = {
     for idx, server in hcloud_server.nodes :
     server.name => server.ipv4_address
-    if idx < var.master_count
+    if local.node_configs[idx].is_master
   }
 }
 
@@ -10,7 +10,7 @@ output "worker_ips" {
   value = {
     for idx, server in hcloud_server.nodes :
     server.name => server.ipv4_address
-    if idx >= var.master_count
+    if !local.node_configs[idx].is_master
   }
 }
 
@@ -18,7 +18,7 @@ output "master_private_ips" {
   value = {
     for idx, server in hcloud_server.nodes :
     server.name => server.network[0].ip
-    if idx < var.master_count
+    if local.node_configs[idx].is_master
   }
 }
 
@@ -26,7 +26,7 @@ output "worker_private_ips" {
   value = {
     for idx, server in hcloud_server.nodes :
     server.name => server.network[0].ip
-    if idx >= var.master_count
+    if !local.node_configs[idx].is_master
   }
 }
 
