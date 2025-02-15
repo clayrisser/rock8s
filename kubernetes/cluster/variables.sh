@@ -8,6 +8,25 @@ KUBESPRAY_OUTPUT="$DATA_DIR/kubespray/.env.output"
 if [ -f "$KUBESPRAY_OUTPUT" ]; then
     . "$KUBESPRAY_OUTPUT"
 fi
+if [ "$EMAIL" = "" ] && [ "$CLOUDFLARE_EMAIL" != "" ]; then
+    EMAIL="$CLOUDFLARE_EMAIL"
+fi
+if [ "$RANCHER_HOSTNAME" = "" ] && [ "$CLUSTER_ENTRYPOINT" != "" ]; then
+    RANCHER_HOSTNAME="$CLUSTER_ENTRYPOINT"
+fi
+
+if [ "$EMAIL" = "" ]; then
+    echo "missing EMAIL" >&2
+    exit 1
+fi
+if [ "$CLUSTER_ENTRYPOINT" = "" ]; then
+    echo "missing CLUSTER_ENTRYPOINT" >&2
+    exit 1
+fi
+if ! host "$CLUSTER_ENTRYPOINT" >/dev/null 2>&1; then
+    echo "cluster entrypoint $CLUSTER_ENTRYPOINT does not resolve" >&2
+    exit 1
+fi
 
 export TF_VAR_cluster_name="$CLUSTER_NAME"
 export TF_VAR_email="$EMAIL"

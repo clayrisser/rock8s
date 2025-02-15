@@ -1,0 +1,7 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+.PHONY: hetzner hetzner/%
+hetzner: hetzner/apply
+hetzner/%: force
+	@$(call make,providers/hetzner) $*

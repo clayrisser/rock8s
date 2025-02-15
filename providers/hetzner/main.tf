@@ -21,9 +21,9 @@ resource "local_file" "public_key" {
 }
 
 resource "hcloud_server" "nodes" {
-  count       = var.node_count
-  name        = "${var.cluster_name}-${count.index < var.master_count ? "master" : "worker"}-${count.index + 1}"
-  server_type = var.server_type
+  count       = length(local.node_configs)
+  name        = local.node_configs[count.index].name
+  server_type = local.node_configs[count.index].server_type
   image       = var.server_image
   location    = var.location
   ssh_keys    = [hcloud_ssh_key.default.id]
