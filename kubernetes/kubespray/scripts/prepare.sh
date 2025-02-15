@@ -1,10 +1,13 @@
 #!/bin/sh
 
+set -e
+
 K9S_VERSION=0.32.5
 KUBECTL_VERSION=1.31.0
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 sudo apt-get install -y \
+    curl \
     jc \
     python3-venv
 mkdir -p "$APPS_DIR/$APP"

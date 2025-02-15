@@ -37,7 +37,7 @@ data "kubernetes_service" "ingress_nginx" {
     module.ingress-nginx
   ]
 }
- 
+
 resource "null_resource" "wait-for-ingress-nginx" {
   count = var.ingress_nginx ? 1 : 0
   provisioner "local-exec" {
