@@ -1,52 +1,50 @@
 terraform {
-  backend "local" {
-    path = "/home/admin/shared/apps/kubernetes/cluster.tfstate"
-  }
+  backend "local" {}
   required_version = ">=1.3.3"
   required_providers {
     helm = {
       source  = "hashicorp/helm"
-      version = "2.10.1"
+      version = "~> 2.17.0"
     }
     kubectl = {
       source  = "alekc/kubectl"
-      version = ">= 2.0.2"
+      version = "~> 2.1.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "2.21.1"
+      version = "~> 2.35.1"
     }
     local = {
       source  = "hashicorp/local"
-      version = "2.4.0"
+      version = "~> 2.5.2"
     }
     null = {
       source  = "hashicorp/null"
-      version = "3.2.1"
+      version = "~> 3.2.3"
     }
     random = {
       source  = "hashicorp/random"
-      version = "3.5.1"
+      version = "~> 3.6.3"
     }
     time = {
       source  = "hashicorp/time"
-      version = "0.9.1"
+      version = "~> 0.12.1"
     }
     rancher2 = {
       source  = "rancher/rancher2"
-      version = ">= 3.2.0"
+      version = "~> 3.2.0"
     }
     tls = {
       source  = "hashicorp/tls"
-      version = "4.0.4"
+      version = "~> 4.0.6"
     }
     kustomization = {
       source  = "kbst/kustomization"
-      version = "0.9.4"
+      version = "~> 0.9.6"
     }
     argocd = {
       source  = "oboukili/argocd"
-      version = "6.0.3"
+      version = "~> 6.0.3"
     }
   }
 }

@@ -1,3 +1,4 @@
+alekc
 autoclean
 autoremove
 bitnami
@@ -17,8 +18,10 @@ journalctl
 jsonencode
 kanister
 KARPENTER
+kbst
 kubeconfig
 kubespray
+kustomization
 kyverno
 mconfalonieri
 metallb
@@ -27,6 +30,7 @@ ncdu
 netdev
 noninteractive
 nvme
+oboukili
 osds
 ovmf
 pdns
