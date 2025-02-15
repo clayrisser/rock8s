@@ -1,0 +1,23 @@
+include $(MKPM)/mkpm
+include $(MKPM)/dotenv
+
+PROVIDER_DIR ?= $(DATA_DIR)/hetzner
+
+.PHONY: format
+format:
+	@$(TERRAFORM) fmt --recursive
+
+.PHONY: init
+init: $(PROVIDER_DIR)
+	@$(TERRAFORM) init \
+		-backend-config="path=$(PROVIDER_DIR)/terraform.tfstate"
+$(PROVIDER_DIR):
+	@$(MKDIR) -p $(PROVIDER_DIR)
+
+.PHONY: apply
+apply: init
+	@$(TERRAFORM) apply
+
+.PHONY: destroy
+destroy: init
+	@$(TERRAFORM) destroy
