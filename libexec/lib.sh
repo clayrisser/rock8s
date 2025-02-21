@@ -41,59 +41,19 @@ _fail() {
     exit 1
 }
 
-_format_output() {
-    _FORMAT="${1:-text}"
-    _TYPE="$2"
-    if [ ! -t 0 ]; then
-        _INPUT="$(cat)"
-    else
-        _INPUT=""
-    fi
-    case "$_FORMAT" in
-        json)
-            printf "%s\n" "$_INPUT"
-            ;;
-        yaml)
-            printf "%s\n" "$_INPUT" | while read -r line; do
-                echo "---"
-                echo "$line" | _json2yaml
-            done >&2
-            ;;
-        text)
-            case "$_TYPE" in
-                providers)
-                    _format_json_table "$_INPUT" "name type region status"
-                    ;;
-                kubespray)
-                    _format_json_table "$_INPUT" "name version status nodes"
-                    ;;
-                cluster)
-                    _format_json_table "$_INPUT" "name type status"
-                    ;;
-                success)
-                    printf "${GREEN}%s${NC}\n" "$(echo "$_INPUT" | jq -r '.message')"
-                    ;;
-                error)
-                    printf "${RED}%s${NC}\n" "$(echo "$_INPUT" | jq -r '.error')"
-                    return 1
-                    ;;
-                *)
-                    _format_json_table "$_INPUT" -
-                    ;;
-            esac
-            ;;
-        *)
-            printf '{"error":"unsupported output format: %s"}\n' "$_FORMAT" | _format_output text error
-            return 1
-            ;;
-    esac
-}
-
 _json2yaml() {
     perl -MJSON::PP -MYAML -e '
         my $json = do { local $/; <STDIN> };
         my $data = decode_json($json);
         print Dump($data);
+    '
+}
+
+_yaml2json() {
+    perl -MJSON::PP -MYAML -e '
+        my $yaml = do { local $/; <STDIN> };
+        my $data = Load($yaml);
+        print encode_json($data);
     '
 }
 
@@ -105,7 +65,9 @@ _format_json_table() {
         _KEYS="$(printf "%s\n" "$_JSON" | jq -r 'to_entries | .[].key' | tr '\n' ' ')"
     fi
     _COUNT="$(printf "%s\n" "$_JSON" | jq -s 'length')"
-    if [ "$_COUNT" -eq 1 ]; then
+    if [ "$_COUNT" -eq 0 ]; then
+        return 0
+    elif [ "$_COUNT" -eq 1 ] && [ "$(printf "%s\n" "$_JSON" | jq -r 'type')" = "object" ]; then
         (
             echo "KEY VALUE"
             for _KEY in $_KEYS; do
@@ -128,36 +90,69 @@ _format_json_table() {
         done)] | @tsv"
         (
             echo "$_HEADER"
-            printf "%s\n" "$_JSON" | jq -s '.' | jq -r "$_JQ_FILTER"
-        ) | sed 's/^ *//' | tr '\t' ' ' | column -t
+            printf "%s\n" "$_JSON" | jq -r "$_JQ_FILTER" | sed -e 's/  */ /g'
+        ) | sed 's/^ *//' | column -t
     fi
 }
 
-_validate_cluster_name() {
-    _NAME="$1"
-    echo "$_NAME" | grep -qE '^[a-z0-9][a-z0-9-]*[a-z0-9]$' || {
-        _fail "invalid cluster name (must contain only lowercase letters, numbers, and hyphens, and must start and end with an alphanumeric character)"
-    }
+_format_output() {
+    _FORMAT="${1:-text}"
+    _TYPE="$2"
+    if [ ! -t 0 ]; then
+        _INPUT="$(cat)"
+    else
+        _INPUT=""
+    fi
+    case "$_FORMAT" in
+        json)
+            printf "%s\n" "$_INPUT"
+            ;;
+        yaml)
+            printf "%s\n" "$_INPUT" | while read -r line; do
+                echo "---"
+                echo "$line" | _json2yaml
+            done >&2
+            ;;
+        text)
+            case "$_TYPE" in
+                providers)
+                    printf "%s\n" "$_INPUT" | jq -r '.[] | .name'
+                    ;;
+                search)
+                    _format_json_table "$_INPUT" "repo name version path"
+                    ;;
+                ls)
+                    _format_json_table "$_INPUT" "name environment status path"
+                    ;;
+                repo-list)
+                    _format_json_table "$_INPUT" "path"
+                    ;;
+                success)
+                    printf "${GREEN}%s${NC}\n" "$(echo "$_INPUT" | jq -r '.message')"
+                    ;;
+                error)
+                    printf "${RED}%s${NC}\n" "$(echo "$_INPUT" | jq -r '.error')"
+                    return 1
+                    ;;
+                *)
+                    _format_json_table "$_INPUT" -
+                    ;;
+            esac
+            ;;
+        *)
+            printf '{"error":"unsupported output format: %s"}\n' "$_FORMAT" | _format_output text error
+            return 1
+            ;;
+    esac
 }
 
-_get_cluster_dir() {
-    _NAME="$1"
-    echo "$ROCK8S_STATE_ROOT/clusters/$_NAME"
-}
-
-_ensure_terraform() {
+_ensure_system() {
     command -v terraform >/dev/null 2>&1 || {
         _fail "terraform is not installed"
     }
-}
-
-_ensure_ansible() {
     command -v ansible >/dev/null 2>&1 || {
         _fail "ansible is not installed"
     }
-}
-
-_ensure_kubectl() {
     command -v kubectl >/dev/null 2>&1 || {
         _fail "kubectl is not installed"
     }
@@ -193,4 +188,42 @@ _ensure_config_dirs() {
     for _PATH in $(echo "$ROCK8S_CONFIG_PATHS" | tr ':' ' '); do
         mkdir -p "$_PATH"
     done
+}
+
+_parse_node_groups() {
+    _GROUPS="$1"
+    _RESULT="["
+    _FIRST=1
+    for group in $_GROUPS; do
+        if [ "$_FIRST" = 1 ]; then
+            _FIRST=0
+        else
+            _RESULT="$_RESULT,"
+        fi
+        _TYPE=$(echo "$group" | cut -d: -f1)
+        _COUNT=$(echo "$group" | cut -d: -f2)
+        _OPTS="{}"
+        if echo "$group" | grep -q ':.*:'; then
+            _RAW_OPTS=$(echo "$group" | cut -d: -f3)
+            _OPTS="{"
+            _FIRST_OPT=1
+            IFS=, read -r -a pairs <<EOF
+$_RAW_OPTS
+EOF
+            for pair in "${pairs[@]}"; do
+                key="${pair%%=*}"
+                value="${pair#*=}"
+                if [ "$_FIRST_OPT" = 1 ]; then
+                    _FIRST_OPT=0
+                else
+                    _OPTS="$_OPTS,"
+                fi
+                _OPTS="$_OPTS\"$key\":\"$value\""
+            done
+            _OPTS="$_OPTS}"
+        fi
+        _RESULT="$_RESULT{\"type\":\"$_TYPE\",\"count\":$_COUNT,\"options\":$_OPTS}"
+    done
+    _RESULT="$_RESULT]"
+    echo "$_RESULT"
 }
