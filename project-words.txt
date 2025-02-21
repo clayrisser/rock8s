@@ -1,6 +1,7 @@
 alekc
 autoclean
 autoremove
+backtitle
 bitnami
 brctl
 cdrom
@@ -9,11 +10,14 @@ cloc
 containerd
 corosync
 crossplane
+defaultno
 delnode
+DIALOGOPTS
 dotenv
 hetznercloud
 hostfwd
 ifup
+inputbox
 journalctl
 jsonencode
 kanister
@@ -37,6 +41,7 @@ nvme
 oboukili
 osds
 ovmf
+passwordbox
 pdns
 pfctl
 pflash
@@ -54,6 +59,7 @@ sfdisk
 sgdisk
 skiplock
 startswith
+stty
 SUBCMD
 syscalld
 terraformrc
