@@ -83,7 +83,7 @@ _main() {
     if [ ! -f "$_SUBCMD" ]; then
         _fail "unknown cluster command: $_CMD"
     fi
-    exec "$_SUBCMD" $_CMD_ARGS
+    exec sh "$_SUBCMD" $_CMD_ARGS
 }
 
 _main "$@"

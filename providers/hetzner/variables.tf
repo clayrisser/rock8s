@@ -3,54 +3,43 @@ variable "hetzner_token" {
   sensitive = true
 }
 
-variable "data_dir" {
-  type = string
-}
-
-variable "ssh_key_name" {
-  default = "default"
-}
-
-variable "masters" {
-  type = string
-}
-
-variable "workers" {
-  type = string
-}
-
 variable "cluster_name" {
-  default = "rock8s"
-}
-
-variable "server_type" {
-  default = "cx21"
+  type = string
 }
 
 variable "server_image" {
-  default = "ubuntu-22.04"
+  type = string
 }
 
 variable "location" {
-  default = "nbg1"
-}
-
-variable "network_ip_range" {
-  default = "10.0.0.0/16"
-}
-
-variable "network_zone" {
-  default = "eu-central"
-}
-
-variable "subnet_ip_range" {
-  default = "10.0.1.0/24"
-}
-
-variable "cluster_entrypoint" {
   type = string
 }
 
-variable "provider_dir" {
+variable "network_name" {
   type = string
+}
+
+variable "user_data" {
+  type    = string
+  default = ""
+}
+
+variable "cluster_dir" {
+  type = string
+}
+
+variable "master_groups" {
+  type = list(object({
+    type    = string
+    count   = number
+    options = map(string)
+  }))
+}
+
+variable "worker_groups" {
+  type = list(object({
+    type    = string
+    count   = number
+    options = map(string)
+  }))
 }
