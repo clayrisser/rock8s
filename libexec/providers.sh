@@ -16,12 +16,6 @@ DESCRIPTION
        manage cloud provider nodes using terraform
 
 COMMANDS
-       list
-              list available providers
-
-       init
-              initialize a provider's terraform configuration
-
        create
               create nodes using specified provider
 
@@ -29,8 +23,6 @@ COMMANDS
               destroy nodes for specified provider
 
 SEE ALSO
-       rock8s providers list --help
-       rock8s providers init --help
        rock8s providers create --help
        rock8s providers destroy --help
 EOF
@@ -58,7 +50,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            list|init|create|destroy)
+            create|destroy)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
@@ -79,7 +71,7 @@ _main() {
     if [ ! -f "$_SUBCMD" ]; then
         _fail "unknown providers command: $_CMD"
     fi
-    exec "$_SUBCMD" $_CMD_ARGS
+    exec sh "$_SUBCMD" $_CMD_ARGS
 }
 
 _main "$@"

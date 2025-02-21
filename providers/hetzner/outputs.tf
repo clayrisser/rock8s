@@ -1,58 +1,39 @@
+resource "local_file" "env_output" {
+  content  = <<-EOT
+MASTER_IPS=${join(",", values(local.master_ips))}
+WORKER_IPS=${join(",", values(local.worker_ips))}
+MASTER_SSH_PRIVATE_KEY=${local.master_ssh_private_key}
+MASTER_SSH_PUBLIC_KEY=${local.master_ssh_public_key}
+WORKER_SSH_PRIVATE_KEY=${local.worker_ssh_private_key}
+WORKER_SSH_PUBLIC_KEY=${local.worker_ssh_public_key}
+EOT
+  filename = local.env_output
+}
+
 output "master_ips" {
-  value = {
-    for idx, server in hcloud_server.nodes :
-    server.name => server.ipv4_address
-    if local.node_configs[idx].is_master
-  }
+  value = local.master_ips
 }
 
 output "worker_ips" {
-  value = {
-    for idx, server in hcloud_server.nodes :
-    server.name => server.ipv4_address
-    if !local.node_configs[idx].is_master
-  }
+  value = local.worker_ips
 }
 
 output "master_private_ips" {
-  value = {
-    for idx, server in hcloud_server.nodes :
-    server.name => server.network[0].ip
-    if local.node_configs[idx].is_master
-  }
+  value = local.master_private_ips
 }
 
 output "worker_private_ips" {
-  value = {
-    for idx, server in hcloud_server.nodes :
-    server.name => server.network[0].ip
-    if !local.node_configs[idx].is_master
-  }
+  value = local.worker_private_ips
 }
 
-output "server_ids" {
-  value = {
-    for server in hcloud_server.nodes :
-    server.name => server.id
-  }
+output "env_output" {
+  value = local.env_output
 }
 
-output "ssh_key_fingerprint" {
-  value = hcloud_ssh_key.default.fingerprint
+output "master_ssh_private_key" {
+  value = local.master_ssh_private_key
 }
 
-output "data_dir" {
-  value = pathexpand("~/.local/share/rock8s/${var.cluster_name}")
-}
-
-output "provider_dir" {
-  value = var.provider_dir
-}
-
-output "env_file" {
-  value = "${var.provider_dir}/.env.output"
-}
-
-output "ssh_private_key" {
-  value = "${var.provider_dir}/id_rsa"
+output "worker_ssh_private_key" {
+  value = local.worker_ssh_private_key
 }

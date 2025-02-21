@@ -9,20 +9,20 @@ else
     : "${ROCK8S_LIB_PATH:=/usr/lib/rock8s}"
     ROCK8S_DEBUG=0
 fi
-: "${ROCK8S_CONFIG_PATHS:=/etc/rock8s:$HOME/.config/rock8s}"
+: "${ROCK8S_CONFIG_PATH:=$HOME/.config/rock8s}"
+: "${ROCK8S_STATE_HOME:=${XDG_STATE_HOME:-$HOME/.local/state}/rock8s}"
 : "${ROCK8S_STATE_ROOT:=/var/lib/rock8s}"
-: "${ROCK8S_PROVIDERS_PATH:=$ROCK8S_LIB_PATH/providers}"
-: "${ROCK8S_KUBESPRAY_PATH:=$ROCK8S_STATE_ROOT/kubespray}"
-: "${ROCK8S_CONFIGURE_PATH:=$ROCK8S_LIB_PATH/configure}"
 export ANSIBLE_NOCOWS=1
-export ROCK8S_CONFIG_PATHS
+export ROCK8S_CONFIG_PATH
 export ROCK8S_DEBUG
 export ROCK8S_LIB_PATH
-export ROCK8S_PROVIDERS_PATH
-export ROCK8S_KUBESPRAY_PATH
-export ROCK8S_CONFIGURE_PATH
+export ROCK8S_STATE_HOME
 export ROCK8S_STATE_ROOT
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
+
+if [ -f "$ROCK8S_CONFIG_PATH/config" ]; then
+    . "$ROCK8S_CONFIG_PATH/config"
+fi
 
 _help() {
     cat << EOF >&2
@@ -106,11 +106,11 @@ _main() {
         exit 1
     fi
     export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
-    _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD/$_CMD.sh"
+    _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
-        _error "unknown command: $_CMD"
+        _fail "unknown command: $_CMD"
     fi
-    exec "$_SUBCMD" $_CMD_ARGS
+    exec sh "$_SUBCMD" $_CMD_ARGS
 }
 
 _main "$@"
