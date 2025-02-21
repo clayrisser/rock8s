@@ -156,6 +156,9 @@ _ensure_system() {
     command -v kubectl >/dev/null 2>&1 || {
         _fail "kubectl is not installed"
     }
+    command -v dialog >/dev/null 2>&1 || {
+        _fail "dialog is not installed"
+    }
 }
 
 _validate_kubeconfig() {
