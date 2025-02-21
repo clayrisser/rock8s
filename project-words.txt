@@ -23,6 +23,7 @@ kubeconfig
 kubespray
 kustomization
 kyverno
+libexec
 mconfalonieri
 metallb
 mjson
@@ -30,6 +31,7 @@ mkpm
 myaml
 ncdu
 netdev
+NOCOWS
 noninteractive
 nvme
 oboukili
@@ -52,6 +54,7 @@ sfdisk
 sgdisk
 skiplock
 startswith
+SUBCMD
 syscalld
 terraformrc
 tfstate
