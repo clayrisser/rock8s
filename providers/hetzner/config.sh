@@ -40,7 +40,6 @@ _WORKER_TYPE="$(prompt_enum "Select worker node type" "" "$DEFAULT_SERVER_TYPE" 
 _WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "" "$DEFAULT_WORKER_COUNT")"
 
 cat <<EOF > "$_CONFIG_FILE"
-cluster_name: "$CLUSTER_NAME"
 cluster_dir: "$CLUSTER_DIR"
 server_image: "$_IMAGE"
 location: "$_LOCATION"
