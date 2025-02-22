@@ -12,7 +12,7 @@ corosync
 crossplane
 defaultno
 delnode
-DIALOGOPTS
+dialogopts
 dotenv
 hetznercloud
 hostfwd
@@ -23,6 +23,7 @@ jsonencode
 kanister
 karpenter
 kbst
+keygen
 kubeconfig
 kubespray
 kustomization
@@ -35,8 +36,9 @@ mkpm
 myaml
 ncdu
 netdev
-NOCOWS
+nocows
 noninteractive
+nopasswd
 notags
 nvme
 oboukili
@@ -61,7 +63,7 @@ sgdisk
 skiplock
 startswith
 stty
-SUBCMD
+subcmd
 syscalld
 terraformrc
 tfstate
