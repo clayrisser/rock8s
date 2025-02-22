@@ -5,15 +5,15 @@ set -e
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
 _help() {
-    cat <<EOF >&2
+    cat << EOF >&2
 NAME
-       rock8s nodes destroy - destroy cluster nodes
+       rock8s nodes update - update cluster nodes
 
 SYNOPSIS
-       rock8s nodes destroy [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] [--force] <provider> <purpose>
+       rock8s nodes update [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] <provider> <purpose>
 
 DESCRIPTION
-       destroy cluster nodes for a specific purpose (pfsense, master, or worker)
+       update existing cluster nodes by reapplying terraform configuration
 
 ARGUMENTS
        provider
@@ -34,10 +34,7 @@ OPTIONS
               tenant name (default: current user)
 
        --cluster <cluster>
-              name of the cluster to destroy nodes for (required)
-
-       --force
-              skip dependency checks for destruction order
+              name of the cluster to update nodes for (required)
 
        --non-interactive
               fail instead of prompting for missing values
@@ -50,7 +47,6 @@ _main() {
     _PURPOSE=""
     _CLUSTER=""
     _NON_INTERACTIVE=0
-    _FORCE=0
     _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
@@ -81,10 +77,6 @@ _main() {
                         shift 2
                         ;;
                 esac
-                ;;
-            --force)
-                _FORCE=1
-                shift
                 ;;
             --non-interactive)
                 _NON_INTERACTIVE=1
@@ -141,28 +133,43 @@ _main() {
     if [ ! -d "$_PURPOSE_DIR" ] || [ ! -f "$_PURPOSE_DIR/output.json" ]; then
         _fail "cluster nodes for $_PURPOSE do not exist"
     fi
-    if [ "$_FORCE" != "1" ]; then
-        case "$_PURPOSE" in
-            pfsense)
-                if [ -d "$CLUSTER_DIR/master" ] || [ -d "$CLUSTER_DIR/worker" ]; then
-                    _fail "master and worker nodes must be destroyed before pfsense nodes"
-                fi
-                ;;
-            master)
-                if [ -d "$CLUSTER_DIR/worker" ]; then
-                    _fail "worker nodes must be destroyed before master nodes"
-                fi
-                ;;
-        esac
+    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
+    if [ ! -f "$_CONFIG_FILE" ]; then
+        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    fi
+    case "$_PURPOSE" in
+        pfsense)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+        master)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+        worker)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+    esac
+    if [ "$_PURPOSE" != "pfsense" ]; then
+        export TF_VAR_user_data="#cloud-config
+users:
+  - name: admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - $(cat "$_PURPOSE_DIR/id_rsa.pub")
+"
+    fi
+    export TF_VAR_cluster_name="$_CLUSTER"
+    export TF_VAR_purpose="$_PURPOSE"
+    export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
+    export TF_VAR_cluster_dir="$CLUSTER_DIR"
+    export TF_VAR_tenant="$_TENANT"
+    if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
+        . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
-    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
-    terraform destroy -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
-    rm -rf "$_PURPOSE_DIR"
-    if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
-        rm -rf "$CLUSTER_DIR/provider"
-    fi
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s","status":"destroyed"}\n' \
+    terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+    terraform output -state="$_PURPOSE_DIR/terraform.tfstate" -json > "$_PURPOSE_DIR/output.json"
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s","status":"updated"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
         _format_output "$_FORMAT"
 }
