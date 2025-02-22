@@ -191,3 +191,47 @@ validate_enum() {
     done
     return 1
 }
+
+json2yaml() {
+    perl -MJSON::PP -MYAML -e '
+        my $json = do { local $/; <STDIN> };
+        my $data = decode_json($json);
+        print Dump($data);
+    '
+}
+
+yaml2json() {
+    python3 -c 'import sys, yaml, json; print(json.dumps(yaml.safe_load(sys.stdin.read())))'
+}
+
+get_config() {
+    _JQ_FILTER="$1"
+    _DEFAULT_VALUE="$2"
+    if [ -n "$_DEFAULT_VALUE" ]; then
+        echo "$_DEFAULT_VALUE"
+        return 0
+    fi
+    _RESULT=""
+    IFS=:
+    for _CONFIG_DIR in $ROCK8S_CONFIG_DIRS; do
+        _CONFIG_FILE="$_CONFIG_DIR/config.yaml"
+        if [ -f "$_CONFIG_FILE" ]; then
+            _VALUE="$(yaml2json < "$_CONFIG_FILE" | jq -r "$_JQ_FILTER" 2>/dev/null)"
+            if [ -n "$_VALUE" ]; then
+                _RESULT="$_VALUE"
+            fi
+        fi
+        if [ "$_CONFIG_DIR" = "$ROCK8S_CONFIG_HOME" ] && [ -n "$ROCK8S_TENANT" ]; then
+            _TENANT_CONFIG="$_CONFIG_DIR/tenants/$ROCK8S_TENANT/config.yaml"
+            if [ -f "$_TENANT_CONFIG" ]; then
+                _VALUE="$(yaml2json < "$_TENANT_CONFIG" | jq -r "$_JQ_FILTER" 2>/dev/null)"
+                if [ -n "$_VALUE" ]; then
+                    _RESULT="$_VALUE"
+                fi
+            fi
+        fi
+    done
+    unset IFS
+    echo "$_RESULT"
+    return 0
+}
