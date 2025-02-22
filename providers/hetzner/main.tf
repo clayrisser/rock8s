@@ -1,5 +1,5 @@
 resource "hcloud_ssh_key" "node" {
-  name       = "${var.cluster_name}-${var.purpose}"
+  name       = local.tenant == "" ? "${var.cluster_name}-${var.purpose}" : "${local.tenant}-${var.cluster_name}-${var.purpose}"
   public_key = file(var.ssh_public_key_path)
 }
 

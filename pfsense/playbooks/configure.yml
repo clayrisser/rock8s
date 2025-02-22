@@ -1,0 +1,7 @@
+---
+- name: Configure pfSense
+  hosts: all
+  gather_facts: False
+  roles:
+    - pfsense_auth
+    - pfsense
