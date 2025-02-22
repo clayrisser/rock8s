@@ -180,19 +180,6 @@ _check_dependencies() {
     }
 }
 
-_validate_environment() {
-    _ensure_config_dirs
-    _check_dependencies curl tar git jq perl
-}
-
-_ensure_config_dirs() {
-    mkdir -p "$ROCK8S_STATE_ROOT"
-    mkdir -p "$ROCK8S_STATE_ROOT/clusters"
-    for _PATH in $(echo "$ROCK8S_CONFIG_PATHS" | tr ':' ' '); do
-        mkdir -p "$_PATH"
-    done
-}
-
 _parse_node_groups() {
     _GROUPS="$1"
     _RESULT="["

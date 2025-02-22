@@ -2,7 +2,7 @@
 
 set -e
 
-. "$(dirname "$0")/../prompt.sh"
+. "$(dirname "$0")/../providers.sh"
 . "$(dirname "$0")/defaults.sh"
 
 _IMAGE="$(prompt_enum "Select server image" "SERVER_IMAGE" "$DEFAULT_IMAGE" $AVAILABLE_IMAGES)"
