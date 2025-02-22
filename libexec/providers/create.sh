@@ -105,10 +105,8 @@ _main() {
     if [ ! -d "$PROVIDER_DIR" ]; then
         _fail "provider $_PROVIDER not found"
     fi
-    _CONFIG_FILE="$ROCK8S_CONFIG_PATH/clusters/$_NAME"
-    if [ -f "$_CONFIG_FILE" ]; then
-        . "$_CONFIG_FILE"
-    else
+    _CONFIG_FILE="$ROCK8S_CONFIG_PATH/clusters/$_NAME/config.yaml"
+    if [ ! -f "$_CONFIG_FILE" ]; then
         mkdir -p "$(dirname "$_CONFIG_FILE")"
         _PROVIDER_CONFIG="$ROCK8S_LIB_PATH/providers/$_PROVIDER/config.sh"
         if [ -f "$_PROVIDER_CONFIG" ]; then
@@ -116,32 +114,22 @@ _main() {
             sh "$_PROVIDER_CONFIG" > "$_TMP_CONFIG"
             if [ -s "$_TMP_CONFIG" ]; then
                 mv "$_TMP_CONFIG" "$_CONFIG_FILE"
-                . "$_CONFIG_FILE"
             else
                 rm -f "$_TMP_CONFIG"
                 _fail "failed to generate config file"
             fi
         fi
     fi
-    : "${NETWORK_NAME:=private}"
-    export NETWORK_NAME
-    if [ -z "$MASTERS" ]; then
-        _fail "MASTERS is required"
-    fi
-    if [ -z "$WORKERS" ]; then
-        _fail "WORKERS is required"
-    fi
-    export MASTER_GROUPS="$(_parse_node_groups "$MASTERS")"
-    export WORKER_GROUPS="$(_parse_node_groups "$WORKERS")"
     if [ -d "$CLUSTER_DIR" ]; then
         _fail "cluster $_NAME already exists"
     fi
     mkdir -p "$CLUSTER_DIR"
     cp -r "$PROVIDER_DIR" "$CLUSTER_DIR/provider"
+    _yaml2json < "$_CONFIG_FILE" > "$CLUSTER_DIR/provider/terraform.tfvars.json"
+    if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
+        . "$CLUSTER_DIR/provider/variables.sh"
+    fi
     cd "$CLUSTER_DIR/provider"
-    _ERROR="$(. "$CLUSTER_DIR/provider/variables.sh" 2>&1)" || {
-        _fail "$_ERROR"
-    }
     terraform init -backend=true -backend-config="path=$_CLUSTER_DIR/terraform.tfstate" >&2
     terraform apply -auto-approve -state="$_CLUSTER_DIR/terraform.tfstate" >&2
     terraform output -json > "$_CLUSTER_DIR/nodes.json" >&2

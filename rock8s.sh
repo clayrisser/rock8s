@@ -20,6 +20,7 @@ export ROCK8S_STATE_HOME
 export ROCK8S_STATE_ROOT
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
+# TODO: load providers config from yaml
 if [ -f "$ROCK8S_CONFIG_PATH/config" ]; then
     . "$ROCK8S_CONFIG_PATH/config"
 fi
