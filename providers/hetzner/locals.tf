@@ -5,7 +5,6 @@ locals {
   master_ssh_public_key  = "${local.master_dir}/id_rsa.pub"
   worker_ssh_private_key = "${local.worker_dir}/id_rsa"
   worker_ssh_public_key  = "${local.worker_dir}/id_rsa.pub"
-  env_output             = "${var.cluster_dir}/.env.output"
   node_configs = flatten([
     [
       for group in var.master_groups : [

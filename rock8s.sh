@@ -9,20 +9,21 @@ else
     : "${ROCK8S_LIB_PATH:=/usr/lib/rock8s}"
     ROCK8S_DEBUG=0
 fi
-: "${ROCK8S_CONFIG_PATH:=$HOME/.config/rock8s}"
+: "${ROCK8S_CONFIG_HOME:=${XDG_CONFIG_HOME:-$HOME/.config}/rock8s}"
+: "${ROCK8S_CONFIG_DIRS:=$ROCK8S_CONFIG_HOME:${XDG_CONFIG_DIRS:-/etc}/rock8s}"
 : "${ROCK8S_STATE_HOME:=${XDG_STATE_HOME:-$HOME/.local/state}/rock8s}"
 : "${ROCK8S_STATE_ROOT:=/var/lib/rock8s}"
 export ANSIBLE_NOCOWS=1
-export ROCK8S_CONFIG_PATH
+export ROCK8S_CONFIG_HOME
+export ROCK8S_CONFIG_DIRS
 export ROCK8S_DEBUG
 export ROCK8S_LIB_PATH
 export ROCK8S_STATE_HOME
 export ROCK8S_STATE_ROOT
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
-# TODO: load providers config from yaml
-if [ -f "$ROCK8S_CONFIG_PATH/config" ]; then
-    . "$ROCK8S_CONFIG_PATH/config"
+if [ "$(id -u)" = "0" ]; then
+    _fail "cannot run as root"
 fi
 
 _help() {
@@ -34,7 +35,7 @@ SYNOPSIS
        rock8s [-h] [-d] [-o <format>] <command> [<args>]
 
 DESCRIPTION
-       create and manage kubernetes clusters using kubespray
+       create and manage kubernetes clusters
 
 OPTIONS
        -h, --help
@@ -47,20 +48,19 @@ OPTIONS
               output format (default: text)
               supported formats: text, json, yaml
 
+       -t, --tenant <tenant>
+              tenant name (default: current user)
+
 COMMANDS
-       providers
-              manage cloud provider nodes using terraform
+       nodes
+              create and manage cluster nodes
 
-       kubespray
-              create kubernetes clusters using kubespray
-
-       configure
-              configure kubernetes clusters with operators
+       cluster
+              create kubernetes clusters
 
 SEE ALSO
-       rock8s providers --help
-       rock8s kubespray --help
-       rock8s configure --help
+       rock8s nodes --help
+       rock8s cluster --help
 EOF
 }
 
@@ -68,6 +68,10 @@ _main() {
     _FORMAT="text"
     _CMD=""
     _CMD_ARGS=""
+    _TENANT="$ROCK8S_TENANT"
+    if [ -z "$_TENANT" ]; then
+        _TENANT="default"
+    fi
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -90,7 +94,19 @@ _main() {
                         ;;
                 esac
                 ;;
-            providers|kubespray|configure)
+            -t|--tenant|-t=*|--tenant=*)
+                case "$1" in
+                    *=*)
+                        _TENANT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _TENANT="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            nodes|cluster)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
@@ -106,6 +122,7 @@ _main() {
         _help
         exit 1
     fi
+    export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
