@@ -30,9 +30,9 @@ _warn() {
 
 _error() {
     if [ "${_FORMAT:-text}" = "json" ]; then
-        printf '{"error":"%s"}\n' "$1"
+        printf "%s\n" "$1" | jq -R '{"error":.}'
     else
-        printf '{"error":"%s"}\n' "$1" | _format_output "${_FORMAT:-text}" error >&2
+        printf "%s\n" "$1" | jq -R '{"error":.}' | _format_output "${_FORMAT:-text}" error >&2
     fi
 }
 
@@ -42,19 +42,11 @@ _fail() {
 }
 
 _json2yaml() {
-    perl -MJSON::PP -MYAML -e '
-        my $json = do { local $/; <STDIN> };
-        my $data = decode_json($json);
-        print Dump($data);
-    '
+    /usr/bin/python3 -c 'import sys, yaml, json; print(yaml.dump(json.loads(sys.stdin.read()), default_flow_style=False))'
 }
 
 _yaml2json() {
-    perl -MJSON::PP -MYAML -e '
-        my $yaml = do { local $/; <STDIN> };
-        my $data = Load($yaml);
-        print encode_json($data);
-    '
+    /usr/bin/python3 -c 'import sys, yaml, json; print(json.dumps(yaml.safe_load(sys.stdin.read())))'
 }
 
 _format_json_table() {
@@ -156,8 +148,14 @@ _ensure_system() {
     command -v kubectl >/dev/null 2>&1 || {
         _fail "kubectl is not installed"
     }
-    command -v dialog >/dev/null 2>&1 || {
-        _fail "dialog is not installed"
+    command -v whiptail >/dev/null 2>&1 || {
+        _fail "whiptail is not installed"
+    }
+    command -v jq >/dev/null 2>&1 || {
+        _fail "jq is not installed"
+    }
+    [ -x "/usr/bin/python3" ] || {
+        _fail "python3 is not installed"
     }
 }
 

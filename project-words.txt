@@ -37,6 +37,7 @@ ncdu
 netdev
 NOCOWS
 noninteractive
+notags
 nvme
 oboukili
 osds
