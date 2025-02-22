@@ -53,7 +53,8 @@ EOF
 
 _create_nodes() {
     _CONFIG_FILE="$1"
-    _PURPOSE="$2"
+    _CLUSTER="$2"
+    _PURPOSE="$3"
     export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
     if [ -d "$_PURPOSE_DIR" ]; then
         _fail "cluster nodes for $_PURPOSE already exist"
@@ -64,13 +65,13 @@ _create_nodes() {
     chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
     case "$_PURPOSE" in
         pfsense)
-            _yaml2json < "$_CONFIG_FILE" | jq '.pfsense as $p | . + {nodes: $p} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
             ;;
         master)
-            _yaml2json < "$_CONFIG_FILE" | jq '.masters as $m | . + {nodes: $m} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
             ;;
         worker)
-            _yaml2json < "$_CONFIG_FILE" | jq '.workers as $w | . + {nodes: $w} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
             ;;
     esac
     export TF_VAR_user_data="#cloud-config
@@ -89,9 +90,14 @@ users:
         . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
-    echo terraform init -backend-true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+    echo terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
     echo terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     echo terraform output -json > "$_PURPOSE_DIR/output.json" >&2
+    if [ "$_PURPOSE" = "pfsense" ]; then
+        terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+        terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+        terraform output -json > "$_PURPOSE_DIR/output.json" >&2
+    fi
 }
 
 _main() {
@@ -184,7 +190,7 @@ _main() {
     mkdir -p "$CLUSTER_DIR"
     cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     for _PURPOSE in "pfsense" "master" "worker"; do
-        _create_nodes "$_CONFIG_FILE" "$_PURPOSE"
+        _create_nodes "$_CONFIG_FILE" "$_CLUSTER" "$_PURPOSE"
     done
     printf '{"name":"%s","provider":"%s","tenant":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" | \
