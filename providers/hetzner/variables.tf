@@ -11,6 +11,10 @@ variable "purpose" {
   }
 }
 
+variable "pfsense_iso" {
+  default = "pfSense-CE-2.7.2-RELEASE-amd64.iso"
+}
+
 variable "cluster_name" {
   type = string
   validation {
@@ -65,18 +69,19 @@ variable "cluster_dir" {
 
 variable "nodes" {
   type = list(object({
-    name    = string
     type    = string
     count   = optional(number)
-    options = map(string)
+    options = optional(map(string))
     ipv4s   = optional(list(string))
   }))
   validation {
     condition = alltrue([
       for group in var.nodes :
       contains([
-        "cx11", "cx21", "cx31", "cx41", "cx51",
-        "cpx11", "cpx21", "cpx31", "cpx41", "cpx51"
+        "cpx11", "cpx21", "cpx31", "cpx41", "cpx51",
+        "cax11", "cax21", "cax31", "cax41",
+        "ccx13", "ccx23", "ccx33", "ccx43", "ccx53", "ccx63",
+        "cx22", "cx32", "cx42", "cx52"
       ], group.type) &&
       (group.count == null || group.count > 0)
     ])

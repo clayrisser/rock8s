@@ -3,11 +3,11 @@ locals {
   node_ssh_private_key = "${local.node_dir}/id_rsa"
   node_ssh_public_key  = "${local.node_dir}/id_rsa.pub"
   nodes = [
-    for group in var.nodes : {
-      name    = group.name
+    for i, group in var.nodes : {
+      name    = "node${i + 1}"
       type    = group.type
       count   = try(group.count, length(group.ipv4s), 1)
-      options = group.options
+      options = try(group.options, {})
       ipv4s   = group.ipv4s
     }
   ]
@@ -27,6 +27,6 @@ locals {
   }
   node_private_ips = {
     for idx, server in hcloud_server.nodes :
-    server.name => server.network[0].ip
+    server.name => one(server.network).ip
   }
 }
