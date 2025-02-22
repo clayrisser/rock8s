@@ -215,3 +215,16 @@ EOF
     _RESULT="$_RESULT]"
     echo "$_RESULT"
 }
+
+_get_cloud_init_config() {
+    _SSH_PUBLIC_KEY="$1"
+    cat <<EOF
+#cloud-config
+users:
+  - name: admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - $(cat "$_SSH_PUBLIC_KEY")
+EOF
+}

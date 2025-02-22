@@ -125,7 +125,7 @@ _main() {
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
-        _fail "invalid purpose: $_PURPOSE"
+        _fail "$_PURPOSE is invalid"
     fi
     _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
@@ -154,7 +154,7 @@ _main() {
         fi
     fi
     export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
-    if [ -d "$_PURPOSE_DIR/output.json" ]; then
+    if [ -f "$_PURPOSE_DIR/output.json" ]; then
         _fail "cluster nodes for $_PURPOSE already exist"
     fi
     if [ "$_FORCE" != "1" ]; then
@@ -192,14 +192,7 @@ _main() {
             ;;
     esac
     if [ "$_PURPOSE" != "pfsense" ]; then
-        export TF_VAR_user_data="#cloud-config
-users:
-  - name: admin
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    ssh_authorized_keys:
-      - $(cat "$_PURPOSE_DIR/id_rsa.pub")
-"
+        export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
     fi
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_purpose="$_PURPOSE"
