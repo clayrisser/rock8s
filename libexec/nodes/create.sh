@@ -10,17 +10,17 @@ NAME
        rock8s nodes create - create cluster nodes
 
 SYNOPSIS
-       rock8s nodes create [-h] [-o <format>] [--non-interactive] [--tenant <tenant>] <provider> <cluster>
+       rock8s nodes create [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] [--force] <provider> <purpose>
 
 DESCRIPTION
-       create cluster nodes for pfsense, masters, and workers
+       create cluster nodes for a specific purpose (pfsense, master, or worker)
 
 ARGUMENTS
        provider
               name of the provider source to use
 
-       cluster
-              name of the cluster to create
+       purpose
+              purpose of the nodes (pfsense, master, or worker)
 
 OPTIONS
        -h, --help
@@ -33,78 +33,24 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name (default: current user)
 
+       --cluster <cluster>
+              name of the cluster to create nodes for (required)
+
+       --force
+              skip dependency checks for creation order
+
        --non-interactive
               fail instead of prompting for missing values
-
-ENVIRONMENT
-       MASTERS
-              space-separated list of master node groups (format: type:count[:key=val,key2=val2])
-
-       WORKERS
-              space-separated list of worker node groups (format: type:count[:key=val,key2=val2])
-
-       USER_DATA
-              optional user-data script
-
-       NETWORK_NAME
-              name of the private network (default: private)
 EOF
-}
-
-_create_nodes() {
-    _CONFIG_FILE="$1"
-    _CLUSTER="$2"
-    _PURPOSE="$3"
-    export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
-    if [ -d "$_PURPOSE_DIR" ]; then
-        _fail "cluster nodes for $_PURPOSE already exist"
-    fi
-    mkdir -p "$_PURPOSE_DIR"
-    ssh-keygen -t rsa -b 4096 -f "$_PURPOSE_DIR/id_rsa" -N "" -C "rock8s-$_CLUSTER-$_PURPOSE"
-    chmod 600 "$_PURPOSE_DIR/id_rsa"
-    chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
-    case "$_PURPOSE" in
-        pfsense)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-        master)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-        worker)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-    esac
-    export TF_VAR_user_data="#cloud-config
-users:
-  - name: admin
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    ssh_authorized_keys:
-      - $(cat "$_PURPOSE_DIR/id_rsa.pub")
-"
-    export TF_VAR_cluster_name="$_CLUSTER"
-    export TF_VAR_purpose="$_PURPOSE"
-    export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
-    export TF_VAR_cluster_dir="$CLUSTER_DIR"
-    if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
-        . "$CLUSTER_DIR/provider/variables.sh"
-    fi
-    cd "$CLUSTER_DIR/provider"
-    echo terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
-    echo terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
-    echo terraform output -json > "$_PURPOSE_DIR/output.json" >&2
-    if [ "$_PURPOSE" = "pfsense" ]; then
-        terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
-        terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
-        terraform output -json > "$_PURPOSE_DIR/output.json" >&2
-    fi
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _PROVIDER=""
+    _PURPOSE=""
     _CLUSTER=""
     _NON_INTERACTIVE=0
+    _FORCE=0
     _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
@@ -123,6 +69,22 @@ _main() {
                         shift 2
                         ;;
                 esac
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --force)
+                _FORCE=1
+                shift
                 ;;
             --non-interactive)
                 _NON_INTERACTIVE=1
@@ -148,8 +110,8 @@ _main() {
                 if [ -z "$_PROVIDER" ]; then
                     _PROVIDER="$1"
                     shift
-                elif [ -z "$_CLUSTER" ]; then
-                    _CLUSTER="$1"
+                elif [ -z "$_PURPOSE" ]; then
+                    _PURPOSE="$1"
                     shift
                 else
                     _help
@@ -158,9 +120,12 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_PROVIDER" ] || [ -z "$_CLUSTER" ]; then
+    if [ -z "$_PROVIDER" ] || [ -z "$_PURPOSE" ] || [ -z "$_CLUSTER" ]; then
         _help
         exit 1
+    fi
+    if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
+        _fail "invalid purpose: $_PURPOSE"
     fi
     _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
@@ -168,9 +133,10 @@ _main() {
     if [ ! -d "$_PROVIDER_DIR" ]; then
         _fail "provider $_PROVIDER not found"
     fi
-    export CLUSTER_DIR="$ROCK8S_STATE_HOME/$_TENANT/clusters/$_CLUSTER"
-    if [ -d "$CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER already exists"
+    export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
+    if [ ! -d "$CLUSTER_DIR" ]; then
+        mkdir -p "$CLUSTER_DIR"
+        cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     fi
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
     if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
@@ -187,13 +153,66 @@ _main() {
             _fail "provider config script failed to create config file"
         fi
     fi
-    mkdir -p "$CLUSTER_DIR"
-    cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
-    for _PURPOSE in "pfsense" "master" "worker"; do
-        _create_nodes "$_CONFIG_FILE" "$_CLUSTER" "$_PURPOSE"
-    done
-    printf '{"name":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$_PROVIDER" "$_TENANT" | \
+    export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
+    if [ -d "$_PURPOSE_DIR" ]; then
+        _fail "cluster nodes for $_PURPOSE already exist"
+    fi
+    if [ "$_FORCE" != "1" ]; then
+        case "$_PURPOSE" in
+            master)
+                if [ ! -d "$CLUSTER_DIR/pfsense" ]; then
+                    _fail "pfsense nodes must be created before master nodes"
+                fi
+                ;;
+            worker)
+                if [ ! -d "$CLUSTER_DIR/pfsense" ]; then
+                    _fail "pfsense nodes must be created before worker nodes"
+                fi
+                if [ ! -d "$CLUSTER_DIR/master" ]; then
+                    _fail "master nodes must be created before worker nodes"
+                fi
+                ;;
+        esac
+    fi
+    mkdir -p "$_PURPOSE_DIR"
+    ssh-keygen -t rsa -b 4096 -f "$_PURPOSE_DIR/id_rsa" -N "" -C "rock8s-$_CLUSTER-$_PURPOSE"
+    chmod 600 "$_PURPOSE_DIR/id_rsa"
+    chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
+    case "$_PURPOSE" in
+        pfsense)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+        master)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+        worker)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+    esac
+    if [ "$_PURPOSE" != "pfsense" ]; then
+        export TF_VAR_user_data="#cloud-config
+users:
+  - name: admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - $(cat "$_PURPOSE_DIR/id_rsa.pub")
+"
+    fi
+    export TF_VAR_cluster_name="$_CLUSTER"
+    export TF_VAR_purpose="$_PURPOSE"
+    export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
+    export TF_VAR_cluster_dir="$CLUSTER_DIR"
+    export TF_VAR_tenant="$_TENANT"
+    if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
+        . "$CLUSTER_DIR/provider/variables.sh"
+    fi
+    cd "$CLUSTER_DIR/provider"
+    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+    terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+    terraform output -json > "$_PURPOSE_DIR/output.json" >&2
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
+        "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
         _format_output "$_FORMAT"
 }
 

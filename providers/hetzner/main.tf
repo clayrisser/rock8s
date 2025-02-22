@@ -16,6 +16,13 @@ resource "hcloud_server" "nodes" {
   location    = try(local.node_configs[count.index].options.location, var.location)
   ssh_keys    = [hcloud_ssh_key.node.id]
   user_data   = var.user_data != "" ? var.user_data : null
+  labels = merge(
+    {
+      cluster = var.cluster_name
+      purpose = var.purpose
+    },
+    local.tenant != "" ? { tenant = local.tenant } : {}
+  )
   network {
     network_id = data.hcloud_network.network.id
     ip         = local.node_configs[count.index].ipv4
