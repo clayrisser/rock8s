@@ -154,7 +154,7 @@ _main() {
         fi
     fi
     export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
-    if [ -d "$_PURPOSE_DIR" ]; then
+    if [ -d "$_PURPOSE_DIR/output.json" ]; then
         _fail "cluster nodes for $_PURPOSE already exist"
     fi
     if [ "$_FORCE" != "1" ]; then
@@ -175,7 +175,9 @@ _main() {
         esac
     fi
     mkdir -p "$_PURPOSE_DIR"
-    ssh-keygen -t rsa -b 4096 -f "$_PURPOSE_DIR/id_rsa" -N "" -C "rock8s-$_CLUSTER-$_PURPOSE"
+    if [ ! -f "$_PURPOSE_DIR/id_rsa" ]; then
+        ssh-keygen -t rsa -b 4096 -f "$_PURPOSE_DIR/id_rsa" -N "" -C "rock8s-$_CLUSTER-$_PURPOSE"
+    fi
     chmod 600 "$_PURPOSE_DIR/id_rsa"
     chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
     case "$_PURPOSE" in
