@@ -121,18 +121,18 @@ _main() {
         _fail "provider $_PROVIDER not found"
     fi
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_NAME/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
+    if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
         mkdir -p "$(dirname "$_CONFIG_FILE")"
-        _PROVIDER_CONFIG="$_PROVIDER_DIR/config.sh"
-        if [ -f "$_PROVIDER_CONFIG" ]; then
-            _TMP_CONFIG="$(mktemp)"
-            sh "$_PROVIDER_CONFIG" > "$_TMP_CONFIG"
-            if [ -s "$_TMP_CONFIG" ]; then
-                mv "$_TMP_CONFIG" "$_CONFIG_FILE"
+        { _ERROR="$(sh "$_PROVIDER_DIR/config.sh" "$_CONFIG_FILE")"; _EXIT_CODE="$?"; } || true
+        if [ "$_EXIT_CODE" -ne 0 ]; then
+            if [ -n "$_ERROR" ]; then
+                _fail "$_ERROR"
             else
-                rm -f "$_TMP_CONFIG"
-                _fail "failed to generate config file"
+                _fail "provider config script failed"
             fi
+        fi
+        if [ ! -f "$_CONFIG_FILE" ]; then
+            _fail "provider config script failed to create config file"
         fi
     fi
     if [ -d "$CLUSTER_DIR" ]; then
