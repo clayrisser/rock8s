@@ -23,11 +23,15 @@ COMMANDS
        create
               create cluster nodes
 
+       update
+              update existing cluster nodes
+
        destroy
               destroy cluster nodes
 
 SEE ALSO
        rock8s nodes create --help
+       rock8s nodes update --help
        rock8s nodes destroy --help
 EOF
 }
@@ -55,7 +59,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            create|destroy)
+            create|update|destroy)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
