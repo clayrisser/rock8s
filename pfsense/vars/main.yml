@@ -1,0 +1,11 @@
+---
+pfsense:
+  system:
+    hostname: fw
+    domain: rock8s.local
+    dns: 1.1.1.1 8.8.8.8
+    timezone: UTC
+  network:
+    interfaces: []
+    aliases: []
+    rules: []

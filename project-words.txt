@@ -12,6 +12,7 @@ corosync
 crossplane
 defaultno
 delnode
+descr
 dialogopts
 dotenv
 hetznercloud
@@ -49,7 +50,9 @@ pdns
 pfctl
 pflash
 pfsense
+pfsensible
 powerdns
+prefixlen
 pvecm
 pvedaemon
 pvefw

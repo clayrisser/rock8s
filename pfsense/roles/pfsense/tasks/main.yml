@@ -1,0 +1,38 @@
+---
+- name: Configure hostname and DNS
+  pfsensible.core.pfsense_setup:
+    hostname: "{{ pfsense.system.hostname | default('fw') }}"
+    domain: "{{ pfsense.system.domain | default('rock8s.local') }}"
+    dns_addresses: "{{ pfsense.system.dns | default('1.1.1.1 8.8.8.8') }}"
+    timezone: "{{ pfsense.system.timezone | default('UTC') }}"
+
+- name: Configure interfaces
+  pfsensible.core.pfsense_interface:
+    descr: "{{ item.descr }}"
+    interface: "{{ item.interface }}"
+    enable: True
+    ipv4_type: static
+    ipv4_address: "{{ item.ipv4_address }}"
+    ipv4_prefixlen: "{{ item.ipv4_prefixlen }}"
+  loop: "{{ pfsense.network.interfaces | default([]) }}"
+  when: pfsense.network.interfaces is defined
+
+- name: Configure firewall aliases
+  pfsensible.core.pfsense_alias:
+    name: "{{ item.name }}"
+    type: "{{ item.type }}"
+    address: "{{ item.address }}"
+  loop: "{{ pfsense.network.aliases | default([]) }}"
+  when: pfsense.network.aliases is defined
+
+- name: Configure firewall rules
+  pfsensible.core.pfsense_rule:
+    name: "{{ item.name }}"
+    interface: "{{ item.interface }}"
+    action: "{{ item.action }}"
+    source: "{{ item.source }}"
+    destination: "{{ item.destination }}"
+    protocol: "{{ item.protocol | default('any') }}"
+    destination_port: "{{ item.destination_port | default(omit) }}"
+  loop: "{{ pfsense.network.rules | default([]) }}"
+  when: pfsense.network.rules is defined
