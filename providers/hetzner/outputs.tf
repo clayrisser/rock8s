@@ -1,23 +1,11 @@
-output "master_ips" {
-  value = local.master_ips
+output "node_ips" {
+  value = local.node_ips
 }
 
-output "worker_ips" {
-  value = local.worker_ips
+output "node_private_ips" {
+  value = local.node_private_ips
 }
 
-output "master_private_ips" {
-  value = local.master_private_ips
-}
-
-output "worker_private_ips" {
-  value = local.worker_private_ips
-}
-
-output "master_ssh_private_key" {
-  value = local.master_ssh_private_key
-}
-
-output "worker_ssh_private_key" {
-  value = local.worker_ssh_private_key
+output "node_ssh_private_key" {
+  value = local.node_ssh_private_key
 }

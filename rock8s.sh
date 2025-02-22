@@ -45,7 +45,7 @@ OPTIONS
               debug mode
 
        -o, --output=<format>
-              output format (default: text)
+              output format (default: json)
               supported formats: text, json, yaml
 
        -t, --tenant <tenant>
@@ -65,7 +65,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="text"
+    _FORMAT="json"
     _CMD=""
     _CMD_ARGS=""
     _TENANT="$ROCK8S_TENANT"

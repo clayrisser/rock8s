@@ -3,12 +3,24 @@ variable "hetzner_token" {
   sensitive = true
 }
 
+variable "purpose" {
+  type = string
+  validation {
+    condition     = contains(["pfsense", "master", "worker"], var.purpose)
+    error_message = "invalid purpose"
+  }
+}
+
 variable "cluster_name" {
   type = string
   validation {
     condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.cluster_name))
     error_message = "lowercase with hyphens only"
   }
+}
+
+variable "ssh_public_key_path" {
+  type = string
 }
 
 variable "server_image" {
@@ -51,40 +63,23 @@ variable "cluster_dir" {
   type = string
 }
 
-variable "master_groups" {
+variable "nodes" {
   type = list(object({
+    name    = string
     type    = string
-    count   = number
+    count   = optional(number)
     options = map(string)
+    ipv4s   = optional(list(string))
   }))
   validation {
     condition = alltrue([
-      for group in var.master_groups :
+      for group in var.nodes :
       contains([
         "cx11", "cx21", "cx31", "cx41", "cx51",
         "cpx11", "cpx21", "cpx31", "cpx41", "cpx51"
       ], group.type) &&
-      group.count > 0 && group.count <= 10
+      (group.count == null || group.count > 0)
     ])
-    error_message = "invalid master type or count"
-  }
-}
-
-variable "worker_groups" {
-  type = list(object({
-    type    = string
-    count   = number
-    options = map(string)
-  }))
-  validation {
-    condition = alltrue([
-      for group in var.worker_groups :
-      contains([
-        "cx11", "cx21", "cx31", "cx41", "cx51",
-        "cpx11", "cpx21", "cpx31", "cpx41", "cpx51"
-      ], group.type) &&
-      group.count >= 0 && group.count <= 100
-    ])
-    error_message = "invalid worker type or count"
+    error_message = "invalid type or count"
   }
 }
