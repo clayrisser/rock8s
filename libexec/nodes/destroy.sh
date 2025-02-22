@@ -125,7 +125,7 @@ _main() {
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
-        _fail "invalid purpose: $_PURPOSE"
+        _fail "purpose $_PURPOSE not found"
     fi
     _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
@@ -135,28 +135,53 @@ _main() {
     fi
     export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
     if [ ! -d "$CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER does not exist"
+        _fail "cluster $_CLUSTER not found"
     fi
     export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
     if [ ! -d "$_PURPOSE_DIR" ] || [ ! -f "$_PURPOSE_DIR/output.json" ]; then
-        _fail "cluster nodes for $_PURPOSE do not exist"
+        _fail "nodes $_PURPOSE not found"
     fi
     if [ "$_FORCE" != "1" ]; then
         case "$_PURPOSE" in
             pfsense)
                 if [ -d "$CLUSTER_DIR/master" ] || [ -d "$CLUSTER_DIR/worker" ]; then
-                    _fail "master and worker nodes must be destroyed before pfsense nodes"
+                    _fail "nodes master and worker must be destroyed before nodes pfsense"
                 fi
                 ;;
             master)
                 if [ -d "$CLUSTER_DIR/worker" ]; then
-                    _fail "worker nodes must be destroyed before master nodes"
+                    _fail "nodes worker must be destroyed before nodes master"
                 fi
                 ;;
         esac
     fi
+    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
+    if [ ! -f "$_CONFIG_FILE" ]; then
+        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    fi
+    case "$_PURPOSE" in
+        pfsense)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+        master)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+        worker)
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            ;;
+    esac
+    if [ "$_PURPOSE" != "pfsense" ]; then
+        export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
+    fi
+    export TF_VAR_cluster_name="$_CLUSTER"
+    export TF_VAR_purpose="$_PURPOSE"
+    export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
+    export TF_VAR_cluster_dir="$CLUSTER_DIR"
+    export TF_VAR_tenant="$_TENANT"
+    if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
+        . "$CLUSTER_DIR/provider/variables.sh"
+    fi
     cd "$CLUSTER_DIR/provider"
-    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
     terraform destroy -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     rm -rf "$_PURPOSE_DIR"
     if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
