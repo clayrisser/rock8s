@@ -137,6 +137,8 @@ _main() {
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
     fi
+    rm -rf "$CLUSTER_DIR/provider"
+    cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     case "$_PURPOSE" in
         pfsense)
             _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
@@ -160,6 +162,7 @@ _main() {
         . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
+    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
     terraform apply -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     terraform output -state="$_PURPOSE_DIR/terraform.tfstate" -json > "$_PURPOSE_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s","status":"updated"}\n' \

@@ -16,14 +16,13 @@ _validate_ipv4() {
     return 0
 }
 
-_IMAGE="$(prompt_enum "Select server image" "SERVER_IMAGE" "$DEFAULT_IMAGE" $AVAILABLE_IMAGES)"
 _LOCATION="$(prompt_enum "Select location" "LOCATION" "$DEFAULT_LOCATION" $AVAILABLE_LOCATIONS)"
-_NETWORK="$(prompt_text "Enter network name" "NETWORK_NAME" "$DEFAULT_NETWORK_NAME")"
-_PFSENSE_TYPE="$(prompt_enum "Select PFSense node type" "" "$DEFAULT_SERVER_TYPE" $AVAILABLE_SERVER_TYPES)"
-_SECONDARY_PFSENSE="$(prompt_boolean "Do you want to add a secondary PFSense node for high availability" "" "0")"
+_NETWORK="$(prompt_text "Enter network" "NETWORK" "$DEFAULT_NETWORK")"
+_PFSENSE_TYPE="$(prompt_enum "Select pfsense node type" "" "$DEFAULT_SERVER_TYPE" $AVAILABLE_SERVER_TYPES)"
+_SECONDARY_PFSENSE="$(prompt_boolean "Do you want to add a secondary pfsense node for high availability" "" "0")"
 _PFSENSE_COUNT="$([ "$_SECONDARY_PFSENSE" = "1" ] && echo "2" || echo "1")"
 _MASTER_TYPE="$(prompt_enum "Select master node type" "" "$DEFAULT_SERVER_TYPE" $AVAILABLE_SERVER_TYPES)"
-_USE_IPV4="$(prompt_boolean "Do you want to specify IPv4 addresses for master nodes" "" "0")"
+_USE_IPV4="$(prompt_boolean "Do you want to specify ipv4 addresses for master nodes" "" "0")"
 _MASTER_IPV4S=""
 if [ "$_USE_IPV4" = "1" ]; then
     _PROMPT="Enter IPv4 address for master node"
@@ -40,10 +39,9 @@ _WORKER_TYPE="$(prompt_enum "Select worker node type" "" "$DEFAULT_SERVER_TYPE" 
 _WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "" "$DEFAULT_WORKER_COUNT")"
 
 cat <<EOF > "$_CONFIG_FILE"
-cluster_dir: "$CLUSTER_DIR"
-server_image: "$_IMAGE"
-location: "$_LOCATION"
-network_name: "$_NETWORK"
+image: debian-12
+location: $_LOCATION
+network: $_NETWORK
 pfsense:
   - type: $_PFSENSE_TYPE
     count: $_PFSENSE_COUNT
