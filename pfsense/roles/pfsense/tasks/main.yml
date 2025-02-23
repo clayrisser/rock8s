@@ -5,8 +5,8 @@
   import_tasks: setup.yml
 # - name: Configure NAT
 #   import_tasks: nat.yml
-- name: Configure DHCP
-  import_tasks: dhcp.yml
+# - name: Configure DHCP
+#   import_tasks: dhcp.yml
 # - name: Configure firewall rules
 #   import_tasks: firewall.yml
 # - name: Install and configure packages
