@@ -5,6 +5,7 @@
     domain: "{{ pfsense.system.domain | default('rock8s.local') }}"
     dns_addresses: "{{ pfsense.system.dns | default('1.1.1.1 8.8.8.8') }}"
     timezone: "{{ pfsense.system.timezone | default('UTC') }}"
+  when: inventory_hostname in groups['primary']
 
 - name: Configure interfaces
   pfsensible.core.pfsense_interface:
@@ -15,7 +16,51 @@
     ipv4_address: "{{ item.ipv4_address }}"
     ipv4_prefixlen: "{{ item.ipv4_prefixlen }}"
   loop: "{{ pfsense.network.interfaces | default([]) }}"
-  when: pfsense.network.interfaces is defined
+  when:
+    - pfsense.network.interfaces is defined
+    - inventory_hostname in groups['primary']
+
+- name: Get LAN interface details
+  set_fact:
+    lan_interface: "{{ pfsense.network.interfaces | selectattr('descr', 'equalto', 'LAN') | first }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - groups['secondary'] | length > 0
+
+- name: Configure SYNC interface on primary
+  pfsensible.core.pfsense_interface:
+    descr: "SYNC"
+    interface: "{{ lan_interface.interface }}"
+    enable: True
+    ipv4_type: static
+    ipv4_address: "{{ pfsense.network.sync.primary_ip | regex_replace('/.*$', '') }}"
+    ipv4_prefixlen: "{{ pfsense.network.sync.primary_ip | regex_replace('^.*/', '') }}"
+  when:
+    - inventory_hostname in groups['primary']
+    - groups['secondary'] | length > 0
+    - pfsense.network.sync is defined
+
+- name: Configure SYNC interface on secondary
+  pfsensible.core.pfsense_interface:
+    descr: "SYNC"
+    interface: "{{ lan_interface.interface }}"
+    enable: True
+    ipv4_type: static
+    ipv4_address: "{{ pfsense.network.sync.secondary_ip | regex_replace('/.*$', '') }}"
+    ipv4_prefixlen: "{{ pfsense.network.sync.secondary_ip | regex_replace('^.*/', '') }}"
+  when:
+    - inventory_hostname in groups['secondary']
+    - pfsense.network.sync is defined
+
+- name: Configure XMLRPC sync on primary
+  pfsensible.core.pfsense_haproxy_sync:
+    state: present
+    url: "https://{{ pfsense.network.sync.secondary_ip | regex_replace('/.*$', '') }}"
+    private_key: "{{ ansible_ssh_private_key_file }}"
+  when:
+    - inventory_hostname in groups['primary']
+    - groups['secondary'] | length > 0
+    - pfsense.network.sync is defined
 
 - name: Configure firewall aliases
   pfsensible.core.pfsense_alias:
@@ -23,7 +68,9 @@
     type: "{{ item.type }}"
     address: "{{ item.address }}"
   loop: "{{ pfsense.network.aliases | default([]) }}"
-  when: pfsense.network.aliases is defined
+  when:
+    - pfsense.network.aliases is defined
+    - inventory_hostname in groups['primary']
 
 - name: Configure firewall rules
   pfsensible.core.pfsense_rule:
@@ -35,4 +82,22 @@
     protocol: "{{ item.protocol | default('any') }}"
     destination_port: "{{ item.destination_port | default(omit) }}"
   loop: "{{ pfsense.network.rules | default([]) }}"
-  when: pfsense.network.rules is defined
+  when:
+    - pfsense.network.rules is defined
+    - inventory_hostname in groups['primary']
+
+- name: Add SYNC interface firewall rules
+  pfsensible.core.pfsense_rule:
+    name: "Allow SYNC {{ item }}"
+    interface: "SYNC"
+    action: "pass"
+    source: "any"
+    destination: "any"
+    protocol: "{{ item }}"
+  loop:
+    - tcp
+    - udp
+  when:
+    - groups['secondary'] | length > 0
+    - pfsense.network.sync is defined
+    - inventory_hostname in groups['primary']
