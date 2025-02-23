@@ -6,32 +6,44 @@ _CONFIG_FILE="$1"
 . "$(dirname "$0")/../providers.sh"
 . "$(dirname "$0")/defaults.sh"
 
-_validate_ipv4() {
-    echo "$1" | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' >/dev/null || return 1
-    IFS=.
-    for _OCTET in $1; do
-        [ "$_OCTET" -le 255 ] || return 1
-    done
-    unset IFS
-    return 0
-}
-
 _LOCATION="$(prompt_enum "Select location" "LOCATION" "$DEFAULT_LOCATION" $AVAILABLE_LOCATIONS)"
 _NETWORK="$(prompt_text "Enter network" "NETWORK" "$DEFAULT_NETWORK")"
 _PFSENSE_TYPE="$(prompt_enum "Select pfsense node type" "" "$DEFAULT_SERVER_TYPE" $AVAILABLE_SERVER_TYPES)"
-_SECONDARY_PFSENSE="$(prompt_boolean "Do you want to add a secondary pfsense node for high availability" "" "0")"
-_PFSENSE_COUNT="$([ "$_SECONDARY_PFSENSE" = "1" ] && echo "2" || echo "1")"
+
+_PROMPT="Enter primary pfsense hostname"
+while true; do
+    _PRIMARY_HOSTNAME="$(prompt_text "$_PROMPT" "" "")"
+    if [ -n "$_PRIMARY_HOSTNAME" ] && validate_hostname "$_PRIMARY_HOSTNAME"; then
+        break
+    fi
+    _PROMPT="Invalid hostname. Enter primary pfsense hostname"
+done
+
+_PROMPT="Enter secondary pfsense hostname (optional)"
+while true; do
+    _SECONDARY_HOSTNAME="$(prompt_text "$_PROMPT" "" "")"
+    if [ -z "$_SECONDARY_HOSTNAME" ] || validate_hostname "$_SECONDARY_HOSTNAME"; then
+        break
+    fi
+    _PROMPT="Invalid hostname. Enter secondary pfsense hostname (optional)"
+done
+
+_PFSENSE_HOSTNAMES="[\"$_PRIMARY_HOSTNAME\""
+if [ -n "$_SECONDARY_HOSTNAME" ]; then
+    _PFSENSE_HOSTNAMES="$_PFSENSE_HOSTNAMES,\"$_SECONDARY_HOSTNAME\""
+fi
+_PFSENSE_HOSTNAMES="$_PFSENSE_HOSTNAMES]"
 _MASTER_TYPE="$(prompt_enum "Select master node type" "" "$DEFAULT_SERVER_TYPE" $AVAILABLE_SERVER_TYPES)"
 _USE_IPV4="$(prompt_boolean "Do you want to specify ipv4 addresses for master nodes" "" "0")"
 _MASTER_IPV4S=""
 if [ "$_USE_IPV4" = "1" ]; then
-    _PROMPT="Enter IPv4 address for master node"
+    _PROMPT="Enter ipv4 address for master node"
     while true; do
         _IPV4="$(prompt_text "$_PROMPT" "" "")"
-        if _validate_ipv4 "$_IPV4"; then
+        if validate_ipv4 "$_IPV4"; then
             break
         fi
-        _PROMPT="Invalid IPv4 address. Enter IPv4 address for master node"
+        _PROMPT="Invalid ipv4 address. Enter ipv4 address for master node"
     done
     _MASTER_IPV4S="[\"$_IPV4\"]"
 fi
@@ -44,7 +56,9 @@ location: $_LOCATION
 network: $_NETWORK
 pfsense:
   - type: $_PFSENSE_TYPE
-    count: $_PFSENSE_COUNT
+    hostnames:
+      - $_PRIMARY_HOSTNAME$([ -n "$_SECONDARY_HOSTNAME" ] && echo "
+      - $_SECONDARY_HOSTNAME")
 masters:
   - type: $_MASTER_TYPE$([ -n "$_MASTER_IPV4S" ] && echo "
     ipv4s: $_MASTER_IPV4S")

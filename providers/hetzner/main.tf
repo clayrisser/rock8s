@@ -11,9 +11,9 @@ resource "hcloud_server" "nodes" {
   count       = length(local.node_configs)
   name        = local.node_configs[count.index].name
   server_type = local.node_configs[count.index].server_type
-  image       = try(local.node_configs[count.index].options.image, var.image)
+  image       = coalesce(local.node_configs[count.index].image, var.image)
   iso         = var.purpose == "pfsense" ? var.pfsense_iso : null
-  location    = try(local.node_configs[count.index].options.location, var.location)
+  location    = var.location
   ssh_keys    = [hcloud_ssh_key.node.id]
   user_data   = var.user_data != "" ? var.user_data : null
   labels = merge(
