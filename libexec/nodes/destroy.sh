@@ -187,6 +187,9 @@ _main() {
     if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
         rm -rf "$CLUSTER_DIR/provider"
     fi
+    if [ -z "$(ls -A "$CLUSTER_DIR")" ]; then
+        rm -rf "$CLUSTER_DIR"
+    fi
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s","status":"destroyed"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
         _format_output "$_FORMAT"
