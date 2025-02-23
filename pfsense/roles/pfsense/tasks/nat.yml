@@ -1,0 +1,5 @@
+---
+- name: Configure Hybrid Outbound NAT
+  pfsensible.core.pfsense_nat_outbound:
+    mode: hybrid
+  when: primary

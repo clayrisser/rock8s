@@ -22,6 +22,8 @@ hostfwd
 hostnames
 ifup
 inputbox
+ipaddrv
+isset
 journalctl
 jsonencode
 jsonfile
@@ -34,6 +36,7 @@ kubespray
 kustomization
 kyverno
 libexec
+logincss
 mconfalonieri
 metallb
 mjson
@@ -74,6 +77,7 @@ sshpass
 startswith
 stty
 subcmd
+subnetv
 syscalld
 terraformrc
 tfstate
@@ -82,5 +86,6 @@ traceroute
 venv
 virtio
 vtnet
+webguicss
 wipefs
 xzvf
