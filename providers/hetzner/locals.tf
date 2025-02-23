@@ -1,22 +1,17 @@
 locals {
-  node_dir             = "${var.cluster_dir}/${var.purpose}"
-  node_ssh_private_key = "${local.node_dir}/id_rsa"
-  node_ssh_public_key  = "${local.node_dir}/id_rsa.pub"
-  tenant               = var.tenant == "default" ? "" : "${var.tenant}"
-  nodes = [
-    for i, group in var.nodes : {
-      type    = group.type
-      count   = try(group.count, length(group.ipv4s), 1)
-      options = try(group.options, {})
-      ipv4s   = group.ipv4s
-    }
-  ]
+  tenant               = var.tenant == "" || var.tenant == null || var.tenant == "default" ? "" : var.tenant
+  node_ssh_private_key = "${var.cluster_dir}/${var.purpose}/id_rsa"
   node_configs = flatten([
-    for group in local.nodes : [
-      for i in range(group.count) : {
-        name        = local.tenant == "" ? "${var.cluster_name}-${var.purpose}${i + 1}" : "${local.tenant}-${var.cluster_name}-${var.purpose}${i + 1}"
+    for group in var.nodes : [
+      for i in range(coalesce(group.count,
+        max(
+          length(coalesce(try(group.ipv4s, []), [])),
+          length(coalesce(try(group.hostnames, []), []))
+        )
+        )) : {
+        name        = try(group.hostnames[i], "${local.tenant == "" ? "" : "${local.tenant}-"}${var.cluster_name}-${var.purpose}-${i + 1}")
         server_type = group.type
-        options     = group.options
+        image       = group.image
         ipv4        = try(group.ipv4s[i], null)
       }
     ]
