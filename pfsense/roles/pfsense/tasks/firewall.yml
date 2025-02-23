@@ -1,0 +1,11 @@
+---
+- name: Configure LAN firewall rules
+  pfsensible.core.pfsense_rule:
+    name: "Allow all LAN to LAN"
+    action: pass
+    interface: lan
+    source: lan
+    destination: lan
+    protocol: any
+    state: present
+  when: primary

@@ -1,30 +1,79 @@
 ---
-- name: Configure interfaces
+- name: Validate interface IP configurations
+  ansible.builtin.assert:
+    that:
+      - item.ipv4 is string or (item.ipv4.primary is string and item.ipv4.secondary is string)
+      - (item.ipv4 is string and item.ipv4 | regex_replace('/.*$', ''),
+        primary | ternary(
+        item.ipv4.primary | regex_replace('/.*$', ''),
+        item.ipv4.secondary | regex_replace('/.*$', '')
+        )
+        )
+      - not item.ipv6 is defined or
+        (item.ipv6.primary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$') and
+        item.ipv6.secondary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$'))
+    fail_msg: >-
+      Invalid IP configuration for interface {{ item.name }}:
+      IPv4 must be a valid IPv4 address with prefix length between 0-32.
+      IPv6 (if defined) must be a valid IPv6 address with prefix length between 0-128.
+  loop: "{{ pfsense.network.interfaces }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - item.name != 'WAN'
+
+- name: Delete existing interface
   pfsensible.core.pfsense_interface:
+    state: absent
     descr: "{{ item.name }}"
     interface: "{{ item.interface }}"
-    enable: True
-    ipv4_type: static
-    ipv4_address: >-
-      {{
-        (item.ipv4 is string) | ternary(
-          item.ipv4 | regex_replace('/.*$', ''),
-          primary | ternary(
-            item.ipv4.primary | regex_replace('/.*$', ''),
-            item.ipv4.secondary | regex_replace('/.*$', '')
-          )
-        )
-      }}
-    ipv4_prefixlen: >-
-      {{
-        (item.ipv4 is string) | ternary(
-          item.ipv4 | regex_replace('^.*/', ''),
-          primary | ternary(
-            item.ipv4.primary | regex_replace('^.*/', ''),
-            item.ipv4.secondary | regex_replace('^.*/', '')
-          )
-        )
-      }}
+  loop: "{{ pfsense.network.interfaces }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - item.name != 'WAN'
+
+- name: Configure interfaces
+  ansible.builtin.shell: |
+    interface="{{ item.name | lower }}"
+    ipv4="{{ primary | ternary(item.ipv4.primary | regex_replace('/.*$', ''), item.ipv4.secondary | regex_replace('/.*$', '')) }}"
+    prefixlen="{{ primary | ternary(item.ipv4.primary | regex_replace('^.*/', ''), item.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    {% if item.ipv6 is defined %}
+    ipv6="{{ primary | ternary(item.ipv6.primary | regex_replace('/.*$', ''), item.ipv6.secondary | regex_replace('/.*$', '')) }}"
+    prefixlen6="{{ primary | ternary(item.ipv6.primary | regex_replace('^.*/', ''), item.ipv6.secondary | regex_replace('^.*/', '')) }}"
+    {% endif %}
+    cat > /tmp/update_interface.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("interfaces.inc");
+    require_once("util.inc");
+    require_once("interfaces.inc");
+    require_once("gwlb.inc");
+    $interface = $argv[1];
+    $ipv4 = $argv[2];
+    $prefixlen = $argv[3];
+    $ipv6 = isset($argv[4]) ? $argv[4] : null;
+    $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
+    $config['interfaces'][$interface]['enable'] = true;
+    $config['interfaces'][$interface]['if'] = "{{ item.interface }}";
+    $config['interfaces'][$interface]['ipaddr'] = $ipv4;
+    $config['interfaces'][$interface]['subnet'] = $prefixlen;
+    if ($ipv6 !== null) {
+        $config['interfaces'][$interface]['ipaddrv6'] = $ipv6;
+        $config['interfaces'][$interface]['subnetv6'] = $prefixlen6;
+        $config['interfaces'][$interface]['ipv6_enable'] = true;
+        $config['interfaces'][$interface]['ipv6_mode'] = 'static';
+        $config['interfaces'][$interface]['dhcp6client'] = false;
+    } else {
+        $config['interfaces'][$interface]['ipv6_enable'] = false;
+    }
+    write_config();
+    interface_configure($interface);
+    EOF
+    {% if item.ipv6 is defined %}
+    php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen" "$ipv6" "$prefixlen6"
+    {% else %}
+    php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen"
+    {% endif %}
+    rm -f /tmp/update_interface.php
   loop: "{{ pfsense.network.interfaces }}"
   when:
     - pfsense.network.interfaces is defined
