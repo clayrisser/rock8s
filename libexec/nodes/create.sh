@@ -134,7 +134,7 @@ _main() {
         _fail "provider $_PROVIDER not found"
     fi
     export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$CLUSTER_DIR" ]; then
+    if [ ! -d "$CLUSTER_DIR/provider" ]; then
         mkdir -p "$CLUSTER_DIR"
         cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     fi

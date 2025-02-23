@@ -9,3 +9,6 @@ pfsense:
     interfaces: []
     aliases: []
     rules: []
+    sync:
+      primary_ip: "" # Example: 192.168.2.1/24
+      secondary_ip: "" # Example: 192.168.2.2/24

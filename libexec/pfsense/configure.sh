@@ -80,20 +80,23 @@ _main() {
     _log "Generating inventory..."
     cat > "$_PFSENSE_DIR/ansible/inventory/hosts.yml" << EOF
 all:
-  hosts:
-    pfsense:
-      ansible_host: $(jq -r '.pfsense.ip' "$_CLUSTER_DIR/nodes.json")
-      ansible_user: root
-      ansible_python_interpreter: /usr/local/bin/python3.11
+  children:
+    primary:
+      hosts:
+$(jq -r '.node_ips.value | to_entries | .[] | select(.key | endswith("pfsense1")) | "        \(.key):\n          ansible_host: \(.value)\n          ansible_user: root\n          ansible_python_interpreter: /usr/local/bin/python3.11\n          primary: true"' "$_CLUSTER_DIR/output.json")
+    secondary:
+      hosts:
+$(jq -r '.node_ips.value | to_entries | .[] | select(.key | endswith("pfsense2")) | "        \(.key):\n          ansible_host: \(.value)\n          ansible_user: root\n          ansible_python_interpreter: /usr/local/bin/python3.11\n          primary: false"' "$_CLUSTER_DIR/output.json")
+  vars:
+    ansible_ssh_private_key_file: $(jq -r '.node_ssh_private_key.value' "$_CLUSTER_DIR/output.json")
 EOF
     cat > "$_PFSENSE_DIR/ansible/vars/cluster.yml" << EOF
 ---
-pfsense:
-  system:
-    password: "$PFSENSE_PASSWORD"
+pfsense: {}
 EOF
     _log "Running configuration playbook..."
     ANSIBLE_CONFIG="$_PFSENSE_DIR/ansible/ansible.cfg" \
+    export ANSIBLE_PRIVATE_KEY_FILE="$(jq -r '.node_ssh_private_key.value' "$_CLUSTER_DIR/output.json")"
     ansible-playbook -i "$_PFSENSE_DIR/ansible/inventory/hosts.yml" \
         "$_PFSENSE_DIR/ansible/playbooks/configure.yml" \
         -e "@$_PFSENSE_DIR/ansible/vars/cluster.yml" \
