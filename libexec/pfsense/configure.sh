@@ -10,7 +10,7 @@ NAME
        rock8s pfsense configure - configure pfSense
 
 SYNOPSIS
-       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--force]
+       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password]
 
 DESCRIPTION
        configure pfsense settings including network interfaces, firewall rules, and system settings
@@ -29,8 +29,14 @@ OPTIONS
        --cluster <cluster>
               name of the cluster to configure pfSense for (required)
 
-       --force
-              force reinstall of ansible collections
+       --update
+              update ansible collections with force flag
+
+       --password <password>
+              admin password
+
+       --ssh-password
+              use password authentication for SSH instead of key-based auth (requires sshpass)
 EOF
 }
 
@@ -38,7 +44,9 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _CLUSTER=""
     _TENANT="$ROCK8S_TENANT"
-    _FORCE=""
+    _UPDATE=""
+    _PASSWORD=""
+    _SSH_PASSWORD=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -81,8 +89,24 @@ _main() {
                         ;;
                 esac
                 ;;
-            --force)
-                _FORCE="1"
+            --password|--password=*)
+                case "$1" in
+                    *=*)
+                        _PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --ssh-password)
+                _SSH_PASSWORD=1
+                shift
+                ;;
+            --update)
+                _UPDATE="1"
                 shift
                 ;;
             -*)
@@ -97,6 +121,11 @@ _main() {
     done
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
+    fi
+    if [ "$_SSH_PASSWORD" = "1" ]; then
+        command -v sshpass >/dev/null 2>&1 || {
+            _fail "sshpass is not installed"
+        }
     fi
     _ensure_system
     _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
@@ -144,41 +173,44 @@ _main() {
     if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
         _fail "primary hostname not found"
     fi
+    if [ "$_SSH_PASSWORD" = "1" ] && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+        _PASSWORD="$(whiptail --title "Password Required" \
+            --backtitle "Rock8s Configuration" \
+            --passwordbox "Enter password" \
+            0 0 \
+            3>&1 1>&2 2>&3)" || _fail "password required"
+    fi
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     mkdir -p "$_PFSENSE_DIR/collections"
     ansible-galaxy collection install \
-        $([ "$_FORCE" = "1" ] && echo "--force") \
+        $([ "$_UPDATE" = "1" ] && echo "--force") \
         -r "$_PFSENSE_DIR/ansible/requirements.yml" \
         -p "$_PFSENSE_DIR/collections"
+    mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
-  children:
-    primary:
-      hosts:
-        pfsense1:
-          ansible_host: $_PRIMARY_HOSTNAME
-          ansible_user: root
-      vars:
-        primary: true
+  vars:
+    ansible_user: admin
+  hosts:
+    pfsense1:
+      ansible_host: $_PRIMARY_HOSTNAME
+      primary: true
 EOF
     if [ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ]; then
         cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
-    secondary:
-      hosts:
-        pfsense2:
-          ansible_host: $_SECONDARY_HOSTNAME
-          ansible_user: root
-      vars:
-        primary: false
+    pfsense2:
+      ansible_host: $_SECONDARY_HOSTNAME
+      primary: false
 EOF
     fi
-    if [ -n "$_SSH_PRIVATE_KEY" ] && [ "$_SSH_PRIVATE_KEY" != "null" ]; then
+    if [ -n "$_SSH_PRIVATE_KEY" ] && [ "$_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
         export ANSIBLE_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY"
     fi
     cd "$_PFSENSE_DIR/ansible"
     ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
         ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
+        $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
         "$_PFSENSE_DIR/ansible/playbooks/configure.yml"
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
 }

@@ -1,11 +1,14 @@
 ---
 pfsense:
   system:
-    hostname: fw
-    domain: rock8s.local
     dns: 1.1.1.1 8.8.8.8
     timezone: UTC
   network:
-    interfaces: []
+    interfaces:
+      - name: "LAN"
+        interface: "vtnet1"
+        ipv4:
+          primary: "172.20.0.2/24"
+          secondary: "172.20.0.3/24"
     aliases: []
     rules: []
