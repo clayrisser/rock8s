@@ -5,20 +5,17 @@ set -e
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
 _help() {
-    cat << EOF >&2
+    cat <<EOF >&2
 NAME
        rock8s nodes create - create cluster nodes
 
 SYNOPSIS
-       rock8s nodes create [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] [--force] <provider> <purpose>
+       rock8s nodes create [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] [--force] <purpose>
 
 DESCRIPTION
        create cluster nodes for a specific purpose (pfsense, master, or worker)
 
 ARGUMENTS
-       provider
-              name of the provider source to use
-
        purpose
               purpose of the nodes (pfsense, master, or worker)
 
@@ -46,7 +43,6 @@ EOF
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _PROVIDER=""
     _PURPOSE=""
     _CLUSTER=""
     _NON_INTERACTIVE=0
@@ -107,10 +103,7 @@ _main() {
                 exit 1
                 ;;
             *)
-                if [ -z "$_PROVIDER" ]; then
-                    _PROVIDER="$1"
-                    shift
-                elif [ -z "$_PURPOSE" ]; then
+                if [ -z "$_PURPOSE" ]; then
                     _PURPOSE="$1"
                     shift
                 else
@@ -120,27 +113,32 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_PROVIDER" ] || [ -z "$_PURPOSE" ] || [ -z "$_CLUSTER" ]; then
+    if [ -z "$_PURPOSE" ] || [ -z "$_CLUSTER" ]; then
         _help
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
         _fail "$_PURPOSE is invalid"
     fi
-    _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _ensure_system
-    if [ ! -d "$_PROVIDER_DIR" ]; then
-        _fail "provider $_PROVIDER not found"
-    fi
-    export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$CLUSTER_DIR/provider" ]; then
-        mkdir -p "$CLUSTER_DIR"
-        cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
-    fi
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
     if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
+        _PROVIDERS_DIR="$ROCK8S_LIB_PATH/providers"
+        _PROVIDERS_LIST=""
+        for _P in "$_PROVIDERS_DIR"/*/ ; do
+            if [ -d "$_P" ]; then
+                _PROVIDER="$(basename "$_P")"
+                _PROVIDERS_LIST="$_PROVIDERS_LIST $_PROVIDER $_PROVIDER"
+            fi
+        done
+        if [ -z "$_PROVIDERS_LIST" ]; then
+            _fail "no providers found"
+        fi
+        _PROVIDER="$(whiptail --title "Select Provider" --menu "Choose your cloud provider" 15 60 4 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || _fail "provider selection cancelled"
+        _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
         mkdir -p "$(dirname "$_CONFIG_FILE")"
+        echo "provider: $_PROVIDER" > "$_CONFIG_FILE"
         { _ERROR="$(sh "$_PROVIDER_DIR/config.sh" "$_CONFIG_FILE")"; _EXIT_CODE="$?"; } || true
         if [ "$_EXIT_CODE" -ne 0 ]; then
             if [ -n "$_ERROR" ]; then
@@ -152,6 +150,22 @@ _main() {
         if [ ! -f "$_CONFIG_FILE" ]; then
             _fail "provider config script failed to create config file"
         fi
+    fi
+    if [ ! -f "$_CONFIG_FILE" ]; then
+        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    fi
+    _PROVIDER="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
+    if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
+        _fail "provider not specified in config.yaml"
+    fi
+    _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
+    if [ ! -d "$_PROVIDER_DIR" ]; then
+        _fail "provider $_PROVIDER not found"
+    fi
+    export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
+    if [ ! -d "$CLUSTER_DIR/provider" ]; then
+        mkdir -p "$CLUSTER_DIR"
+        cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     fi
     export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
     if [ -f "$_PURPOSE_DIR/output.json" ]; then
@@ -182,13 +196,13 @@ _main() {
     chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
     case "$_PURPOSE" in
         pfsense)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
             ;;
         master)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
             ;;
         worker)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers)' > "$_PURPOSE_DIR/terraform.tfvars.json"
+            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
             ;;
     esac
     if [ "$_PURPOSE" != "pfsense" ]; then

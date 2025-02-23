@@ -5,7 +5,7 @@ set -e
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
 _help() {
-    cat << EOF >&2
+    cat <<EOF >&2
 NAME
        rock8s cluster create - create kubernetes cluster
 

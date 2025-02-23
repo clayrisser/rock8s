@@ -27,7 +27,7 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 _help() {
-    cat << EOF >&2
+    cat <<EOF >&2
 NAME
        rock8s - kubernetes cluster management cli
 
@@ -58,9 +58,13 @@ COMMANDS
        cluster
               create kubernetes clusters
 
+       pfsense
+              configure and manage pfSense firewall
+
 SEE ALSO
        rock8s nodes --help
        rock8s cluster --help
+       rock8s pfsense --help
 EOF
 }
 
@@ -106,7 +110,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            nodes|cluster)
+            nodes|cluster|pfsense)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
