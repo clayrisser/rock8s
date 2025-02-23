@@ -31,13 +31,13 @@ variable "ssh_public_key_path" {
   type = string
 }
 
-variable "server_image" {
+variable "image" {
   default = "debian-12"
   validation {
     condition = contains([
       "ubuntu-22.04", "ubuntu-20.04", "debian-11", "debian-12",
       "centos-7", "rocky-9", "fedora-37"
-    ], var.server_image)
+    ], var.image)
     error_message = "invalid image"
   }
 }
@@ -53,11 +53,11 @@ variable "location" {
   }
 }
 
-variable "network_name" {
+variable "network" {
   type    = string
   default = "private"
   validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.network_name))
+    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.network))
     error_message = "lowercase with hyphens only"
   }
 }
