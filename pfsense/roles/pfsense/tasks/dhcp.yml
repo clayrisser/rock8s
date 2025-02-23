@@ -1,0 +1,7 @@
+---
+- name: Configure DHCP server
+  pfsensible.core.pfsense_dhcp:
+    interface: lan
+    enable: true
+    backend: kea
+  when: primary

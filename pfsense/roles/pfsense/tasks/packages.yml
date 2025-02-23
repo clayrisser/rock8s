@@ -1,0 +1,9 @@
+---
+- name: Install required packages
+  pfsensible.core.pfsense_package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - pfSense-pkg-haproxy
+    - pfSense-pkg-acme
+  when: primary

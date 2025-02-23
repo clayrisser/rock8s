@@ -1,0 +1,7 @@
+---
+- name: Configure pfSense setup
+  pfsensible.core.pfsense_setup:
+    webguicss: "{{ primary | ternary('pfSense-dark', 'pfSense') }}"
+    logincss: "{{ primary | ternary('1e3f75', '007faa') }}"
+    hostname: "{{ primary | ternary('primary', 'secondary') }}"
+    domain: "{{ ansible_host.split('.')[1:] | join('.') }}"
