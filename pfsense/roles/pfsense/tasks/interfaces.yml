@@ -1,0 +1,31 @@
+---
+- name: Configure interfaces
+  pfsensible.core.pfsense_interface:
+    descr: "{{ item.name }}"
+    interface: "{{ item.interface }}"
+    enable: True
+    ipv4_type: static
+    ipv4_address: >-
+      {{
+        (item.ipv4 is string) | ternary(
+          item.ipv4 | regex_replace('/.*$', ''),
+          primary | ternary(
+            item.ipv4.primary | regex_replace('/.*$', ''),
+            item.ipv4.secondary | regex_replace('/.*$', '')
+          )
+        )
+      }}
+    ipv4_prefixlen: >-
+      {{
+        (item.ipv4 is string) | ternary(
+          item.ipv4 | regex_replace('^.*/', ''),
+          primary | ternary(
+            item.ipv4.primary | regex_replace('^.*/', ''),
+            item.ipv4.secondary | regex_replace('^.*/', '')
+          )
+        )
+      }}
+  loop: "{{ pfsense.network.interfaces }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - item.name != 'WAN'

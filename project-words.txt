@@ -70,6 +70,7 @@ selectattr
 sfdisk
 sgdisk
 skiplock
+sshpass
 startswith
 stty
 subcmd
