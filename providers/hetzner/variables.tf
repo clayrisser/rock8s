@@ -73,10 +73,11 @@ variable "cluster_dir" {
 
 variable "nodes" {
   type = list(object({
-    type    = string
-    count   = optional(number)
-    options = optional(map(string))
-    ipv4s   = optional(list(string))
+    type      = string
+    count     = optional(number)
+    image     = optional(string)
+    ipv4s     = optional(list(string))
+    hostnames = optional(list(string))
   }))
   validation {
     condition = alltrue([
@@ -86,9 +87,8 @@ variable "nodes" {
         "cax11", "cax21", "cax31", "cax41",
         "ccx13", "ccx23", "ccx33", "ccx43", "ccx53", "ccx63",
         "cx22", "cx32", "cx42", "cx52"
-      ], group.type) &&
-      (group.count == null || group.count > 0)
+      ], group.type)
     ])
-    error_message = "invalid type or count"
+    error_message = "invalid type"
   }
 }

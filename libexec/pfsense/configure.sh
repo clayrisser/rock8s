@@ -10,7 +10,7 @@ NAME
        rock8s pfsense configure - configure pfSense
 
 SYNOPSIS
-       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]
+       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--force]
 
 DESCRIPTION
        configure pfsense settings including network interfaces, firewall rules, and system settings
@@ -28,6 +28,9 @@ OPTIONS
 
        --cluster <cluster>
               name of the cluster to configure pfSense for (required)
+
+       --force
+              force reinstall of ansible collections
 EOF
 }
 
@@ -35,6 +38,7 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _CLUSTER=""
     _TENANT="$ROCK8S_TENANT"
+    _FORCE=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -77,6 +81,10 @@ _main() {
                         ;;
                 esac
                 ;;
+            --force)
+                _FORCE="1"
+                shift
+                ;;
             -*)
                 _help
                 exit 1
@@ -108,8 +116,14 @@ _main() {
             _fail "output.json not found for provider $_PROVIDER"
         fi
         _NODE_COUNT="$(jq -r '.node_ips.value | length' "$_OUTPUT_JSON")"
-        _PRIMARY_IP="$(jq -r '.node_ips.value | to_entries | .[0].value' "$_OUTPUT_JSON")"
-        _SECONDARY_IP="$(jq -r '.node_ips.value | to_entries | .[1].value // ""' "$_OUTPUT_JSON")"
+        _PRIMARY_HOSTNAME="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[0] // ""')"
+        _SECONDARY_HOSTNAME="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[1] // ""')"
+        if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
+            _PRIMARY_HOSTNAME="$(jq -r '.node_ips.value | to_entries | .[0].key' "$_OUTPUT_JSON")"
+        fi
+        if [ -z "$_SECONDARY_HOSTNAME" ] || [ "$_SECONDARY_HOSTNAME" = "null" ]; then
+            _SECONDARY_HOSTNAME="$(jq -r '.node_ips.value | to_entries | .[1].key // ""' "$_OUTPUT_JSON")"
+        fi
         _SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value // ""' "$_OUTPUT_JSON")"
     else
         _NODES_JSON="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense.nodes')"
@@ -117,8 +131,8 @@ _main() {
             _fail "pfsense.nodes not specified in config.yaml"
         fi
         _NODE_COUNT="$(echo "$_NODES_JSON" | jq -r 'length')"
-        _PRIMARY_IP="$(echo "$_NODES_JSON" | jq -r '.[0].ip')"
-        _SECONDARY_IP="$(echo "$_NODES_JSON" | jq -r '.[1].ip // ""')"
+        _PRIMARY_HOSTNAME="$(echo "$_NODES_JSON" | jq -r '.[0].hostname // .[0].ip')"
+        _SECONDARY_HOSTNAME="$(echo "$_NODES_JSON" | jq -r '.[1].hostname // .[1].ip // ""')"
         _SSH_PRIVATE_KEY="$(echo "$_NODES_JSON" | jq -r '.[0].ssh_private_key // ""')"
     fi
     if [ "$_NODE_COUNT" -lt 1 ]; then
@@ -127,29 +141,33 @@ _main() {
     if [ "$_NODE_COUNT" -gt 2 ]; then
         _warn "more than 2 pfsense nodes found but only using first 2 nodes"
     fi
-    if [ -z "$_PRIMARY_IP" ] || [ "$_PRIMARY_IP" = "null" ]; then
-        _fail "primary node ip not found"
+    if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
+        _fail "primary hostname not found"
     fi
+    rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     mkdir -p "$_PFSENSE_DIR/collections"
-    ansible-galaxy collection install -r "$_PFSENSE_DIR/ansible/requirements.yml" -p "$_PFSENSE_DIR/collections"
+    ansible-galaxy collection install \
+        $([ "$_FORCE" = "1" ] && echo "--force") \
+        -r "$_PFSENSE_DIR/ansible/requirements.yml" \
+        -p "$_PFSENSE_DIR/collections"
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   children:
     primary:
       hosts:
         pfsense1:
-          ansible_host: $_PRIMARY_IP
+          ansible_host: $_PRIMARY_HOSTNAME
           ansible_user: root
       vars:
         primary: true
 EOF
-    if [ -n "$_SECONDARY_IP" ] && [ "$_SECONDARY_IP" != "null" ]; then
+    if [ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ]; then
         cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
     secondary:
       hosts:
         pfsense2:
-          ansible_host: $_SECONDARY_IP
+          ansible_host: $_SECONDARY_HOSTNAME
           ansible_user: root
       vars:
         primary: false

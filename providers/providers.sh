@@ -213,3 +213,18 @@ get_config() {
     echo "$_RESULT"
     return 0
 }
+
+validate_ipv4() {
+    echo "$1" | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' >/dev/null || return 1
+    IFS=.
+    for _OCTET in $1; do
+        [ "$_OCTET" -le 255 ] || return 1
+    done
+    unset IFS
+    return 0
+}
+
+validate_hostname() {
+    echo "$1" | grep -E '^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$' >/dev/null || return 1
+    return 0
+}
