@@ -5,19 +5,15 @@ set -e
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
 _help() {
-    cat << EOF >&2
+    cat <<EOF >&2
 NAME
        rock8s pfsense configure - configure pfSense
 
 SYNOPSIS
-       rock8s pfsense configure [-h] [-o <format>] <n>
+       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]
 
 DESCRIPTION
-       configure pfSense settings including network interfaces, firewall rules, and system settings
-
-ARGUMENTS
-       name
-              name of the cluster to configure pfSense for
+       configure pfsense settings including network interfaces, firewall rules, and system settings
 
 OPTIONS
        -h, --help
@@ -26,12 +22,19 @@ OPTIONS
        -o, --output=<format>
               output format (default: text)
               supported formats: text, json, yaml
+
+       -t, --tenant <tenant>
+              tenant name (default: current user)
+
+       --cluster <cluster>
+              name of the cluster to configure pfSense for (required)
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _NAME=""
+    _CLUSTER=""
+    _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -50,60 +53,116 @@ _main() {
                         ;;
                 esac
                 ;;
+            -t|--tenant|-t=*|--tenant=*)
+                case "$1" in
+                    *=*)
+                        _TENANT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _TENANT="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
             -*)
                 _help
                 exit 1
                 ;;
             *)
-                if [ -z "$_NAME" ]; then
-                    _NAME="$1"
-                    shift
-                else
-                    _help
-                    exit 1
-                fi
+                _help
+                exit 1
                 ;;
         esac
     done
-    [ -z "$_NAME" ] && {
+    if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
-    }
-    _CLUSTER_DIR="$(_get_cluster_dir "$_NAME")"
+    fi
+    _ensure_system
+    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
+    if [ ! -d "$_CLUSTER_DIR" ]; then
+        _fail "cluster $_CLUSTER not found"
+    fi
     _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
     mkdir -p "$_PFSENSE_DIR"
+    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$ROCK8S_TENANT/clusters/$_CLUSTER/config.yaml"
+    if [ ! -f "$_CONFIG_FILE" ]; then
+        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    fi
+    _PROVIDER="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
+    if [ -n "$_PROVIDER" ] && [ "$_PROVIDER" != "null" ]; then
+        _OUTPUT_JSON="$_CLUSTER_DIR/pfsense/output.json"
+        if [ ! -f "$_OUTPUT_JSON" ]; then
+            _fail "output.json not found for provider $_PROVIDER"
+        fi
+        _NODE_COUNT="$(jq -r '.node_ips.value | length' "$_OUTPUT_JSON")"
+        _PRIMARY_IP="$(jq -r '.node_ips.value | to_entries | .[0].value' "$_OUTPUT_JSON")"
+        _SECONDARY_IP="$(jq -r '.node_ips.value | to_entries | .[1].value // ""' "$_OUTPUT_JSON")"
+        _SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value // ""' "$_OUTPUT_JSON")"
+    else
+        _NODES_JSON="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense.nodes')"
+        if [ -z "$_NODES_JSON" ] || [ "$_NODES_JSON" = "null" ]; then
+            _fail "pfsense.nodes not specified in config.yaml"
+        fi
+        _NODE_COUNT="$(echo "$_NODES_JSON" | jq -r 'length')"
+        _PRIMARY_IP="$(echo "$_NODES_JSON" | jq -r '.[0].ip')"
+        _SECONDARY_IP="$(echo "$_NODES_JSON" | jq -r '.[1].ip // ""')"
+        _SSH_PRIVATE_KEY="$(echo "$_NODES_JSON" | jq -r '.[0].ssh_private_key // ""')"
+    fi
+    if [ "$_NODE_COUNT" -lt 1 ]; then
+        _fail "at least one pfsense node must be specified"
+    fi
+    if [ "$_NODE_COUNT" -gt 2 ]; then
+        _warn "more than 2 pfsense nodes found but only using first 2 nodes"
+    fi
+    if [ -z "$_PRIMARY_IP" ] || [ "$_PRIMARY_IP" = "null" ]; then
+        _fail "primary node ip not found"
+    fi
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
-    _log "Initializing Python virtual environment..."
-    python3 -m venv "$_PFSENSE_DIR/venv"
-    . "$_PFSENSE_DIR/venv/bin/activate"
-    _log "Installing Ansible requirements..."
-    ansible-galaxy collection install -r "$_PFSENSE_DIR/ansible/requirements.yml"
-    _log "Generating inventory..."
-    cat > "$_PFSENSE_DIR/ansible/inventory/hosts.yml" << EOF
+    mkdir -p "$_PFSENSE_DIR/collections"
+    ansible-galaxy collection install -r "$_PFSENSE_DIR/ansible/requirements.yml" -p "$_PFSENSE_DIR/collections"
+    cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   children:
     primary:
       hosts:
-$(jq -r '.node_ips.value | to_entries | .[] | select(.key | endswith("pfsense1")) | "        \(.key):\n          ansible_host: \(.value)\n          ansible_user: root\n          ansible_python_interpreter: /usr/local/bin/python3.11\n          primary: true"' "$_CLUSTER_DIR/output.json")
+        pfsense1:
+          ansible_host: $_PRIMARY_IP
+          ansible_user: root
+      vars:
+        primary: true
+EOF
+    if [ -n "$_SECONDARY_IP" ] && [ "$_SECONDARY_IP" != "null" ]; then
+        cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
     secondary:
       hosts:
-$(jq -r '.node_ips.value | to_entries | .[] | select(.key | endswith("pfsense2")) | "        \(.key):\n          ansible_host: \(.value)\n          ansible_user: root\n          ansible_python_interpreter: /usr/local/bin/python3.11\n          primary: false"' "$_CLUSTER_DIR/output.json")
-  vars:
-    ansible_ssh_private_key_file: $(jq -r '.node_ssh_private_key.value' "$_CLUSTER_DIR/output.json")
+        pfsense2:
+          ansible_host: $_SECONDARY_IP
+          ansible_user: root
+      vars:
+        primary: false
 EOF
-    cat > "$_PFSENSE_DIR/ansible/vars/cluster.yml" << EOF
----
-pfsense: {}
-EOF
-    _log "Running configuration playbook..."
-    ANSIBLE_CONFIG="$_PFSENSE_DIR/ansible/ansible.cfg" \
-    export ANSIBLE_PRIVATE_KEY_FILE="$(jq -r '.node_ssh_private_key.value' "$_CLUSTER_DIR/output.json")"
-    ansible-playbook -i "$_PFSENSE_DIR/ansible/inventory/hosts.yml" \
-        "$_PFSENSE_DIR/ansible/playbooks/configure.yml" \
-        -e "@$_PFSENSE_DIR/ansible/vars/cluster.yml" \
-        -e "@$_PFSENSE_DIR/ansible/roles/pfsense/defaults/main.yml" \
-        -v "$@"
-
-    printf '{"name":"%s","status":"configured"}\n' "$_NAME" | _format_output "$_FORMAT" pfsense
+    fi
+    if [ -n "$_SSH_PRIVATE_KEY" ] && [ "$_SSH_PRIVATE_KEY" != "null" ]; then
+        export ANSIBLE_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY"
+    fi
+    cd "$_PFSENSE_DIR/ansible"
+    ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+        ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
+        "$_PFSENSE_DIR/ansible/playbooks/configure.yml"
+    printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
 }
 
 _main "$@"

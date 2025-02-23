@@ -30,8 +30,9 @@ resource "hcloud_server" "nodes" {
   lifecycle {
     ignore_changes = [
       image,
-      rescue,
-      iso
+      iso,
+      network,
+      rescue
     ]
   }
 }
