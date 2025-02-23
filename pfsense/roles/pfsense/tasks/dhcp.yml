@@ -1,32 +1,7 @@
 ---
-- name: Configure dhcp server and router advertisement
-  ansible.builtin.shell: |
-    cat > /tmp/update_dhcp.php << 'EOF'
-    <?php
-    require_once("config.inc");
-    require_once("util.inc");
-    require_once("services.inc");
-    $config['dhcpd'] = array();
-    $config['dhcpd']['lan'] = array();
-    $config['dhcpd']['lan']['enable'] = true;
-    $config['dhcpd']['lan']['range'] = array();
-    $config['dhcpd']['lan']['range']['from'] = '172.20.0.100';
-    $config['dhcpd']['lan']['range']['to'] = '172.20.0.200';
-    $config['dhcpd']['lan']['backend'] = 'kea';
-    $config['dhcpdv6'] = array();
-    $config['dhcpdv6']['lan'] = array();
-    $config['dhcpdv6']['lan']['enable'] = false;
-    $config['dhcpdv6']['lan']['ramode'] = 'unmanaged';
-    $config['dhcpdv6']['lan']['rapriority'] = 'medium';
-    $config['dhcpdv6']['lan']['rainterface'] = 'lan';
-    $config['dhcpdv6']['lan']['ravalidlifetime'] = 86400;
-    $config['dhcpdv6']['lan']['rapreferredlifetime'] = 14400;
-    $config['dhcpdv6']['lan']['raminrtradvinterval'] = 200;
-    $config['dhcpdv6']['lan']['ramaxrtradvinterval'] = 600;
-    write_config();
-    services_dhcpd_configure();
-    system("/usr/local/sbin/radvd restart");
-    EOF
-    php -f /tmp/update_dhcp.php
-    rm -f /tmp/update_dhcp.php
+- name: Configure DHCP server
+  pfsensible.core.pfsense_dhcp:
+    interface: lan
+    enable: true
+    backend: kea
   when: primary
