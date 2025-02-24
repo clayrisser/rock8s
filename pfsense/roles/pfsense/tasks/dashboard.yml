@@ -1,0 +1,115 @@
+- name: Check current dashboard configuration
+  ansible.builtin.shell: |
+    cat > /tmp/check_dashboard.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    init_config_arr(array('widgets'));
+    init_config_arr(array('system', 'webgui'));
+    $current = array(
+      'sequence' => isset($config['widgets']['sequence']) ? $config['widgets']['sequence'] : '',
+      'dashboardcolumns' => isset($config['system']['webgui']['dashboardcolumns']) ? $config['system']['webgui']['dashboardcolumns'] : '',
+      'widgets' => array()
+    );
+    $left_widgets = {{ (pfsense.dashboard.left | default([])) | to_json }};
+    $right_widgets = {{ (pfsense.dashboard.right | default([])) | to_json }};
+    if (!is_array($left_widgets)) $left_widgets = array();
+    if (!is_array($right_widgets)) $right_widgets = array();
+    $widget_list = array_merge($left_widgets, $right_widgets);
+    foreach ($widget_list as $widget) {
+      $config_key = $widget . '-config';
+      init_config_arr(array('widgets', $config_key));
+      $current['widgets'][$widget] = array(
+        'enable' => isset($config['widgets'][$config_key]['enable']) ? $config['widgets'][$config_key]['enable'] : '0',
+        'name' => isset($config['widgets'][$config_key]['name']) ? $config['widgets'][$config_key]['name'] : '',
+        'display' => isset($config['widgets'][$config_key]['display']) ? $config['widgets'][$config_key]['display'] : ''
+      );
+    }
+    $sequence_parts = array();
+    $position = 0;
+    foreach ($left_widgets as $widget) {
+      $sequence_parts[] = $widget . ':col1:open:' . $position;
+      $position++;
+    }
+    $position = 0;
+    foreach ($right_widgets as $widget) {
+      $sequence_parts[] = $widget . ':col2:open:' . $position;
+      $position++;
+    }
+    $desired = array(
+      'sequence' => implode(',', $sequence_parts),
+      'dashboardcolumns' => '2',
+      'widgets' => array()
+    );
+    foreach ($widget_list as $widget) {
+      $desired['widgets'][$widget] = array(
+        'enable' => '1',
+        'name' => $widget,
+        'display' => 'open'
+      );
+    }
+    $changed = $current['sequence'] !== $desired['sequence'] ||
+               $current['dashboardcolumns'] !== $desired['dashboardcolumns'];
+    foreach ($widget_list as $widget) {
+      if (!isset($current['widgets'][$widget]) ||
+          $current['widgets'][$widget] !== $desired['widgets'][$widget]) {
+        $changed = true;
+        break;
+      }
+    }
+    echo json_encode(array(
+      'changed' => $changed,
+      'current' => $current,
+      'desired' => $desired
+    ));
+    EOF
+    php -f /tmp/check_dashboard.php
+    rm -f /tmp/check_dashboard.php
+  register: dashboard_check
+  changed_when: false
+
+- name: Configure dashboard
+  ansible.builtin.shell: |
+    cat > /tmp/update_dashboard.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    init_config_arr(array('widgets'));
+    init_config_arr(array('system', 'webgui'));
+    $config['system']['webgui']['dashboardcolumns'] = '2';
+    $left_widgets = {{ (pfsense.dashboard.left | default([])) | to_json }};
+    $right_widgets = {{ (pfsense.dashboard.right | default([])) | to_json }};
+    if (!is_array($left_widgets)) $left_widgets = array();
+    if (!is_array($right_widgets)) $right_widgets = array();
+    $widget_list = array_merge($left_widgets, $right_widgets);
+    $sequence_parts = array();
+    $position = 0;
+    foreach ($left_widgets as $widget) {
+      $sequence_parts[] = $widget . ':col1:open:' . $position;
+      $position++;
+    }
+    $position = 0;
+    foreach ($right_widgets as $widget) {
+      $sequence_parts[] = $widget . ':col2:open:' . $position;
+      $position++;
+    }
+    $config['widgets']['sequence'] = implode(',', $sequence_parts);
+    $config['widgets']['period'] = '10';
+    foreach ($widget_list as $widget) {
+      $config_key = $widget . '-config';
+      init_config_arr(array('widgets', $config_key));
+      $config['widgets'][$config_key]['enable'] = '1';
+      $config['widgets'][$config_key]['name'] = $widget;
+      $config['widgets'][$config_key]['display'] = 'open';
+    }
+    $check_result = json_decode({{ dashboard_check.stdout | to_json }}, true);
+    if ($check_result['changed']) {
+      write_config('Updated dashboard configuration');
+      echo "Configuration updated";
+    } else {
+      echo "No changes needed";
+    }
+    EOF
+    php -f /tmp/update_dashboard.php
+    rm -f /tmp/update_dashboard.php
+  changed_when: (dashboard_check.stdout | from_json).changed
