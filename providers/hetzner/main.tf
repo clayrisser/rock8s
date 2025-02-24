@@ -3,8 +3,31 @@ resource "hcloud_ssh_key" "node" {
   public_key = file(var.ssh_public_key_path)
 }
 
-data "hcloud_network" "network" {
-  name = var.network
+resource "hcloud_network" "lan" {
+  count    = var.purpose == "pfsense" ? 1 : 0
+  name     = local.network.lan.name
+  ip_range = local.network.lan.subnet
+}
+
+data "hcloud_network" "lan" {
+  count = var.purpose != "pfsense" ? 1 : 0
+  name  = local.network.lan.name
+}
+
+resource "hcloud_network_subnet" "lan" {
+  count        = var.purpose == "pfsense" ? 1 : 0
+  network_id   = hcloud_network.lan[0].id
+  type         = "server"
+  network_zone = local.network.lan.zone
+  ip_range     = local.network.lan.subnet
+}
+
+resource "hcloud_network_route" "default" {
+  count       = var.purpose == "pfsense" ? 1 : 0
+  network_id  = hcloud_network.lan[0].id
+  destination = "0.0.0.0/0"
+  gateway     = local.pfsense_primary_ip
+  depends_on  = [hcloud_network_subnet.lan]
 }
 
 resource "hcloud_server" "nodes" {
@@ -24,8 +47,8 @@ resource "hcloud_server" "nodes" {
     local.tenant != "" ? { tenant = local.tenant } : {}
   )
   network {
-    network_id = data.hcloud_network.network.id
-    ip         = local.node_configs[count.index].ipv4
+    network_id = var.purpose == "pfsense" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
+    ip         = var.purpose == "pfsense" ? (count.index == 0 ? local.pfsense_primary_ip : local.pfsense_secondary_ip) : local.node_configs[count.index].ipv4
   }
   lifecycle {
     ignore_changes = [
@@ -35,4 +58,5 @@ resource "hcloud_server" "nodes" {
       rescue
     ]
   }
+  depends_on = [hcloud_network_subnet.lan]
 }
