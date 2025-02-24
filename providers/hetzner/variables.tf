@@ -54,12 +54,11 @@ variable "location" {
 }
 
 variable "network" {
-  type    = string
-  default = "private"
-  validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.network))
-    error_message = "lowercase with hyphens only"
-  }
+  type = object({
+    lan = object({
+      subnet = string
+    })
+  })
 }
 
 variable "user_data" {
