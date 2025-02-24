@@ -180,6 +180,38 @@ _main() {
             0 0 \
             3>&1 1>&2 2>&3)" || _fail "password required"
     fi
+    _NETWORK_SUBNET="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
+    if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
+        _fail "network.lan.subnet not found in config.yaml"
+    fi
+    _INTERFACE="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.interface // "vtnet1"')"
+    _DNS_SERVERS="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
+    _NETWORK_IP="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f1)"
+    _NETWORK_PREFIX="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f2)"
+    _IPV6_SUBNET="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.ipv6_subnet')"
+    if [ -z "$_IPV6_SUBNET" ] || [ "$_IPV6_SUBNET" = "null" ]; then
+        _LAST_NONZERO_OCTET=""
+        _OCTET_COUNT=1
+        for _OCTET in $(echo "$_NETWORK_IP" | tr '.' ' '); do
+            if [ "$_OCTET" != "0" ]; then
+                _LAST_NONZERO_OCTET="$_OCTET"
+                _LAST_NONZERO_POSITION="$_OCTET_COUNT"
+            fi
+            _OCTET_COUNT=$((_OCTET_COUNT + 1))
+        done
+        if [ "$_LAST_NONZERO_OCTET" -gt 99 ]; then
+            _PREFIX="$(printf '%02x' "$_LAST_NONZERO_OCTET")"
+        else
+            _PREFIX="$_LAST_NONZERO_OCTET"
+        fi
+        _IPV6_SUBNET="fd${_PREFIX}::/64"
+    fi
+    _IP_BASE="$(echo "$_NETWORK_IP" | cut -d'.' -f1,2,3)"
+    _PRIMARY_IP="${_IP_BASE}.2"
+    _SECONDARY_IP="${_IP_BASE}.3"
+    _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
+    _PRIMARY_IPV6="${_IPV6_PREFIX}2"
+    _SECONDARY_IPV6="${_IPV6_PREFIX}3"
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     mkdir -p "$_PFSENSE_DIR/collections"
@@ -192,6 +224,22 @@ _main() {
 all:
   vars:
     ansible_user: admin
+    pfsense:
+      system:
+        dns: $_DNS_SERVERS
+        timezone: UTC
+      network:
+        interfaces:
+          - name: LAN
+            interface: ${_INTERFACE}
+            ipv4:
+              primary: ${_PRIMARY_IP}/${_NETWORK_PREFIX}
+              secondary: ${_SECONDARY_IP}/${_NETWORK_PREFIX}
+            ipv6:
+              primary: ${_PRIMARY_IPV6}/64
+              secondary: ${_SECONDARY_IPV6}/64
+        aliases: []
+        rules: []
   hosts:
     pfsense1:
       ansible_host: $_PRIMARY_HOSTNAME
