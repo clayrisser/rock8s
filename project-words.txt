@@ -10,6 +10,7 @@ cloc
 containerd
 corosync
 crossplane
+dashboardcolumns
 defaultno
 delnode
 descr
@@ -86,6 +87,7 @@ traceroute
 venv
 virtio
 vtnet
+webgui
 webguicss
 wipefs
 xzvf

@@ -1,5 +1,12 @@
 ---
 pfsense:
+  dashboard:
+    left:
+      - system_information
+    right:
+      - services_status
+      - interfaces
+      - traffic_graphs
   system:
     dns: 1.1.1.1 8.8.8.8
     timezone: UTC
