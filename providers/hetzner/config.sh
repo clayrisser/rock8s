@@ -53,7 +53,9 @@ _WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "" "$DEFAULT_WORKER_
 cat <<EOF > "$_CONFIG_FILE"
 image: debian-12
 location: $_LOCATION
-network: $_NETWORK
+network:
+  lan:
+    subnet: 172.20.0.0/16
 pfsense:
   - type: $_PFSENSE_TYPE
     hostnames:

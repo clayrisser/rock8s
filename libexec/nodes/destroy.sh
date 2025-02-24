@@ -142,6 +142,8 @@ _main() {
     if [ ! -d "$_PURPOSE_DIR" ] || [ ! -f "$_PURPOSE_DIR/output.json" ]; then
         _fail "nodes $_PURPOSE not found"
     fi
+    rm -rf "$CLUSTER_DIR/provider"
+    cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     if [ "$_FORCE" != "1" ]; then
         case "$_PURPOSE" in
             pfsense)
@@ -179,7 +181,8 @@ _main() {
         . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
-    terraform destroy -auto-approve -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+    terraform destroy $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     rm -rf "$_PURPOSE_DIR"
     if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
         rm -rf "$CLUSTER_DIR/provider"
