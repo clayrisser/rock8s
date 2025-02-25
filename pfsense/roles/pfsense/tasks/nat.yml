@@ -1,5 +1,4 @@
 ---
-- name: Configure Hybrid Outbound NAT
-  pfsensible.core.pfsense_nat_outbound:
-    mode: hybrid
-  when: primary
+# - name: Configure nat
+#   import_tasks: nat/outbound.yml
+#   when: primary

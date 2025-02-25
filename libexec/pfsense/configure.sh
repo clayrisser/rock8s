@@ -228,27 +228,29 @@ _main() {
         -r "$_PFSENSE_DIR/ansible/requirements.yml" \
         -p "$_PFSENSE_DIR/collections"
     mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
+    _DEFAULTS="$(_yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
+    _CONFIG="$(cat <<EOF | _yaml2json
+pfsense:
+  system:
+    dns: $_DNS_SERVERS
+  network:
+    interfaces:
+      - name: LAN
+        interface: ${_INTERFACE}
+        dhcp: ${_ENABLE_DHCP}
+        ipv4:
+          primary: ${_PRIMARY_IP}/${_NETWORK_PREFIX}
+          secondary: ${_SECONDARY_IP}/${_NETWORK_PREFIX}
+        ipv6:
+          primary: ${_PRIMARY_IPV6}/64
+          secondary: ${_SECONDARY_IPV6}/64
+EOF
+)"
+    echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | _json2yaml > "$_PFSENSE_DIR/vars.yml"
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   vars:
     ansible_user: admin
-    pfsense:
-      system:
-        dns: $_DNS_SERVERS
-        timezone: UTC
-      network:
-        interfaces:
-          - name: LAN
-            interface: ${_INTERFACE}
-            dhcp: ${_ENABLE_DHCP}
-            ipv4:
-              primary: ${_PRIMARY_IP}/${_NETWORK_PREFIX}
-              secondary: ${_SECONDARY_IP}/${_NETWORK_PREFIX}
-            ipv6:
-              primary: ${_PRIMARY_IPV6}/64
-              secondary: ${_SECONDARY_IPV6}/64
-        aliases: []
-        rules: []
   hosts:
     pfsense1:
       ansible_host: $_PRIMARY_HOSTNAME
@@ -267,6 +269,8 @@ EOF
     cd "$_PFSENSE_DIR/ansible"
     ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
         ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
+        -e hello=world \
+        -e "@$_PFSENSE_DIR/vars.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
         "$_PFSENSE_DIR/ansible/playbooks/configure.yml"
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
