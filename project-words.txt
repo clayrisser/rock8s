@@ -79,6 +79,7 @@ selectattr
 sfdisk
 sgdisk
 skiplock
+sprintf
 sshpass
 startswith
 stty

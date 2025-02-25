@@ -110,8 +110,9 @@
     } else {
         config_set_path('interfaces/' . $interface . '/ipv6_enable', false);
     }
-    write_config();
+    write_config(sprintf('Updated interface configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
     interface_configure($interface);
+    filter_configure();
     EOF
     {% if item.1 is changed %}
     interface="{{ item.0.name | lower }}"

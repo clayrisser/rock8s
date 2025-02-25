@@ -27,7 +27,7 @@
       ),
       'dhcpdv6' => array(
         'lan' => array(
-          'enable' => config_get_path('dhcpdv6/lan/enable', ''),
+          'enable' => isset($config['dhcpdv6']['lan']['enable']) ? 'true' : '',
           'range' => array(
             'from' => config_get_path('dhcpdv6/lan/range/from', ''),
             'to' => config_get_path('dhcpdv6/lan/range/to', '')
@@ -41,7 +41,7 @@
       'dhcpbackend' => 'kea',
       'dhcpd' => array(
         'lan' => array(
-          'enable' => '',
+          'enable' => {{ item.dhcp | default(false) | bool | ternary('true', '') | to_json }},
           'range' => array(
             'from' => $ip_parts[0] . '.' . $ip_parts[1] . '.0.1',
             'to' => $ip_parts[0] . '.' . $ip_parts[1] . '.255.254'
@@ -88,17 +88,18 @@
     config_set_path('dhcpbackend', 'kea');
     $network_parts = explode('/', '{{ item.0.ipv4.primary }}');
     $ip_parts = explode('.', $network_parts[0]);
-    config_set_path('dhcpd/lan/enable', '');
+    config_set_path('dhcpd/lan/enable', {{ item.0.dhcp | default(false) | bool | ternary('true', '') | to_json }});
     config_set_path('dhcpd/lan/range/from', $ip_parts[0] . '.' . $ip_parts[1] . '.0.1');
     config_set_path('dhcpd/lan/range/to', $ip_parts[0] . '.' . $ip_parts[1] . '.255.254');
     $ipv6_parts = explode('/', '{{ item.0.ipv6.primary }}');
     $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
-    config_set_path('dhcpdv6/lan/enable', '');
+    if (isset($config['dhcpdv6']['lan']['enable'])) {
+        unset($config['dhcpdv6']['lan']['enable']);
+    }
     config_set_path('dhcpdv6/lan/range/from', $ipv6_prefix . '::');
     config_set_path('dhcpdv6/lan/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
-    config_set_path('dhcpdv6/lan/ramode', 'unmanaged');
-    config_set_path('dhcpdv6/lan/rapriority', 'medium');
-    write_config('Updated DHCP configuration');
+    write_config(sprintf('Updated dhcp configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
+    services_dhcpd_configure();
     EOF
     {% if item.1 is changed %}
     php -f /tmp/update_dhcp.php
