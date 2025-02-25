@@ -30,13 +30,13 @@ OPTIONS
               name of the cluster to configure pfSense for (required)
 
        --update
-              update ansible collections with force flag
+              update ansible collections
 
        --password <password>
               admin password
 
        --ssh-password
-              use password authentication for SSH instead of key-based auth (requires sshpass)
+              use password authentication for ssh instead of an ssh key
 EOF
 }
 
@@ -212,6 +212,14 @@ _main() {
     _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
     _PRIMARY_IPV6="${_IPV6_PREFIX}2"
     _SECONDARY_IPV6="${_IPV6_PREFIX}3"
+    _ENABLE_DHCP="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dhcp // ""')"
+    if [ "$_ENABLE_DHCP" = "" ] || [ "$_ENABLE_DHCP" = "null" ]; then
+        if [ "$_PROVIDER" = "hetzner" ]; then
+            _ENABLE_DHCP="false"
+        else
+            _ENABLE_DHCP="true"
+        fi
+    fi
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     mkdir -p "$_PFSENSE_DIR/collections"
@@ -232,6 +240,7 @@ all:
         interfaces:
           - name: LAN
             interface: ${_INTERFACE}
+            dhcp: ${_ENABLE_DHCP}
             ipv4:
               primary: ${_PRIMARY_IP}/${_NETWORK_PREFIX}
               secondary: ${_SECONDARY_IP}/${_NETWORK_PREFIX}
