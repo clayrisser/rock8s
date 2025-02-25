@@ -4,11 +4,14 @@
     <?php
     require_once("config.inc");
     require_once("util.inc");
-    init_config_arr(array('widgets'));
-    init_config_arr(array('system', 'webgui'));
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
     $current = array(
-      'sequence' => isset($config['widgets']['sequence']) ? $config['widgets']['sequence'] : '',
-      'dashboardcolumns' => isset($config['system']['webgui']['dashboardcolumns']) ? $config['system']['webgui']['dashboardcolumns'] : '',
+      'sequence' => config_get_path('widgets/sequence', ''),
+      'dashboardcolumns' => config_get_path('system/webgui/dashboardcolumns', ''),
       'widgets' => array()
     );
     $left_widgets = {{ (pfsense.dashboard.left | default([])) | to_json }};
@@ -18,11 +21,10 @@
     $widget_list = array_merge($left_widgets, $right_widgets);
     foreach ($widget_list as $widget) {
       $config_key = $widget . '-config';
-      init_config_arr(array('widgets', $config_key));
       $current['widgets'][$widget] = array(
-        'enable' => isset($config['widgets'][$config_key]['enable']) ? $config['widgets'][$config_key]['enable'] : '0',
-        'name' => isset($config['widgets'][$config_key]['name']) ? $config['widgets'][$config_key]['name'] : '',
-        'display' => isset($config['widgets'][$config_key]['display']) ? $config['widgets'][$config_key]['display'] : ''
+        'enable' => config_get_path('widgets/' . $config_key . '/enable', '0'),
+        'name' => config_get_path('widgets/' . $config_key . '/name', ''),
+        'display' => config_get_path('widgets/' . $config_key . '/display', '')
       );
     }
     $sequence_parts = array();
@@ -48,17 +50,8 @@
         'display' => 'open'
       );
     }
-    $changed = $current['sequence'] !== $desired['sequence'] ||
-               $current['dashboardcolumns'] !== $desired['dashboardcolumns'];
-    foreach ($widget_list as $widget) {
-      if (!isset($current['widgets'][$widget]) ||
-          $current['widgets'][$widget] !== $desired['widgets'][$widget]) {
-        $changed = true;
-        break;
-      }
-    }
     echo json_encode(array(
-      'changed' => $changed,
+      'changed' => $current != $desired,
       'current' => $current,
       'desired' => $desired
     ));
@@ -66,7 +59,7 @@
     php -f /tmp/check_dashboard.php
     rm -f /tmp/check_dashboard.php
   register: dashboard_check
-  changed_when: false
+  changed_when: (dashboard_check.stdout | from_json).changed
 
 - name: Configure dashboard
   ansible.builtin.shell: |
@@ -74,9 +67,12 @@
     <?php
     require_once("config.inc");
     require_once("util.inc");
-    init_config_arr(array('widgets'));
-    init_config_arr(array('system', 'webgui'));
-    $config['system']['webgui']['dashboardcolumns'] = '2';
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    config_set_path('system/webgui/dashboardcolumns', '2');
     $left_widgets = {{ (pfsense.dashboard.left | default([])) | to_json }};
     $right_widgets = {{ (pfsense.dashboard.right | default([])) | to_json }};
     if (!is_array($left_widgets)) $left_widgets = array();
@@ -93,23 +89,18 @@
       $sequence_parts[] = $widget . ':col2:open:' . $position;
       $position++;
     }
-    $config['widgets']['sequence'] = implode(',', $sequence_parts);
-    $config['widgets']['period'] = '10';
+    config_set_path('widgets/sequence', implode(',', $sequence_parts));
+    config_set_path('widgets/period', '10');
     foreach ($widget_list as $widget) {
       $config_key = $widget . '-config';
-      init_config_arr(array('widgets', $config_key));
-      $config['widgets'][$config_key]['enable'] = '1';
-      $config['widgets'][$config_key]['name'] = $widget;
-      $config['widgets'][$config_key]['display'] = 'open';
+      config_set_path('widgets/' . $config_key . '/enable', '1');
+      config_set_path('widgets/' . $config_key . '/name', $widget);
+      config_set_path('widgets/' . $config_key . '/display', 'open');
     }
-    $check_result = json_decode({{ dashboard_check.stdout | to_json }}, true);
-    if ($check_result['changed']) {
-      write_config('Updated dashboard configuration');
-      echo "Configuration updated";
-    } else {
-      echo "No changes needed";
-    }
+    write_config('Updated dashboard configuration');
     EOF
+    {% if dashboard_check is changed %}
     php -f /tmp/update_dashboard.php
+    {% endif %}
     rm -f /tmp/update_dashboard.php
-  changed_when: (dashboard_check.stdout | from_json).changed
+  changed_when: dashboard_check is changed

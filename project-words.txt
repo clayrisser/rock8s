@@ -14,6 +14,9 @@ dashboardcolumns
 defaultno
 delnode
 descr
+dhcpbackend
+dhcpd
+dhcpdv
 dialogopts
 dotenv
 endswith
@@ -69,6 +72,8 @@ pveproxy
 pvescheduler
 pvestatd
 radosgw
+ramode
+rapriority
 risser
 selectattr
 sfdisk

@@ -1,5 +1,12 @@
 ---
-- name: Validate interface IP configurations
+- name: Validate lan interface exists
+  ansible.builtin.assert:
+    that:
+      - pfsense.network.interfaces is defined
+      - pfsense.network.interfaces | selectattr('name', 'match', '^[Ll][Aa][Nn]$') | list | length > 0
+    fail_msg: "A lan interface is required"
+
+- name: Validate interface ip configurations
   ansible.builtin.assert:
     that:
       - item.ipv4 is string or (item.ipv4.primary is string and item.ipv4.secondary is string)
@@ -12,10 +19,7 @@
       - not item.ipv6 is defined or
         (item.ipv6.primary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$') and
         item.ipv6.secondary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$'))
-    fail_msg: >-
-      Invalid IP configuration for interface {{ item.name }}:
-      IPv4 must be a valid IPv4 address with prefix length between 0-32.
-      IPv6 (if defined) must be a valid IPv6 address with prefix length between 0-128.
+    fail_msg: "Invalid ip for interface {{ item.name }}"
   loop: "{{ pfsense.network.interfaces }}"
   when:
     - pfsense.network.interfaces is defined
@@ -26,17 +30,23 @@
     cat > /tmp/check_interface.php << 'EOF'
     <?php
     require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
     $interface = $argv[1];
     $ipv4 = $argv[2];
     $prefixlen = $argv[3];
     $ipv6 = isset($argv[4]) ? $argv[4] : null;
     $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
     $current = array(
-      'ipaddr' => $config['interfaces'][$interface]['ipaddr'],
-      'subnet' => $config['interfaces'][$interface]['subnet'],
-      'ipaddrv6' => isset($config['interfaces'][$interface]['ipaddrv6']) ? $config['interfaces'][$interface]['ipaddrv6'] : null,
-      'subnetv6' => isset($config['interfaces'][$interface]['subnetv6']) ? $config['interfaces'][$interface]['subnetv6'] : null,
-      'if' => $config['interfaces'][$interface]['if']
+      'ipaddr' => config_get_path('interfaces/' . $interface . '/ipaddr', ''),
+      'subnet' => config_get_path('interfaces/' . $interface . '/subnet', ''),
+      'ipaddrv6' => config_get_path('interfaces/' . $interface . '/ipaddrv6', null),
+      'subnetv6' => config_get_path('interfaces/' . $interface . '/subnetv6', null),
+      'if' => config_get_path('interfaces/' . $interface . '/if', '')
     );
     $desired = array(
       'ipaddr' => $ipv4,
@@ -62,62 +72,62 @@
     php -f /tmp/check_interface.php "$interface" "$ipv4" "$prefixlen"
     {% endif %}
     rm -f /tmp/check_interface.php
-  register: interface_check
-  changed_when: (interface_check.stdout | from_json).changed
   loop: "{{ pfsense.network.interfaces }}"
   when:
     - pfsense.network.interfaces is defined
     - item.name != 'WAN'
+  register: interface_check
+  changed_when: (interface_check.stdout | from_json).changed
 
 - name: Configure interfaces
   ansible.builtin.shell: |
-    {% if (item.1.stdout | from_json).changed %}
+    cat > /tmp/update_interface.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    require_once("interfaces.inc");
+    require_once("gwlb.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    $interface = $argv[1];
+    $ipv4 = $argv[2];
+    $prefixlen = $argv[3];
+    $ipv6 = isset($argv[4]) ? $argv[4] : null;
+    $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
+    config_set_path('interfaces/' . $interface . '/enable', true);
+    config_set_path('interfaces/' . $interface . '/if', "{{ item.0.interface }}");
+    config_set_path('interfaces/' . $interface . '/ipaddr', $ipv4);
+    config_set_path('interfaces/' . $interface . '/subnet', $prefixlen);
+    if ($ipv6 !== null) {
+        config_set_path('interfaces/' . $interface . '/ipaddrv6', $ipv6);
+        config_set_path('interfaces/' . $interface . '/subnetv6', $prefixlen6);
+        config_set_path('interfaces/' . $interface . '/ipv6_enable', true);
+        config_set_path('interfaces/' . $interface . '/ipv6_mode', 'static');
+        config_set_path('interfaces/' . $interface . '/dhcp6client', false);
+    } else {
+        config_set_path('interfaces/' . $interface . '/ipv6_enable', false);
+    }
+    write_config();
+    interface_configure($interface);
+    EOF
+    {% if item.1 is changed %}
     interface="{{ item.0.name | lower }}"
     ipv4="{{ primary | ternary(item.0.ipv4.primary | regex_replace('/.*$', ''), item.0.ipv4.secondary | regex_replace('/.*$', '')) }}"
     prefixlen="{{ primary | ternary(item.0.ipv4.primary | regex_replace('^.*/', ''), item.0.ipv4.secondary | regex_replace('^.*/', '')) }}"
     {% if item.0.ipv6 is defined %}
     ipv6="{{ primary | ternary(item.0.ipv6.primary | regex_replace('/.*$', ''), item.0.ipv6.secondary | regex_replace('/.*$', '')) }}"
     prefixlen6="{{ primary | ternary(item.0.ipv6.primary | regex_replace('^.*/', ''), item.0.ipv6.secondary | regex_replace('^.*/', '')) }}"
-    {% endif %}
-    cat > /tmp/update_interface.php << 'EOF'
-    <?php
-    require_once("config.inc");
-    require_once("interfaces.inc");
-    require_once("util.inc");
-    require_once("interfaces.inc");
-    require_once("gwlb.inc");
-    $interface = $argv[1];
-    $ipv4 = $argv[2];
-    $prefixlen = $argv[3];
-    $ipv6 = isset($argv[4]) ? $argv[4] : null;
-    $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
-    $config['interfaces'][$interface]['enable'] = true;
-    $config['interfaces'][$interface]['if'] = "{{ item.0.interface }}";
-    $config['interfaces'][$interface]['ipaddr'] = $ipv4;
-    $config['interfaces'][$interface]['subnet'] = $prefixlen;
-    if ($ipv6 !== null) {
-        $config['interfaces'][$interface]['ipaddrv6'] = $ipv6;
-        $config['interfaces'][$interface]['subnetv6'] = $prefixlen6;
-        $config['interfaces'][$interface]['ipv6_enable'] = true;
-        $config['interfaces'][$interface]['ipv6_mode'] = 'static';
-        $config['interfaces'][$interface]['dhcp6client'] = false;
-    } else {
-        $config['interfaces'][$interface]['ipv6_enable'] = false;
-    }
-    write_config();
-    interface_configure($interface);
-    EOF
-    {% if item.0.ipv6 is defined %}
     php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen" "$ipv6" "$prefixlen6"
     {% else %}
     php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen"
     {% endif %}
-    rm -f /tmp/update_interface.php
-    {% else %}
-    echo "No changes needed for interface {{ item.0.name | lower }}"
     {% endif %}
+    rm -f /tmp/update_interface.php
   loop: "{{ pfsense.network.interfaces | zip(interface_check.results) | list }}"
   when:
     - pfsense.network.interfaces is defined
     - item.0.name != 'WAN'
-  changed_when: (item.1.stdout | from_json).changed
+  changed_when: item.1 is changed

@@ -1,7 +1,109 @@
 ---
-- name: Configure DHCP server
-  pfsensible.core.pfsense_dhcp:
-    interface: lan
-    enable: true
-    backend: kea
-  when: primary
+- name: Check dhcp configuration
+  ansible.builtin.shell: |-
+    cat << 'EOF' > /tmp/check_dhcp.php
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    $network_parts = explode('/', '{{ item.ipv4.primary }}');
+    $ip_parts = explode('.', $network_parts[0]);
+    $ipv6_parts = explode('/', '{{ item.ipv6.primary }}');
+    $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
+    $current = array(
+      'dhcpbackend' => config_get_path('dhcpbackend', 'isc'),
+      'dhcpd' => array(
+        'lan' => array(
+          'enable' => config_get_path('dhcpd/lan/enable', ''),
+          'range' => array(
+            'from' => config_get_path('dhcpd/lan/range/from', ''),
+            'to' => config_get_path('dhcpd/lan/range/to', '')
+          )
+        )
+      ),
+      'dhcpdv6' => array(
+        'lan' => array(
+          'enable' => config_get_path('dhcpdv6/lan/enable', ''),
+          'range' => array(
+            'from' => config_get_path('dhcpdv6/lan/range/from', ''),
+            'to' => config_get_path('dhcpdv6/lan/range/to', '')
+          ),
+          'ramode' => config_get_path('dhcpdv6/lan/ramode', ''),
+          'rapriority' => config_get_path('dhcpdv6/lan/rapriority', '')
+        )
+      )
+    );
+    $desired = array(
+      'dhcpbackend' => 'kea',
+      'dhcpd' => array(
+        'lan' => array(
+          'enable' => '',
+          'range' => array(
+            'from' => $ip_parts[0] . '.' . $ip_parts[1] . '.0.1',
+            'to' => $ip_parts[0] . '.' . $ip_parts[1] . '.255.254'
+          )
+        )
+      ),
+      'dhcpdv6' => array(
+        'lan' => array(
+          'enable' => '',
+          'range' => array(
+            'from' => $ipv6_prefix . '::',
+            'to' => $ipv6_prefix . '::ffff:ffff:ffff:ffff'
+          ),
+          'ramode' => 'unmanaged',
+          'rapriority' => 'medium'
+        )
+      )
+    );
+    echo json_encode(array(
+      'changed' => $current != $desired,
+      'current' => $current,
+      'desired' => $desired
+    ));
+    EOF
+    php -f /tmp/check_dhcp.php
+    rm -f /tmp/check_dhcp.php
+  loop: "{{ pfsense.network.interfaces }}"
+  when: item.name | lower == 'lan'
+  register: dhcp_check
+  changed_when: (dhcp_check.stdout | from_json).changed
+
+- name: Configure dhcp
+  ansible.builtin.shell: |-
+    cat << 'EOF' > /tmp/update_dhcp.php
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    require_once("system.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    config_set_path('dhcpbackend', 'kea');
+    $network_parts = explode('/', '{{ item.0.ipv4.primary }}');
+    $ip_parts = explode('.', $network_parts[0]);
+    config_set_path('dhcpd/lan/enable', '');
+    config_set_path('dhcpd/lan/range/from', $ip_parts[0] . '.' . $ip_parts[1] . '.0.1');
+    config_set_path('dhcpd/lan/range/to', $ip_parts[0] . '.' . $ip_parts[1] . '.255.254');
+    $ipv6_parts = explode('/', '{{ item.0.ipv6.primary }}');
+    $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
+    config_set_path('dhcpdv6/lan/enable', '');
+    config_set_path('dhcpdv6/lan/range/from', $ipv6_prefix . '::');
+    config_set_path('dhcpdv6/lan/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
+    config_set_path('dhcpdv6/lan/ramode', 'unmanaged');
+    config_set_path('dhcpdv6/lan/rapriority', 'medium');
+    write_config('Updated DHCP configuration');
+    EOF
+    {% if item.1 is changed %}
+    php -f /tmp/update_dhcp.php
+    {% endif %}
+    rm -f /tmp/update_dhcp.php
+  loop: "{{ pfsense.network.interfaces | zip(dhcp_check.results) | list }}"
+  when: item.0.name | lower == 'lan'
+  changed_when: item.1 is changed
