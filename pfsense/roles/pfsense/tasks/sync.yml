@@ -10,19 +10,6 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
-    {% set sync_interface = [] %}
-    {% for interface in pfsense.network.interfaces %}
-    {% if interface.name | lower == 'sync' %}
-    {% set _ = sync_interface.append(interface) %}
-    {% endif %}
-    {% endfor %}
-    {% if not sync_interface %}
-    {% for interface in pfsense.network.interfaces %}
-    {% if interface.name | lower == 'lan' %}
-    {% set _ = sync_interface.append(interface) %}
-    {% endif %}
-    {% endfor %}
-    {% endif %}
     $current = array(
       'hasync' => array(
         'enable' => isset($config['hasync']['enable']) ? 'yes' : '',
@@ -54,75 +41,81 @@
         'pfhostid' => config_get_path('hasync/pfhostid', '')
       )
     );
-    if ({{ primary | bool | lower }}) {
-      {% if sync_interface %}
-      $desired = array(
-        'hasync' => array(
-          'enable' => 'yes',
-          'synchronizetoip' => '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}',
-          'synchronizetoport' => '22',
-          'pfsyncpeerip' => '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}',
-          'pfsyncinterface' => '{{ sync_interface[0].name | lower }}',
-          'username' => '{{ pfsense.username }}',
-          'password' => '{{ pfsense.password }}',
-          'synchronizeusers' => 'on',
-          'synchronizeauthservers' => 'on',
-          'synchronizecerts' => 'on',
-          'synchronizerules' => 'on',
-          'synchronizeschedules' => 'on',
-          'synchronizealiases' => 'on',
-          'synchronizenat' => 'on',
-          'synchronizeipsec' => 'on',
-          'synchronizeopenvpn' => 'on',
-          'synchronizedhcpd' => 'on',
-          'synchronizedhcrelay' => 'on',
-          'synchronizedhcrelay6' => 'on',
-          'synchronizewol' => 'on',
-          'synchronizestaticroutes' => 'on',
-          'synchronizevirtualip' => 'on',
-          'synchronizetrafficshaper' => 'on',
-          'synchronizetrafficshaperlimiter' => 'on',
-          'synchronizednsforwarder' => 'on',
-          'synchronizecaptiveportal' => 'on',
-          'pfhostid' => ''
-        )
-      );
-      {% else %}
-      $desired = $current;
-      {% endif %}
-    } else {
-      $desired = array(
-        'hasync' => array(
-          'enable' => '',
-          'synchronizetoip' => '',
-          'synchronizetoport' => '',
-          'pfsyncpeerip' => '',
-          'pfsyncinterface' => '',
-          'username' => '',
-          'password' => '',
-          'synchronizeusers' => '',
-          'synchronizeauthservers' => '',
-          'synchronizecerts' => '',
-          'synchronizerules' => '',
-          'synchronizeschedules' => '',
-          'synchronizealiases' => '',
-          'synchronizenat' => '',
-          'synchronizeipsec' => '',
-          'synchronizeopenvpn' => '',
-          'synchronizedhcpd' => '',
-          'synchronizedhcrelay' => '',
-          'synchronizedhcrelay6' => '',
-          'synchronizewol' => '',
-          'synchronizestaticroutes' => '',
-          'synchronizevirtualip' => '',
-          'synchronizetrafficshaper' => '',
-          'synchronizetrafficshaperlimiter' => '',
-          'synchronizednsforwarder' => '',
-          'synchronizecaptiveportal' => '',
-          'pfhostid' => ''
-        )
-      );
-    }
+    {% set sync_interface = [] %}
+    {% for interface in pfsense.network.interfaces %}
+    {% if interface.name | lower == 'sync' %}
+    {% set _ = sync_interface.append(interface) %}
+    {% endif %}
+    {% endfor %}
+    {% if not sync_interface %}
+    {% for interface in pfsense.network.interfaces %}
+    {% if interface.name | lower == 'lan' %}
+    {% set _ = sync_interface.append(interface) %}
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    $desired = array(
+      'hasync' => array(
+        'enable' => '',
+        'synchronizetoip' => '',
+        'synchronizetoport' => '',
+        'pfsyncpeerip' => '',
+        'pfsyncinterface' => '',
+        'username' => '',
+        'password' => '',
+        'synchronizeusers' => '',
+        'synchronizeauthservers' => '',
+        'synchronizecerts' => '',
+        'synchronizerules' => '',
+        'synchronizeschedules' => '',
+        'synchronizealiases' => '',
+        'synchronizenat' => '',
+        'synchronizeipsec' => '',
+        'synchronizeopenvpn' => '',
+        'synchronizedhcpd' => '',
+        'synchronizedhcrelay' => '',
+        'synchronizedhcrelay6' => '',
+        'synchronizewol' => '',
+        'synchronizestaticroutes' => '',
+        'synchronizevirtualip' => '',
+        'synchronizetrafficshaper' => '',
+        'synchronizetrafficshaperlimiter' => '',
+        'synchronizednsforwarder' => '',
+        'synchronizecaptiveportal' => '',
+        'pfhostid' => ''
+      )
+    );
+    {% if sync_interface and ansible_play_hosts | length > 1 and primary %}
+    $desired['hasync'] = array(
+      'enable' => 'yes',
+      'synchronizetoip' => '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}',
+      'synchronizetoport' => '22',
+      'pfsyncpeerip' => '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}',
+      'pfsyncinterface' => '{{ sync_interface[0].name | lower }}',
+      'username' => '{{ pfsense.username }}',
+      'password' => '{{ pfsense.password }}',
+      'synchronizeusers' => 'on',
+      'synchronizeauthservers' => 'on',
+      'synchronizecerts' => 'on',
+      'synchronizerules' => 'on',
+      'synchronizeschedules' => 'on',
+      'synchronizealiases' => 'on',
+      'synchronizenat' => 'on',
+      'synchronizeipsec' => 'on',
+      'synchronizeopenvpn' => 'on',
+      'synchronizedhcpd' => 'on',
+      'synchronizedhcrelay' => 'on',
+      'synchronizedhcrelay6' => 'on',
+      'synchronizewol' => 'on',
+      'synchronizestaticroutes' => 'on',
+      'synchronizevirtualip' => 'on',
+      'synchronizetrafficshaper' => 'on',
+      'synchronizetrafficshaperlimiter' => 'on',
+      'synchronizednsforwarder' => 'on',
+      'synchronizecaptiveportal' => 'on',
+      'pfhostid' => ''
+    );
+    {% endif %}
     echo json_encode(array(
       'changed' => $current != $desired,
       'current' => $current,
@@ -133,8 +126,6 @@
     rm -f /tmp/check_sync.php
   register: sync_check
   changed_when: (sync_check.stdout | from_json).changed
-  when:
-    - ansible_play_hosts | length > 1
 
 - name: Configure sync
   ansible.builtin.shell: |-
@@ -148,61 +139,57 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
-    if ({{ primary | bool | lower }}) {
-      {% set sync_interface = [] %}
-      {% for interface in pfsense.network.interfaces %}
-      {% if interface.name | lower == 'sync' %}
-      {% set _ = sync_interface.append(interface) %}
-      {% endif %}
-      {% endfor %}
-      {% if not sync_interface %}
-      {% for interface in pfsense.network.interfaces %}
-      {% if interface.name | lower == 'lan' %}
-      {% set _ = sync_interface.append(interface) %}
-      {% endif %}
-      {% endfor %}
-      {% endif %}
-      {% if sync_interface %}
-      config_set_path('hasync/enable', 'yes');
-      config_set_path('hasync/synchronizetoip', '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}');
-      config_set_path('hasync/synchronizetoport', '22');
-      config_set_path('hasync/pfsyncpeerip', '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}');
-      config_set_path('hasync/pfsyncinterface', '{{ sync_interface[0].name | lower }}');
-      config_set_path('hasync/username', '{{ pfsense.username }}');
-      config_set_path('hasync/password', '{{ pfsense.password }}');
-      config_set_path('hasync/synchronizeusers', 'on');
-      config_set_path('hasync/synchronizeauthservers', 'on');
-      config_set_path('hasync/synchronizecerts', 'on');
-      config_set_path('hasync/synchronizerules', 'on');
-      config_set_path('hasync/synchronizeschedules', 'on');
-      config_set_path('hasync/synchronizealiases', 'on');
-      config_set_path('hasync/synchronizenat', 'on');
-      config_set_path('hasync/synchronizeipsec', 'on');
-      config_set_path('hasync/synchronizeopenvpn', 'on');
-      config_set_path('hasync/synchronizedhcpd', 'on');
-      config_set_path('hasync/synchronizedhcrelay', 'on');
-      config_set_path('hasync/synchronizedhcrelay6', 'on');
-      config_set_path('hasync/synchronizewol', 'on');
-      config_set_path('hasync/synchronizestaticroutes', 'on');
-      config_set_path('hasync/synchronizevirtualip', 'on');
-      config_set_path('hasync/synchronizetrafficshaper', 'on');
-      config_set_path('hasync/synchronizetrafficshaperlimiter', 'on');
-      config_set_path('hasync/synchronizednsforwarder', 'on');
-      config_set_path('hasync/synchronizecaptiveportal', 'on');
-      config_set_path('hasync/pfhostid', '');
-      {% endif %}
-    } else {
-      if (isset($config['hasync'])) {
-        unset($config['hasync']);
-      }
+    {% set sync_interface = [] %}
+    {% for interface in pfsense.network.interfaces %}
+    {% if interface.name | lower == 'sync' %}
+    {% set _ = sync_interface.append(interface) %}
+    {% endif %}
+    {% endfor %}
+    {% if not sync_interface %}
+    {% for interface in pfsense.network.interfaces %}
+    {% if interface.name | lower == 'lan' %}
+    {% set _ = sync_interface.append(interface) %}
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    if (isset($config['hasync'])) {
+      unset($config['hasync']);
     }
-    write_config(sprintf('Updated sync configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
-    interfaces_sync_setup();
+    {% if sync_interface and ansible_play_hosts | length > 1 and primary %}
+    config_set_path('hasync/enable', 'yes');
+    config_set_path('hasync/synchronizetoip', '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}');
+    config_set_path('hasync/synchronizetoport', '22');
+    config_set_path('hasync/pfsyncpeerip', '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}');
+    config_set_path('hasync/pfsyncinterface', '{{ sync_interface[0].name | lower }}');
+    config_set_path('hasync/username', '{{ pfsense.username }}');
+    config_set_path('hasync/password', '{{ pfsense.password }}');
+    config_set_path('hasync/synchronizeusers', 'on');
+    config_set_path('hasync/synchronizeauthservers', 'on');
+    config_set_path('hasync/synchronizecerts', 'on');
+    config_set_path('hasync/synchronizerules', 'on');
+    config_set_path('hasync/synchronizeschedules', 'on');
+    config_set_path('hasync/synchronizealiases', 'on');
+    config_set_path('hasync/synchronizenat', 'on');
+    config_set_path('hasync/synchronizeipsec', 'on');
+    config_set_path('hasync/synchronizeopenvpn', 'on');
+    config_set_path('hasync/synchronizedhcpd', 'on');
+    config_set_path('hasync/synchronizedhcrelay', 'on');
+    config_set_path('hasync/synchronizedhcrelay6', 'on');
+    config_set_path('hasync/synchronizewol', 'on');
+    config_set_path('hasync/synchronizestaticroutes', 'on');
+    config_set_path('hasync/synchronizevirtualip', 'on');
+    config_set_path('hasync/synchronizetrafficshaper', 'on');
+    config_set_path('hasync/synchronizetrafficshaperlimiter', 'on');
+    config_set_path('hasync/synchronizednsforwarder', 'on');
+    config_set_path('hasync/synchronizecaptiveportal', 'on');
+    config_set_path('hasync/pfhostid', '');
+    {% endif %}
+    if (write_config(sprintf('Updated sync configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
+      interfaces_sync_setup();
+    }
     EOF
     {% if sync_check is changed %}
     php -f /tmp/update_sync.php
     {% endif %}
     rm -f /tmp/update_sync.php
   changed_when: sync_check is changed
-  when:
-    - ansible_play_hosts | length > 1

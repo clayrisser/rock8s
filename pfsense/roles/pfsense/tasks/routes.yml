@@ -86,7 +86,7 @@
       )
     );
     config_set_path('system/disablechecksumoffloading', true);
-    if (write_config('Updated routes configuration')) {
+    if (write_config(sprintf('Updated routes configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
       mark_subsystem_dirty('staticroutes');
       system_routing_configure();
       filter_configure();

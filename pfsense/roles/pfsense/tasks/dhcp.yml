@@ -107,8 +107,9 @@
     config_del_path('dhcpdv6/' . $interface . '/enable');
     config_set_path('dhcpdv6/' . $interface . '/range/from', $ipv6_prefix . '::');
     config_set_path('dhcpdv6/' . $interface . '/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
-    write_config(sprintf('Updated dhcp configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
-    services_dhcpd_configure();
+    if (write_config(sprintf('Updated dhcp configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
+        services_dhcpd_configure();
+    }
     EOF
     {% if item.1 is changed %}
     php -f /tmp/update_dhcp.php
