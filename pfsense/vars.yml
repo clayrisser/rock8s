@@ -1,5 +1,6 @@
 ---
 pfsense:
+  username: admin
   dashboard:
     primary:
       theme: "pfSense-dark"

@@ -3,6 +3,8 @@
   import_tasks: interfaces.yml
 - name: Configure setup
   import_tasks: setup.yml
+- name: Configure sync
+  import_tasks: sync.yml
 - name: Configure dashboard
   import_tasks: dashboard.yml
 - name: Configure dhcp
