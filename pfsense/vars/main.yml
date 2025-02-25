@@ -21,7 +21,7 @@ pfsense:
     interfaces:
       - name: "LAN"
         interface: "vtnet1"
-        dhcp: true
+        dhcp: false
         ipv4:
           primary: "172.20.0.2/16"
           secondary: "172.20.0.3/16"
