@@ -14,33 +14,34 @@
     $ip_parts = explode('.', $network_parts[0]);
     $ipv6_parts = explode('/', '{{ item.ipv6.primary }}');
     $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
+    $interface = '{{ item.name | lower }}';
     $current = array(
       'dhcpbackend' => config_get_path('dhcpbackend', 'isc'),
       'dhcpd' => array(
-        'lan' => array(
-          'enable' => isset($config['dhcpd']['lan']['enable']) ? 'yes' : '',
+        $interface => array(
+          'enable' => isset($config['dhcpd'][$interface]['enable']) ? 'yes' : '',
           'range' => array(
-            'from' => config_get_path('dhcpd/lan/range/from', ''),
-            'to' => config_get_path('dhcpd/lan/range/to', '')
+            'from' => config_get_path('dhcpd/' . $interface . '/range/from', ''),
+            'to' => config_get_path('dhcpd/' . $interface . '/range/to', '')
           )
         )
       ),
       'dhcpdv6' => array(
-        'lan' => array(
-          'enable' => isset($config['dhcpdv6']['lan']['enable']) ? 'yes' : '',
+        $interface => array(
+          'enable' => isset($config['dhcpdv6'][$interface]['enable']) ? 'yes' : '',
           'range' => array(
-            'from' => config_get_path('dhcpdv6/lan/range/from', ''),
-            'to' => config_get_path('dhcpdv6/lan/range/to', '')
+            'from' => config_get_path('dhcpdv6/' . $interface . '/range/from', ''),
+            'to' => config_get_path('dhcpdv6/' . $interface . '/range/to', '')
           ),
-          'ramode' => config_get_path('dhcpdv6/lan/ramode', ''),
-          'rapriority' => config_get_path('dhcpdv6/lan/rapriority', '')
+          'ramode' => config_get_path('dhcpdv6/' . $interface . '/ramode', ''),
+          'rapriority' => config_get_path('dhcpdv6/' . $interface . '/rapriority', '')
         )
       )
     );
     $desired = array(
       'dhcpbackend' => 'kea',
       'dhcpd' => array(
-        'lan' => array(
+        $interface => array(
           'enable' => {{ item.dhcp | default(false) | bool | to_json }} ? 'yes' : '',
           'range' => array(
             'from' => $ip_parts[0] . '.' . $ip_parts[1] . '.0.1',
@@ -49,7 +50,7 @@
         )
       ),
       'dhcpdv6' => array(
-        'lan' => array(
+        $interface => array(
           'enable' => '',
           'range' => array(
             'from' => $ipv6_prefix . '::',
@@ -69,7 +70,6 @@
     php -f /tmp/check_dhcp.php
     rm -f /tmp/check_dhcp.php
   loop: "{{ pfsense.network.interfaces }}"
-  when: item.name | lower == 'lan'
   register: dhcp_check
   changed_when: (dhcp_check.stdout | from_json).changed
 
@@ -88,24 +88,25 @@
     config_set_path('dhcpbackend', 'kea');
     $network_parts = explode('/', '{{ item.0.ipv4.primary }}');
     $ip_parts = explode('.', $network_parts[0]);
-    config_set_path('dhcpd/lan/range/from', $ip_parts[0] . '.' . $ip_parts[1] . '.0.1');
-    config_set_path('dhcpd/lan/range/to', $ip_parts[0] . '.' . $ip_parts[1] . '.255.254');
+    $interface = '{{ item.0.name | lower }}';
+    config_set_path('dhcpd/' . $interface . '/range/from', $ip_parts[0] . '.' . $ip_parts[1] . '.0.1');
+    config_set_path('dhcpd/' . $interface . '/range/to', $ip_parts[0] . '.' . $ip_parts[1] . '.255.254');
     $ipv6_parts = explode('/', '{{ item.0.ipv6.primary }}');
     $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
     if ({{ item.0.dhcp | default(false) | bool | to_json }}) {
-        config_set_path('dhcpd/lan/enable', 'yes');
+        config_set_path('dhcpd/' . $interface . '/enable', 'yes');
     } else {
-        if (isset($config['dhcpd']['lan']['enable'])) {
-            unset($config['dhcpd']['lan']['enable']);
+        if (isset($config['dhcpd'][$interface]['enable'])) {
+            unset($config['dhcpd'][$interface]['enable']);
         }
-        config_del_path('dhcpd/lan/enable');
+        config_del_path('dhcpd/' . $interface . '/enable');
     }
-    if (isset($config['dhcpdv6']['lan']['enable'])) {
-        unset($config['dhcpdv6']['lan']['enable']);
+    if (isset($config['dhcpdv6'][$interface]['enable'])) {
+        unset($config['dhcpdv6'][$interface]['enable']);
     }
-    config_del_path('dhcpdv6/lan/enable');
-    config_set_path('dhcpdv6/lan/range/from', $ipv6_prefix . '::');
-    config_set_path('dhcpdv6/lan/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
+    config_del_path('dhcpdv6/' . $interface . '/enable');
+    config_set_path('dhcpdv6/' . $interface . '/range/from', $ipv6_prefix . '::');
+    config_set_path('dhcpdv6/' . $interface . '/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
     write_config(sprintf('Updated dhcp configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
     services_dhcpd_configure();
     EOF
@@ -114,5 +115,4 @@
     {% endif %}
     rm -f /tmp/update_dhcp.php
   loop: "{{ pfsense.network.interfaces | zip(dhcp_check.results) | list }}"
-  when: item.0.name | lower == 'lan'
   changed_when: item.1 is changed
