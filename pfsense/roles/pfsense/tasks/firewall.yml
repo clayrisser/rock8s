@@ -1,11 +1,33 @@
 ---
-# - name: Configure lan firewall rules
-#   pfsensible.core.pfsense_rule:
-#     name: "Allow all LAN to LAN"
-#     action: pass
-#     interface: lan
-#     source: lan
-#     destination: lan
-#     protocol: any
-#     state: present
-#   when: primary
+- name: Configure subnet to subnet rules
+  pfsensible.core.pfsense_rule:
+    name: "Allow {{ item.name | lower }} subnet to {{ item.name | lower }} subnet"
+    action: pass
+    interface: "{{ item.name | lower }}"
+    source: "{{ item.name | upper }}_NET"
+    destination: "{{ item.name | upper }}_NET"
+    protocol: any
+    state: present
+  loop: "{{ pfsense.network.interfaces | selectattr('subnet', 'defined') | list }}"
+
+- name: Configure lan subnet to any rule
+  pfsensible.core.pfsense_rule:
+    name: "Allow lan subnet to any destination"
+    action: pass
+    interface: lan
+    source: LAN_NET
+    destination: any
+    protocol: any
+    state: present
+  when:
+    - "'lan' in pfsense.network.interfaces | map(attribute='name') | map('lower') | list"
+
+- name: Configure any to wan rule
+  pfsensible.core.pfsense_rule:
+    name: "Allow any to wan"
+    action: pass
+    interface: wan
+    source: any
+    destination: any
+    protocol: any
+    state: present
