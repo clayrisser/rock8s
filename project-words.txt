@@ -19,6 +19,7 @@ dhcpbackend
 dhcpd
 dhcpdv
 dialogopts
+disablechecksumoffloading
 dotenv
 endfor
 endswith
@@ -88,6 +89,7 @@ skiplock
 sprintf
 sshpass
 startswith
+staticroutes
 stty
 subcmd
 subnetv

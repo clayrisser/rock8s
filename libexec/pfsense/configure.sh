@@ -231,12 +231,14 @@ _main() {
     _DEFAULTS="$(_yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
     _CONFIG="$(cat <<EOF | _yaml2json
 pfsense:
+  provider: $_PROVIDER
   password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
   system:
     dns: $_DNS_SERVERS
   network:
     interfaces:
       - name: LAN
+        subnet: ${_NETWORK_SUBNET}
         interface: ${_INTERFACE}
         dhcp: ${_ENABLE_DHCP}
         ipv4:
