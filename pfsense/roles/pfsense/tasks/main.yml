@@ -5,15 +5,15 @@
   import_tasks: setup.yml
 - name: Configure sync
   import_tasks: sync.yml
-- name: Configure dashboard
-  import_tasks: dashboard.yml
 - name: Configure dhcp
   import_tasks: dhcp.yml
 - name: Configure routes
   import_tasks: routes.yml
+- name: Configure firewall rules
+  import_tasks: firewall.yml
+- name: Configure dashboard
+  import_tasks: dashboard.yml
 # - name: Configure NAT
 #   import_tasks: nat.yml
-# - name: Configure firewall rules
-#   import_tasks: firewall.yml
 # - name: Install and configure packages
 #   import_tasks: packages.yml
