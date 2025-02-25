@@ -1,0 +1,103 @@
+---
+- name: Check routes configuration
+  ansible.builtin.shell: |-
+    cat << 'EOF' > /tmp/check_routes.php
+    <?php
+    require_once("globals.inc");
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    require_once("interfaces.inc");
+    require_once("gwlb.inc");
+    global $config;
+    $config = parse_config(true);
+    $current = array(
+      'staticroutes' => array(),
+      'system' => array(
+        'disablechecksumoffloading' => isset($config['system']['disablechecksumoffloading']) ? 'yes' : ''
+      )
+    );
+    if (isset($config['staticroutes']['route']) && is_array($config['staticroutes']['route'])) {
+      $current['staticroutes'] = $config['staticroutes']['route'];
+    }
+    $desired = array(
+      'staticroutes' => array(),
+      'system' => array(
+        'disablechecksumoffloading' => 'yes'
+      )
+    );
+    $network = '';
+    $subnet = '{{ pfsense.network.interfaces[0].subnet }}';
+    if (!empty($subnet)) {
+        $network = $subnet;
+    } else {
+        $ip = get_interface_ip('lan');
+        $subnet = get_interface_subnet('lan');
+        $network = gen_subnet($ip, $subnet) . '/' . $subnet;
+    }
+    $desired['staticroutes'] = array(
+      array(
+        'network' => $network,
+        'gateway' => 'LAN_DHCP'
+      )
+    );
+    echo json_encode(array(
+      'changed' => $current != $desired,
+      'current' => $current,
+      'desired' => $desired
+    ));
+    EOF
+    php -f /tmp/check_routes.php
+    rm -f /tmp/check_routes.php
+  register: routes_check
+  changed_when: (routes_check.stdout | from_json).changed
+  when:
+    - "'lan' in pfsense.network.interfaces | map(attribute='name') | map('lower') | list"
+    - not pfsense.network.interfaces[0].dhcp | default(false)
+
+- name: Configure routes
+  ansible.builtin.shell: |-
+    cat << 'EOF' > /tmp/update_routes.php
+    <?php
+    require_once("globals.inc");
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    require_once("interfaces.inc");
+    require_once("gwlb.inc");
+    global $config;
+    $config = parse_config(true);
+    $network = '';
+    $subnet = '{{ pfsense.network.interfaces[0].subnet }}';
+    if (!empty($subnet)) {
+        $network = $subnet;
+    } else {
+        $ip = get_interface_ip('lan');
+        $subnet = get_interface_subnet('lan');
+        $network = gen_subnet($ip, $subnet) . '/' . $subnet;
+    }
+    if (!isset($config['staticroutes']) || !is_array($config['staticroutes'])) {
+      $config['staticroutes'] = array();
+    }
+    $config['staticroutes']['route'] = array(
+      array(
+        'network' => $network,
+        'gateway' => 'LAN_DHCP'
+      )
+    );
+    config_set_path('system/disablechecksumoffloading', true);
+    if (write_config('Updated routes configuration')) {
+      mark_subsystem_dirty('staticroutes');
+      system_routing_configure();
+      filter_configure();
+      clear_subsystem_dirty('staticroutes');
+    }
+    EOF
+    {% if routes_check is changed %}
+    php -f /tmp/update_routes.php
+    {% endif %}
+    rm -f /tmp/update_routes.php
+  changed_when: routes_check is changed
+  when:
+    - "'lan' in pfsense.network.interfaces | map(attribute='name') | map('lower') | list"
+    - not pfsense.network.interfaces[0].dhcp | default(false)

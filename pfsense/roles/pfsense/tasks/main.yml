@@ -9,6 +9,8 @@
   import_tasks: dashboard.yml
 - name: Configure dhcp
   import_tasks: dhcp.yml
+- name: Configure routes
+  import_tasks: routes.yml
 # - name: Configure NAT
 #   import_tasks: nat.yml
 # - name: Configure firewall rules

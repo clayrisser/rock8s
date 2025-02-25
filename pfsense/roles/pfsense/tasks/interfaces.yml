@@ -47,14 +47,18 @@
       'subnet' => config_get_path('interfaces/' . $interface . '/subnet', ''),
       'ipaddrv6' => config_get_path('interfaces/' . $interface . '/ipaddrv6', null),
       'subnetv6' => config_get_path('interfaces/' . $interface . '/subnetv6', null),
-      'if' => config_get_path('interfaces/' . $interface . '/if', '')
+      'if' => config_get_path('interfaces/' . $interface . '/if', ''),
+      'enable' => isset($config['interfaces'][$interface]['enable']),
+      'ipaddr_dhcp' => isset($config['interfaces'][$interface]['ipaddr']) && $config['interfaces'][$interface]['ipaddr'] === 'dhcp'
     );
     $desired = array(
-      'ipaddr' => $ipv4,
-      'subnet' => $prefixlen,
+      'ipaddr' => {% if not item.dhcp | default(false) %}'dhcp'{% else %}$ipv4{% endif %},
+      'subnet' => {% if not item.dhcp | default(false) %}''{% else %}$prefixlen{% endif %},
       'ipaddrv6' => $ipv6,
       'subnetv6' => $prefixlen6,
-      'if' => "{{ item.interface }}"
+      'if' => "{{ item.interface }}",
+      'enable' => true,
+      'ipaddr_dhcp' => {% if not item.dhcp | default(false) %}true{% else %}false{% endif %}
     );
     echo json_encode(array(
       'changed' => $current != $desired,
@@ -100,8 +104,15 @@
     $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
     config_set_path('interfaces/' . $interface . '/enable', true);
     config_set_path('interfaces/' . $interface . '/if', "{{ item.0.interface }}");
+    {% if not item.0.dhcp | default(false) %}
+    config_set_path('interfaces/' . $interface . '/ipaddr', 'dhcp');
+    if (isset($config['interfaces'][$interface]['subnet'])) {
+        unset($config['interfaces'][$interface]['subnet']);
+    }
+    {% else %}
     config_set_path('interfaces/' . $interface . '/ipaddr', $ipv4);
     config_set_path('interfaces/' . $interface . '/subnet', $prefixlen);
+    {% endif %}
     if ($ipv6 !== null) {
         config_set_path('interfaces/' . $interface . '/ipaddrv6', $ipv6);
         config_set_path('interfaces/' . $interface . '/subnetv6', $prefixlen6);
