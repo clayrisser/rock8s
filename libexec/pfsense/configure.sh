@@ -173,10 +173,10 @@ _main() {
     if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
         _fail "primary hostname not found"
     fi
-    if [ "$_SSH_PASSWORD" = "1" ] && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
-        _PASSWORD="$(whiptail --title "Password Required" \
+    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+        _PASSWORD="$(whiptail --title "Enter admin password" \
             --backtitle "Rock8s Configuration" \
-            --passwordbox "Enter password" \
+            --passwordbox " " \
             0 0 \
             3>&1 1>&2 2>&3)" || _fail "password required"
     fi
@@ -231,6 +231,7 @@ _main() {
     _DEFAULTS="$(_yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
     _CONFIG="$(cat <<EOF | _yaml2json
 pfsense:
+  password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
   system:
     dns: $_DNS_SERVERS
   network:
@@ -268,6 +269,7 @@ EOF
     fi
     cd "$_PFSENSE_DIR/ansible"
     ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+        PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
         ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
         -e hello=world \
         -e "@$_PFSENSE_DIR/vars.yml" \
