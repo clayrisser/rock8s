@@ -1,12 +1,19 @@
 ---
 pfsense:
   dashboard:
-    left:
-      - system_information
-    right:
-      - services_status
-      - interfaces
-      - traffic_graphs
+    primary:
+      theme: "pfSense-dark"
+      login: "1e3f75"
+    secondary:
+      theme: "pfSense"
+      login: "007faa"
+    widgets:
+      left:
+        - system_information
+      right:
+        - services_status
+        - interfaces
+        - traffic_graphs
   system:
     dns: 1.1.1.1 8.8.8.8
     timezone: UTC
