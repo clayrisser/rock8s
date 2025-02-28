@@ -10,11 +10,11 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
-    $network_parts = explode('/', '{{ item.ipv4.primary }}');
+    $network_parts = explode('/', '{{ item.value.ipv4.primary }}');
     $ip_parts = explode('.', $network_parts[0]);
-    $ipv6_parts = explode('/', '{{ item.ipv6.primary }}');
+    $ipv6_parts = explode('/', '{{ item.value.ipv6.primary }}');
     $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
-    $interface = '{{ item.name | lower }}';
+    $interface = '{{ item.key }}';
     $current = array(
       'dhcpbackend' => config_get_path('dhcpbackend', 'isc'),
       'dhcpd' => array(
@@ -42,7 +42,7 @@
       'dhcpbackend' => 'kea',
       'dhcpd' => array(
         $interface => array(
-          'enable' => {{ item.dhcp | default(false) | bool | to_json }} ? 'yes' : '',
+          'enable' => {{ item.value.dhcp | default(false) | bool | to_json }} ? 'yes' : '',
           'range' => array(
             'from' => $ip_parts[0] . '.' . $ip_parts[1] . '.0.1',
             'to' => $ip_parts[0] . '.' . $ip_parts[1] . '.255.254'
@@ -69,7 +69,7 @@
     EOF
     php -f /tmp/check_dhcp.php
     rm -f /tmp/check_dhcp.php
-  loop: "{{ pfsense.network.interfaces }}"
+  loop: "{{ pfsense.network.interfaces | dict2items }}"
   register: dhcp_check
   changed_when: (dhcp_check.stdout | from_json).changed
 
@@ -86,14 +86,14 @@
         $config = parse_config();
     }
     config_set_path('dhcpbackend', 'kea');
-    $network_parts = explode('/', '{{ item.0.ipv4.primary }}');
+    $network_parts = explode('/', '{{ item.0.value.ipv4.primary }}');
     $ip_parts = explode('.', $network_parts[0]);
-    $interface = '{{ item.0.name | lower }}';
+    $interface = '{{ item.0.key }}';
     config_set_path('dhcpd/' . $interface . '/range/from', $ip_parts[0] . '.' . $ip_parts[1] . '.0.1');
     config_set_path('dhcpd/' . $interface . '/range/to', $ip_parts[0] . '.' . $ip_parts[1] . '.255.254');
-    $ipv6_parts = explode('/', '{{ item.0.ipv6.primary }}');
+    $ipv6_parts = explode('/', '{{ item.0.value.ipv6.primary }}');
     $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
-    if ({{ item.0.dhcp | default(false) | bool | to_json }}) {
+    if ({{ item.0.value.dhcp | default(false) | bool | to_json }}) {
         config_set_path('dhcpd/' . $interface . '/enable', 'yes');
     } else {
         if (isset($config['dhcpd'][$interface]['enable'])) {
@@ -115,5 +115,5 @@
     php -f /tmp/update_dhcp.php
     {% endif %}
     rm -f /tmp/update_dhcp.php
-  loop: "{{ pfsense.network.interfaces | zip(dhcp_check.results) | list }}"
+  loop: "{{ pfsense.network.interfaces | dict2items | zip(dhcp_check.results) | list }}"
   changed_when: item.1 is changed

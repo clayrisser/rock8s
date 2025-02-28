@@ -20,7 +20,7 @@ pfsense:
     timezone: UTC
   network:
     interfaces:
-      - name: "LAN"
+      lan:
         interface: "vtnet1"
         dhcp: true
         ipv4:
@@ -29,5 +29,8 @@ pfsense:
         ipv6:
           primary: fd20::2/64
           secondary: fd20::3/64
-    aliases: []
-    rules: []
+        rules:
+          - allow from SELF_NET to any
+      wan:
+        rules:
+          - allow from SELF_NET to SELF_NET

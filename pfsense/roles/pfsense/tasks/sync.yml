@@ -41,18 +41,10 @@
         'pfhostid' => config_get_path('hasync/pfhostid', '')
       )
     );
-    {% set sync_interface = [] %}
-    {% for interface in pfsense.network.interfaces %}
-    {% if interface.name | lower == 'sync' %}
-    {% set _ = sync_interface.append(interface) %}
-    {% endif %}
-    {% endfor %}
-    {% if not sync_interface %}
-    {% for interface in pfsense.network.interfaces %}
-    {% if interface.name | lower == 'lan' %}
-    {% set _ = sync_interface.append(interface) %}
-    {% endif %}
-    {% endfor %}
+    {% if pfsense.network.interfaces.sync is defined %}
+    {% set sync_interface = {'key': 'sync', 'value': pfsense.network.interfaces.sync} %}
+    {% elif pfsense.network.interfaces.lan is defined %}
+    {% set sync_interface = {'key': 'lan', 'value': pfsense.network.interfaces.lan} %}
     {% endif %}
     $desired = array(
       'hasync' => array(
@@ -85,13 +77,13 @@
         'pfhostid' => ''
       )
     );
-    {% if sync_interface and ansible_play_hosts | length > 1 and primary %}
+    {% if sync_interface is defined and ansible_play_hosts | length > 1 and primary %}
     $desired['hasync'] = array(
       'enable' => 'yes',
-      'synchronizetoip' => '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}',
+      'synchronizetoip' => '{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}',
       'synchronizetoport' => '22',
-      'pfsyncpeerip' => '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}',
-      'pfsyncinterface' => '{{ sync_interface[0].name | lower }}',
+      'pfsyncpeerip' => '{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}',
+      'pfsyncinterface' => '{{ sync_interface.key }}',
       'username' => '{{ pfsense.username }}',
       'password' => '{{ pfsense.password }}',
       'synchronizeusers' => 'on',
@@ -139,28 +131,20 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
-    {% set sync_interface = [] %}
-    {% for interface in pfsense.network.interfaces %}
-    {% if interface.name | lower == 'sync' %}
-    {% set _ = sync_interface.append(interface) %}
-    {% endif %}
-    {% endfor %}
-    {% if not sync_interface %}
-    {% for interface in pfsense.network.interfaces %}
-    {% if interface.name | lower == 'lan' %}
-    {% set _ = sync_interface.append(interface) %}
-    {% endif %}
-    {% endfor %}
+    {% if pfsense.network.interfaces.sync is defined %}
+    {% set sync_interface = {'key': 'sync', 'value': pfsense.network.interfaces.sync} %}
+    {% elif pfsense.network.interfaces.lan is defined %}
+    {% set sync_interface = {'key': 'lan', 'value': pfsense.network.interfaces.lan} %}
     {% endif %}
     if (isset($config['hasync'])) {
       unset($config['hasync']);
     }
-    {% if sync_interface and ansible_play_hosts | length > 1 and primary %}
+    {% if sync_interface is defined and ansible_play_hosts | length > 1 and primary %}
     config_set_path('hasync/enable', 'yes');
-    config_set_path('hasync/synchronizetoip', '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}');
+    config_set_path('hasync/synchronizetoip', '{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}');
     config_set_path('hasync/synchronizetoport', '22');
-    config_set_path('hasync/pfsyncpeerip', '{{ sync_interface[0].ipv4.secondary | regex_replace('/.*$', '') }}');
-    config_set_path('hasync/pfsyncinterface', '{{ sync_interface[0].name | lower }}');
+    config_set_path('hasync/pfsyncpeerip', '{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}');
+    config_set_path('hasync/pfsyncinterface', '{{ sync_interface.key }}');
     config_set_path('hasync/username', '{{ pfsense.username }}');
     config_set_path('hasync/password', '{{ pfsense.password }}');
     config_set_path('hasync/synchronizeusers', 'on');

@@ -3,28 +3,28 @@
   ansible.builtin.assert:
     that:
       - pfsense.network.interfaces is defined
-      - pfsense.network.interfaces | selectattr('name', 'match', '^[Ll][Aa][Nn]$') | list | length > 0
+      - pfsense.network.interfaces.lan is defined
     fail_msg: "A lan interface is required"
 
 - name: Validate interface ip configurations
   ansible.builtin.assert:
     that:
       - |
-        (item.ipv4 is string) or
-        (item.ipv4.primary is string and item.ipv4.secondary is string)
+        (item.value.ipv4 is string) or
+        (item.value.ipv4.primary is string and item.value.ipv4.secondary is string)
       - |
-        ((item.ipv4 is string and item.ipv4 | regex_search('^[0-9.]+/[0-9]+$')) or
-        (item.ipv4.primary | regex_search('^[0-9.]+/[0-9]+$') and
-         item.ipv4.secondary | regex_search('^[0-9.]+/[0-9]+$')))
+        ((item.value.ipv4 is string and item.value.ipv4 | regex_search('^[0-9.]+/[0-9]+$')) or
+        (item.value.ipv4.primary | regex_search('^[0-9.]+/[0-9]+$') and
+         item.value.ipv4.secondary | regex_search('^[0-9.]+/[0-9]+$')))
       - |
-        not item.ipv6 is defined or
-        (item.ipv6.primary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$') and
-         item.ipv6.secondary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$'))
-    fail_msg: "Invalid ip for interface {{ item.name }}"
-  loop: "{{ pfsense.network.interfaces }}"
+        not item.value.ipv6 is defined or
+        (item.value.ipv6.primary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$') and
+         item.value.ipv6.secondary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$'))
+    fail_msg: "Invalid ip for interface {{ item.key }}"
+  loop: "{{ pfsense.network.interfaces | dict2items }}"
   when:
     - pfsense.network.interfaces is defined
-    - item.name != 'WAN'
+    - item.key != 'wan'
 
 - name: Check current interface configuration
   ansible.builtin.shell: |
@@ -52,13 +52,13 @@
       'ipaddr_dhcp' => isset($config['interfaces'][$interface]['ipaddr']) && $config['interfaces'][$interface]['ipaddr'] === 'dhcp'
     );
     $desired = array(
-      'ipaddr' => {% if not item.dhcp | default(false) %}'dhcp'{% else %}$ipv4{% endif %},
-      'subnet' => {% if not item.dhcp | default(false) %}''{% else %}$prefixlen{% endif %},
+      'ipaddr' => {% if not item.value.dhcp | default(false) %}$ipv4{% else %}'dhcp'{% endif %},
+      'subnet' => {% if not item.value.dhcp | default(false) %}$prefixlen{% else %}''{% endif %},
       'ipaddrv6' => $ipv6,
       'subnetv6' => $prefixlen6,
-      'if' => "{{ item.interface }}",
+      'if' => "{{ item.value.interface }}",
       'enable' => true,
-      'ipaddr_dhcp' => {% if not item.dhcp | default(false) %}true{% else %}false{% endif %}
+      'ipaddr_dhcp' => {% if not item.value.dhcp | default(false) %}false{% else %}true{% endif %}
     );
     echo json_encode(array(
       'changed' => $current != $desired,
@@ -66,21 +66,21 @@
       'desired' => $desired
     ));
     EOF
-    interface="{{ item.name | lower }}"
-    ipv4="{{ primary | ternary(item.ipv4.primary | regex_replace('/.*$', ''), item.ipv4.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen="{{ primary | ternary(item.ipv4.primary | regex_replace('^.*/', ''), item.ipv4.secondary | regex_replace('^.*/', '')) }}"
-    {% if item.ipv6 is defined %}
-    ipv6="{{ primary | ternary(item.ipv6.primary | regex_replace('/.*$', ''), item.ipv6.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen6="{{ primary | ternary(item.ipv6.primary | regex_replace('^.*/', ''), item.ipv6.secondary | regex_replace('^.*/', '')) }}"
+    interface="{{ item.key }}"
+    ipv4="{{ primary | ternary(item.value.ipv4.primary | regex_replace('/.*$', ''), item.value.ipv4.secondary | regex_replace('/.*$', '')) }}"
+    prefixlen="{{ primary | ternary(item.value.ipv4.primary | regex_replace('^.*/', ''), item.value.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    {% if item.value.ipv6 is defined %}
+    ipv6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('/.*$', ''), item.value.ipv6.secondary | regex_replace('/.*$', '')) }}"
+    prefixlen6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('^.*/', ''), item.value.ipv6.secondary | regex_replace('^.*/', '')) }}"
     php -f /tmp/check_interface.php "$interface" "$ipv4" "$prefixlen" "$ipv6" "$prefixlen6"
     {% else %}
     php -f /tmp/check_interface.php "$interface" "$ipv4" "$prefixlen"
     {% endif %}
     rm -f /tmp/check_interface.php
-  loop: "{{ pfsense.network.interfaces }}"
+  loop: "{{ pfsense.network.interfaces | dict2items }}"
   when:
     - pfsense.network.interfaces is defined
-    - item.name != 'WAN'
+    - item.key != 'wan'
   register: interface_check
   changed_when: (interface_check.stdout | from_json).changed
 
@@ -103,15 +103,15 @@
     $ipv6 = isset($argv[4]) ? $argv[4] : null;
     $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
     config_set_path('interfaces/' . $interface . '/enable', true);
-    config_set_path('interfaces/' . $interface . '/if', "{{ item.0.interface }}");
-    {% if not item.0.dhcp | default(false) %}
+    config_set_path('interfaces/' . $interface . '/if', "{{ item.0.value.interface }}");
+    {% if not item.0.value.dhcp | default(false) %}
+    config_set_path('interfaces/' . $interface . '/ipaddr', $ipv4);
+    config_set_path('interfaces/' . $interface . '/subnet', $prefixlen);
+    {% else %}
     config_set_path('interfaces/' . $interface . '/ipaddr', 'dhcp');
     if (isset($config['interfaces'][$interface]['subnet'])) {
         unset($config['interfaces'][$interface]['subnet']);
     }
-    {% else %}
-    config_set_path('interfaces/' . $interface . '/ipaddr', $ipv4);
-    config_set_path('interfaces/' . $interface . '/subnet', $prefixlen);
     {% endif %}
     if ($ipv6 !== null) {
         config_set_path('interfaces/' . $interface . '/ipaddrv6', $ipv6);
@@ -127,20 +127,20 @@
     filter_configure();
     EOF
     {% if item.1 is changed %}
-    interface="{{ item.0.name | lower }}"
-    ipv4="{{ primary | ternary(item.0.ipv4.primary | regex_replace('/.*$', ''), item.0.ipv4.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen="{{ primary | ternary(item.0.ipv4.primary | regex_replace('^.*/', ''), item.0.ipv4.secondary | regex_replace('^.*/', '')) }}"
-    {% if item.0.ipv6 is defined %}
-    ipv6="{{ primary | ternary(item.0.ipv6.primary | regex_replace('/.*$', ''), item.0.ipv6.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen6="{{ primary | ternary(item.0.ipv6.primary | regex_replace('^.*/', ''), item.0.ipv6.secondary | regex_replace('^.*/', '')) }}"
+    interface="{{ item.0.key }}"
+    ipv4="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('/.*$', ''), item.0.value.ipv4.secondary | regex_replace('/.*$', '')) }}"
+    prefixlen="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('^.*/', ''), item.0.value.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    {% if item.0.value.ipv6 is defined %}
+    ipv6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('/.*$', ''), item.0.value.ipv6.secondary | regex_replace('/.*$', '')) }}"
+    prefixlen6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('^.*/', ''), item.0.value.ipv6.secondary | regex_replace('^.*/', '')) }}"
     php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen" "$ipv6" "$prefixlen6"
     {% else %}
     php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen"
     {% endif %}
     {% endif %}
     rm -f /tmp/update_interface.php
-  loop: "{{ pfsense.network.interfaces | zip(interface_check.results) | list }}"
+  loop: "{{ pfsense.network.interfaces | dict2items | zip(interface_check.results) | list }}"
   when:
     - pfsense.network.interfaces is defined
-    - item.0.name != 'WAN'
+    - item.0.key != 'wan'
   changed_when: item.1 is changed

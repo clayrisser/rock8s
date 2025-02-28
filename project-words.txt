@@ -21,6 +21,7 @@ dhcpdv
 dialogopts
 disablechecksumoffloading
 dotenv
+elif
 endfor
 endswith
 equalto
@@ -29,6 +30,8 @@ hetznercloud
 hostfwd
 hostnames
 ifup
+imap
+imaps
 inputbox
 ipaddrv
 ipprotocol
@@ -44,9 +47,11 @@ kubeconfig
 kubespray
 kustomization
 kyverno
+ldaps
 libexec
 logincss
 mconfalonieri
+mdns
 metallb
 mjson
 mkpm
@@ -83,10 +88,13 @@ radosgw
 ramode
 rapriority
 risser
+rtsp
 selectattr
 sfdisk
 sgdisk
 skiplock
+smtps
+snmp
 sprintf
 sshpass
 startswith
