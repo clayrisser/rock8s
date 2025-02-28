@@ -1,33 +1,85 @@
 ---
-- name: Configure subnet to subnet rules
-  pfsensible.core.pfsense_rule:
-    name: "Allow {{ item.name | lower }} subnet to {{ item.name | lower }} subnet"
-    action: pass
-    interface: "{{ item.name | lower }}"
-    source: "{{ item.name | upper }}_NET"
-    destination: "{{ item.name | upper }}_NET"
-    protocol: any
-    state: present
-  loop: "{{ pfsense.network.interfaces | selectattr('subnet', 'defined') | list }}"
+- name: Define service port mappings
+  set_fact:
+    service_ports:
+      dns: 53
+      ftp: 21
+      ftps: 990
+      git: 9418
+      http: 80
+      https: 443
+      imap: 143
+      imaps: 993
+      ldap: 389
+      ldaps: 636
+      mdns: 5353
+      mongodb: 27017
+      mysql: 3306
+      ntp: 123
+      pop3: 110
+      pop3s: 995
+      postgres: 5432
+      rdp: 3389
+      redis: 6379
+      rtsp: 554
+      sftp: 22
+      sip: 5060
+      smtp: 25
+      smtps: 465
+      snmp: 161
+      ssh: 22
+      syslog: 514
+      telnet: 23
+      vnc: 5900
 
-- name: Configure lan subnet to any rule
-  pfsensible.core.pfsense_rule:
-    name: "Allow lan subnet to any destination"
-    action: pass
-    interface: lan
-    source: LAN_NET
-    destination: any
-    protocol: any
-    state: present
-  when:
-    - "'lan' in pfsense.network.interfaces | map(attribute='name') | map('lower') | list"
+- name: Validate interface rules
+  assert:
+    that:
+      - item.value.rules is not defined or item.value.rules | type_debug == "list"
+      - item.value.rules is not defined or item.value.rules | length <= 50
+    fail_msg: "Invalid rules for interface {{ item.key }}. Rules must be a list with max 50 entries."
+  loop: "{{ pfsense.network.interfaces | dict2items }}"
+  when: pfsense.network.interfaces is defined
 
-- name: Configure any to wan rule
+- name: Configure interface firewall rules
   pfsensible.core.pfsense_rule:
-    name: "Allow any to wan"
-    action: pass
-    interface: wan
-    source: any
-    destination: any
-    protocol: any
+    name: "{{ '%03d' | format(idx + 1) }} {{ rule | regex_replace('^(allow|deny)\\s+', '\\1 ') | title }}"
+    action: "{{ rule | regex_replace('^(allow|deny).*', '\\1') | replace('allow', 'pass') | replace('deny', 'block') }}"
+    interface: "{{ interface }}"
+    protocol: "{{ rule | regex_search('proto\\s+(\\w+)', '\\1') | default('any') }}"
+    source:
+      network: >-
+        {{
+          (rule | regex_search('from\\s+([^\\s]+)', '\\1') | default('any'))
+          | replace('SELF_NET', interface | upper + '_NET')
+          | regex_replace('([A-Z][A-Z0-9]+)_NET(?!_)', '\1_NET')
+        }}
+      port: >-
+        {{
+          (rule | regex_search('port\\s+([^\\s]+)', '\\1') | default('any'))
+          | regex_replace('^(\\w+)$', service_ports['\1'] | default('\1'))
+          | regex_replace(',\\s*', ',')
+        }}
+    destination:
+      network: >-
+        {{
+          (rule | regex_search('to\\s+([^\\s]+)', '\\1') | default('any'))
+          | replace('SELF_NET', interface | upper + '_NET')
+          | regex_replace('([A-Z][A-Z0-9]+)_NET(?!_)', '\1_NET')
+        }}
+      port: >-
+        {{
+          (rule | regex_search('port\\s+([^\\s]+)', '\\1') | default('any'))
+          | regex_replace('^(\\w+)$', service_ports['\1'] | default('\1'))
+          | regex_replace(',\\s*', ',')
+        }}
     state: present
+  loop: "{{ item.value.rules | default([]) }}"
+  loop_control:
+    loop_var: rule
+    index_var: idx
+    label: "{{ interface }}: {{ '%03d' | format(idx + 1) }} {{ rule }}"
+  vars:
+    interface: "{{ item.key }}"
+  with_items: "{{ pfsense.network.interfaces | dict2items }}"
+  when: pfsense.network.interfaces is defined

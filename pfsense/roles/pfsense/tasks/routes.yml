@@ -27,14 +27,9 @@
       )
     );
     $network = '';
-    $subnet = '{{ pfsense.network.interfaces[0].subnet }}';
-    if (!empty($subnet)) {
-        $network = $subnet;
-    } else {
-        $ip = get_interface_ip('lan');
-        $subnet = get_interface_subnet('lan');
-        $network = gen_subnet($ip, $subnet) . '/' . $subnet;
-    }
+    $network_parts = explode('/', '{{ pfsense.network.interfaces.lan.ipv4.primary }}');
+    $ip_parts = explode('.', $network_parts[0]);
+    $network = $ip_parts[0] . '.' . $ip_parts[1] . '.0.0/' . $network_parts[1];
     $desired['staticroutes'] = array(
       array(
         'network' => $network,
@@ -52,8 +47,8 @@
   register: routes_check
   changed_when: (routes_check.stdout | from_json).changed
   when:
-    - "'lan' in pfsense.network.interfaces | map(attribute='name') | map('lower') | list"
-    - not pfsense.network.interfaces[0].dhcp | default(false)
+    - pfsense.network.interfaces.lan is defined
+    - not pfsense.network.interfaces.lan.dhcp | default(false)
 
 - name: Configure routes
   ansible.builtin.shell: |-
@@ -68,14 +63,9 @@
     global $config;
     $config = parse_config(true);
     $network = '';
-    $subnet = '{{ pfsense.network.interfaces[0].subnet }}';
-    if (!empty($subnet)) {
-        $network = $subnet;
-    } else {
-        $ip = get_interface_ip('lan');
-        $subnet = get_interface_subnet('lan');
-        $network = gen_subnet($ip, $subnet) . '/' . $subnet;
-    }
+    $network_parts = explode('/', '{{ pfsense.network.interfaces.lan.ipv4.primary }}');
+    $ip_parts = explode('.', $network_parts[0]);
+    $network = $ip_parts[0] . '.' . $ip_parts[1] . '.0.0/' . $network_parts[1];
     if (!isset($config['staticroutes']) || !is_array($config['staticroutes'])) {
       $config['staticroutes'] = array();
     }
@@ -99,5 +89,5 @@
     rm -f /tmp/update_routes.php
   changed_when: routes_check is changed
   when:
-    - "'lan' in pfsense.network.interfaces | map(attribute='name') | map('lower') | list"
-    - not pfsense.network.interfaces[0].dhcp | default(false)
+    - pfsense.network.interfaces.lan is defined
+    - not pfsense.network.interfaces.lan.dhcp | default(false)
