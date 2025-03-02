@@ -237,7 +237,7 @@ pfsense:
     dns: $_DNS_SERVERS
   network:
     interfaces:
-      - name: LAN
+      lan:
         subnet: ${_NETWORK_SUBNET}
         interface: ${_INTERFACE}
         dhcp: ${_ENABLE_DHCP}

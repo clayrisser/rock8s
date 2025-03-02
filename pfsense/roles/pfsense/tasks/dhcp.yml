@@ -33,8 +33,7 @@
             'from' => config_get_path('dhcpdv6/' . $interface . '/range/from', ''),
             'to' => config_get_path('dhcpdv6/' . $interface . '/range/to', '')
           ),
-          'ramode' => config_get_path('dhcpdv6/' . $interface . '/ramode', ''),
-          'rapriority' => config_get_path('dhcpdv6/' . $interface . '/rapriority', '')
+          'ramode' => config_get_path('dhcpdv6/' . $interface . '/ramode', 'assist')
         )
       )
     );
@@ -56,8 +55,7 @@
             'from' => $ipv6_prefix . '::',
             'to' => $ipv6_prefix . '::ffff:ffff:ffff:ffff'
           ),
-          'ramode' => 'unmanaged',
-          'rapriority' => 'medium'
+          'ramode' => 'unmanaged'
         )
       )
     );
@@ -70,6 +68,9 @@
     php -f /tmp/check_dhcp.php
     rm -f /tmp/check_dhcp.php
   loop: "{{ pfsense.network.interfaces | dict2items }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - item.key != 'wan'
   register: dhcp_check
   changed_when: (dhcp_check.stdout | from_json).changed
 
@@ -107,6 +108,8 @@
     config_del_path('dhcpdv6/' . $interface . '/enable');
     config_set_path('dhcpdv6/' . $interface . '/range/from', $ipv6_prefix . '::');
     config_set_path('dhcpdv6/' . $interface . '/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
+    config_set_path('dhcpdv6/' . $interface . '/ramode', 'unmanaged');
+    config_set_path('dhcpdv6/' . $interface . '/rapriority', 'medium');
     if (write_config(sprintf('Updated dhcp configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
         services_dhcpd_configure();
     }
@@ -116,4 +119,7 @@
     {% endif %}
     rm -f /tmp/update_dhcp.php
   loop: "{{ pfsense.network.interfaces | dict2items | zip(dhcp_check.results) | list }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - item.0.key != 'wan'
   changed_when: item.1 is changed
