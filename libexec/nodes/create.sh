@@ -123,7 +123,8 @@ _main() {
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _ensure_system
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
+    _PROVIDER="$([ -f "$_CONFIG_FILE" ] && (yaml2json < "$_CONFIG_FILE" | jq -r '.provider') || true)"
+    if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
         _PROVIDERS_DIR="$ROCK8S_LIB_PATH/providers"
         _PROVIDERS_LIST=""
         for _P in "$_PROVIDERS_DIR"/*/ ; do
@@ -135,10 +136,17 @@ _main() {
         if [ -z "$_PROVIDERS_LIST" ]; then
             _fail "no providers found"
         fi
-        _PROVIDER="$(whiptail --title "Select Provider" --menu "Choose your cloud provider" 15 60 4 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || _fail "provider selection cancelled"
-        _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
-        mkdir -p "$(dirname "$_CONFIG_FILE")"
-        echo "provider: $_PROVIDER" > "$_CONFIG_FILE"
+        _PROVIDER="$(whiptail --title "Select Provider" --menu "Choose your cloud provider" 0 0 0 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || _fail "provider selection cancelled"
+    fi
+    if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
+        _fail "provider not specified in config.yaml"
+    fi
+    _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
+    if [ ! -d "$_PROVIDER_DIR" ]; then
+        _fail "provider $_PROVIDER not found"
+    fi
+    mkdir -p "$(dirname "$_CONFIG_FILE")"
+    if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
         { _ERROR="$(sh "$_PROVIDER_DIR/config.sh" "$_CONFIG_FILE")"; _EXIT_CODE="$?"; } || true
         if [ "$_EXIT_CODE" -ne 0 ]; then
             if [ -n "$_ERROR" ]; then
@@ -150,17 +158,10 @@ _main() {
         if [ ! -f "$_CONFIG_FILE" ]; then
             _fail "provider config script failed to create config file"
         fi
+        { echo "provider: $_PROVIDER"; cat "$_CONFIG_FILE"; } > "$_CONFIG_FILE.tmp" && mv "$_CONFIG_FILE.tmp" "$_CONFIG_FILE"
     fi
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
-    _PROVIDER="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
-    if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
-        _fail "provider not specified in config.yaml"
-    fi
-    _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
-    if [ ! -d "$_PROVIDER_DIR" ]; then
-        _fail "provider $_PROVIDER not found"
     fi
     export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
     if [ ! -d "$CLUSTER_DIR/provider" ]; then
@@ -194,17 +195,7 @@ _main() {
     fi
     chmod 600 "$_PURPOSE_DIR/id_rsa"
     chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
-    case "$_PURPOSE" in
-        pfsense)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-        master)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-        worker)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-    esac
+    yaml2json < "$_CONFIG_FILE" | sh "$CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ "$_PURPOSE" != "pfsense" ]; then
         export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
     fi
@@ -213,11 +204,15 @@ _main() {
     export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
     export TF_VAR_cluster_dir="$CLUSTER_DIR"
     export TF_VAR_tenant="$_TENANT"
+    export TF_DATA_DIR="$_PURPOSE_DIR/.terraform"
     if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
         . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
-    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+    if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || (find "$_PROVIDER_DIR" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
+        terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+        touch -m "$TF_DATA_DIR/terraform.tfstate"
+    fi
     terraform apply $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve") -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     terraform output -state="$_PURPOSE_DIR/terraform.tfstate" -json > "$_PURPOSE_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
