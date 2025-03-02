@@ -88,7 +88,7 @@ _main() {
     terraform plan -out=tfplan
     terraform apply tfplan
 
-    printf '{"name":"%s","status":"configured"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"

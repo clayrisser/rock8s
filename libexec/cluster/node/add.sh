@@ -87,13 +87,11 @@ _main() {
             --nodes "$_CLUSTER_DIR/nodes.json" \
             --output "$_KUBESPRAY_CLUSTER_DIR/inventory.yml"
     fi
-
     _log "Running Kubespray scale playbook..."
     ansible-playbook -i "$_KUBESPRAY_CLUSTER_DIR/inventory.yml" \
         "$ROCK8S_KUBESPRAY_PATH/scale.yml" \
         -b -v "$@"
-
-    printf '{"name":"%s","status":"nodes_added"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"

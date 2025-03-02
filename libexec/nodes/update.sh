@@ -150,13 +150,16 @@ _main() {
         . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
-    if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || (find "$_PROVIDER_DIR" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
+    if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
+        [ ! -f "$_PROVIDER_DIR/.terraform.lock.hcl" ] || \
+        [ "$_PROVIDER_DIR/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
+        (find "$_PROVIDER_DIR" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
         terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
     terraform apply $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     terraform output -state="$_PURPOSE_DIR/terraform.tfstate" -json > "$_PURPOSE_DIR/output.json"
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s","status":"updated"}\n' \
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
         _format_output "$_FORMAT"
 }

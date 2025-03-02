@@ -94,8 +94,7 @@ _main() {
     ansible-playbook -i "$_KUBESPRAY_CLUSTER_DIR/inventory.yml" \
         "$ROCK8S_KUBESPRAY_PATH/remove-node.yml" \
         -b -v -e node="$_NODE" "$@"
-
-    printf '{"name":"%s","node":"%s","status":"node_removed"}\n' "$_NAME" "$_NODE" | _format_output "$_FORMAT" cluster
+    printf '{"name":"%s","node":"%s"}\n' "$_NAME" "$_NODE" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"
