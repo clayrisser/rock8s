@@ -85,7 +85,7 @@ _main() {
         "$ROCK8S_KUBESPRAY_PATH/reset.yml" \
         -b -v "$@"
 
-    printf '{"name":"%s","status":"reset"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"

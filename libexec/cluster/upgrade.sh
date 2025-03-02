@@ -85,7 +85,7 @@ _main() {
         "$ROCK8S_KUBESPRAY_PATH/upgrade-cluster.yml" \
         -b -v "$@"
 
-    printf '{"name":"%s","status":"upgraded"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"
