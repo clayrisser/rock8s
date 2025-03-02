@@ -116,7 +116,7 @@ _main() {
         -m fetch -a "src=/etc/kubernetes/admin.conf dest=$_CLUSTER_DIR/auth/kubeconfig flat=yes" \
         kube_control_plane[0]
 
-    printf '{"name":"%s","status":"created"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"
