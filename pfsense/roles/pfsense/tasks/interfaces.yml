@@ -52,13 +52,13 @@
       'ipaddr_dhcp' => isset($config['interfaces'][$interface]['ipaddr']) && $config['interfaces'][$interface]['ipaddr'] === 'dhcp'
     );
     $desired = array(
-      'ipaddr' => {% if not item.value.dhcp | default(false) %}$ipv4{% else %}'dhcp'{% endif %},
-      'subnet' => {% if not item.value.dhcp | default(false) %}$prefixlen{% else %}''{% endif %},
+      'ipaddr' => {% if item.value.dhcp | default(false) %}$ipv4{% else %}'dhcp'{% endif %},
+      'subnet' => {% if item.value.dhcp | default(false) %}$prefixlen{% else %}''{% endif %},
       'ipaddrv6' => $ipv6,
       'subnetv6' => $prefixlen6,
       'if' => "{{ item.value.interface }}",
       'enable' => true,
-      'ipaddr_dhcp' => {% if not item.value.dhcp | default(false) %}false{% else %}true{% endif %}
+      'ipaddr_dhcp' => {% if item.value.dhcp | default(false) %}false{% else %}true{% endif %}
     );
     echo json_encode(array(
       'changed' => $current != $desired,
@@ -104,7 +104,7 @@
     $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
     config_set_path('interfaces/' . $interface . '/enable', true);
     config_set_path('interfaces/' . $interface . '/if', "{{ item.0.value.interface }}");
-    {% if not item.0.value.dhcp | default(false) %}
+    {% if item.0.value.dhcp | default(false) %}
     config_set_path('interfaces/' . $interface . '/ipaddr', $ipv4);
     config_set_path('interfaces/' . $interface . '/subnet', $prefixlen);
     {% else %}
