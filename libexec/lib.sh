@@ -41,11 +41,11 @@ _fail() {
     exit 1
 }
 
-_json2yaml() {
+json2yaml() {
     /usr/bin/python3 -c 'import sys, yaml, json; print(yaml.dump(json.loads(sys.stdin.read()), default_flow_style=False))'
 }
 
-_yaml2json() {
+yaml2json() {
     /usr/bin/python3 -c 'import sys, yaml, json; print(json.dumps(yaml.safe_load(sys.stdin.read())))'
 }
 
@@ -102,7 +102,7 @@ _format_output() {
         yaml)
             printf "%s\n" "$_INPUT" | while read -r line; do
                 echo "---"
-                echo "$line" | _json2yaml
+                echo "$line" | json2yaml
             done >&2
             ;;
         text)
