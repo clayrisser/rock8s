@@ -136,7 +136,7 @@ _main() {
         if [ -z "$_PROVIDERS_LIST" ]; then
             _fail "no providers found"
         fi
-        _PROVIDER="$(whiptail --title "Select Provider" --menu "Choose your cloud provider" 0 0 0 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || _fail "provider selection cancelled"
+        _PROVIDER="$(whiptail --title "Select Provider" --notags --menu "Choose your cloud provider" 0 0 0 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || _fail "provider selection cancelled"
     fi
     if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
         _fail "provider not specified in config.yaml"
