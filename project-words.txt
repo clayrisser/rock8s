@@ -65,6 +65,7 @@ nopasswd
 notags
 nvme
 oboukili
+openebs
 osds
 ovmf
 passwordbox

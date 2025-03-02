@@ -138,15 +138,15 @@ _main() {
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
     fi
-    _PROVIDER="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
+    _PROVIDER="$(yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
     if [ -n "$_PROVIDER" ] && [ "$_PROVIDER" != "null" ]; then
         _OUTPUT_JSON="$_CLUSTER_DIR/pfsense/output.json"
         if [ ! -f "$_OUTPUT_JSON" ]; then
             _fail "output.json not found for provider $_PROVIDER"
         fi
         _NODE_COUNT="$(jq -r '.node_ips.value | length' "$_OUTPUT_JSON")"
-        _PRIMARY_HOSTNAME="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[0] // ""')"
-        _SECONDARY_HOSTNAME="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[1] // ""')"
+        _PRIMARY_HOSTNAME="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[0] // ""')"
+        _SECONDARY_HOSTNAME="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[1] // ""')"
         if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
             _PRIMARY_HOSTNAME="$(jq -r '.node_ips.value | to_entries | .[0].key' "$_OUTPUT_JSON")"
         fi
@@ -155,7 +155,7 @@ _main() {
         fi
         _SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value // ""' "$_OUTPUT_JSON")"
     else
-        _NODES_JSON="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense.nodes')"
+        _NODES_JSON="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense.nodes')"
         if [ -z "$_NODES_JSON" ] || [ "$_NODES_JSON" = "null" ]; then
             _fail "pfsense.nodes not specified in config.yaml"
         fi
@@ -180,15 +180,15 @@ _main() {
             0 0 \
             3>&1 1>&2 2>&3)" || _fail "password required"
     fi
-    _NETWORK_SUBNET="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
+    _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
     if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
         _fail "network.lan.subnet not found in config.yaml"
     fi
-    _INTERFACE="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.interface // "vtnet1"')"
-    _DNS_SERVERS="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
+    _INTERFACE="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.interface // "vtnet1"')"
+    _DNS_SERVERS="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
     _NETWORK_IP="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f1)"
     _NETWORK_PREFIX="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f2)"
-    _IPV6_SUBNET="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.ipv6_subnet')"
+    _IPV6_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.ipv6_subnet')"
     if [ -z "$_IPV6_SUBNET" ] || [ "$_IPV6_SUBNET" = "null" ]; then
         _LAST_NONZERO_OCTET=""
         _OCTET_COUNT=1
@@ -212,7 +212,7 @@ _main() {
     _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
     _PRIMARY_IPV6="${_IPV6_PREFIX}2"
     _SECONDARY_IPV6="${_IPV6_PREFIX}3"
-    _ENABLE_DHCP="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dhcp // ""')"
+    _ENABLE_DHCP="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dhcp // ""')"
     if [ "$_ENABLE_DHCP" = "" ] || [ "$_ENABLE_DHCP" = "null" ]; then
         if [ "$_PROVIDER" = "hetzner" ]; then
             _ENABLE_DHCP="false"
@@ -228,8 +228,8 @@ _main() {
         -r "$_PFSENSE_DIR/ansible/requirements.yml" \
         -p "$_PFSENSE_DIR/collections"
     mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
-    _DEFAULTS="$(_yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
-    _CONFIG="$(cat <<EOF | _yaml2json
+    _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
+    _CONFIG="$(cat <<EOF | yaml2json
 pfsense:
   provider: $_PROVIDER
   password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
@@ -249,7 +249,7 @@ pfsense:
           secondary: ${_SECONDARY_IPV6}/64
 EOF
 )"
-    echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | _json2yaml > "$_PFSENSE_DIR/vars.yml"
+    echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   vars:

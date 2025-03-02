@@ -118,7 +118,7 @@ _main() {
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
     fi
-    _PROVIDER="$(_yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
+    _PROVIDER="$(yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
     if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
         _fail "provider not specified in config.yaml"
     fi
@@ -136,17 +136,7 @@ _main() {
     fi
     rm -rf "$CLUSTER_DIR/provider"
     cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
-    case "$_PURPOSE" in
-        pfsense)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-        master)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-        worker)
-            _yaml2json < "$_CONFIG_FILE" | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers, .provider)' > "$_PURPOSE_DIR/terraform.tfvars.json"
-            ;;
-    esac
+    yaml2json < "$_CONFIG_FILE" | sh "$CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ "$_PURPOSE" != "pfsense" ]; then
         export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
     fi
@@ -155,11 +145,15 @@ _main() {
     export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
     export TF_VAR_cluster_dir="$CLUSTER_DIR"
     export TF_VAR_tenant="$_TENANT"
+    export TF_DATA_DIR="$_PURPOSE_DIR/.terraform"
     if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
         . "$CLUSTER_DIR/provider/variables.sh"
     fi
     cd "$CLUSTER_DIR/provider"
-    terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+    if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || (find "$_PROVIDER_DIR" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
+        terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+        touch -m "$TF_DATA_DIR/terraform.tfstate"
+    fi
     terraform apply $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     terraform output -state="$_PURPOSE_DIR/terraform.tfstate" -json > "$_PURPOSE_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s","status":"updated"}\n' \
