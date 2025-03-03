@@ -58,12 +58,14 @@ metallb
 mjson
 mkpm
 myaml
+natport
 ncdu
 netcommon
 netdev
 nocows
 noninteractive
 nopasswd
+nordr
 notags
 nvme
 oboukili
