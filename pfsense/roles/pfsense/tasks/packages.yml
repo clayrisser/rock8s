@@ -1,9 +1,11 @@
 ---
-# - name: Install required packages
-#   pfsensible.core.pfsense_package:
-#     name: "{{ item }}"
-#     state: present
-#   loop:
-#     - pfSense-pkg-haproxy
-#     - pfSense-pkg-acme
-#   when: primary
+- name: Install haproxy
+  package:
+    name: pfSense-pkg-haproxy
+    state: present
+
+- name: Install acme
+  package:
+    name: pfSense-pkg-acme
+    state: present
+  when: primary

@@ -1,7 +1,7 @@
 ---
-- name: Check outbound nat configuration
+- name: Check nat configuration
   ansible.builtin.shell: |
-    cat > /tmp/check_outbound_nat.php << 'EOF'
+    cat > /tmp/check_nat.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -10,33 +10,40 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
+    function normalize_bool($value) {
+        if ($value === "" || $value === true) {
+            return true;
+        }
+        return $value;
+    }
+    function normalize_rule($rule) {
+        if (isset($rule['destination']['any'])) {
+            $rule['destination']['any'] = normalize_bool($rule['destination']['any']);
+        }
+        if (isset($rule['nordr'])) {
+            $rule['nordr'] = normalize_bool($rule['nordr']);
+        }
+        return $rule;
+    }
     $current = array(
       'nat' => array(
         'outbound' => array(
           'mode' => isset($config['nat']['outbound']['mode']) ? $config['nat']['outbound']['mode'] : '',
-          'rule' => isset($config['nat']['outbound']['rule']) ? $config['nat']['outbound']['rule'] : array()
+          'rule' => array()
         )
       )
     );
+    if (isset($config['nat']['outbound']['rule'])) {
+        foreach ($config['nat']['outbound']['rule'] as $rule) {
+            $current['nat']['outbound']['rule'][] = normalize_rule($rule);
+        }
+    }
     $desired = array(
       'nat' => array(
         'outbound' => array(
           'mode' => 'hybrid',
           'rule' => array(
-            array(
-              'interface' => 'wan',
-              'source' => array(
-                'any' => true
-              ),
-              'destination' => array(
-                'any' => true
-              ),
-              'target' => '',
-              'natport' => 'auto',
-              'ipprotocol' => 'inet46',
-              'nordr' => true
-            ),
-            array(
+            normalize_rule(array(
               'interface' => 'wan',
               'source' => array(
                 'network' => '{{ pfsense.network.interfaces.lan.subnet }}'
@@ -45,10 +52,9 @@
                 'any' => true
               ),
               'target' => '',
-              'natport' => 'auto',
               'ipprotocol' => 'inet46',
               'nordr' => true
-            )
+            ))
           )
         )
       )
@@ -59,15 +65,15 @@
       'desired' => $desired
     ));
     EOF
-    php -f /tmp/check_outbound_nat.php
-    rm -f /tmp/check_outbound_nat.php
-  register: outbound_nat_check
-  changed_when: (outbound_nat_check.stdout | from_json).changed
+    php -f /tmp/check_nat.php
+    rm -f /tmp/check_nat.php
+  register: nat_check
+  changed_when: (nat_check.stdout | from_json).changed
   when: primary
 
-- name: Configure outbound nat
+- name: Configure nat
   ansible.builtin.shell: |
-    cat > /tmp/update_outbound_nat.php << 'EOF'
+    cat > /tmp/update_nat.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -94,18 +100,17 @@
           'any' => true
         ),
         'target' => '',
-        'natport' => 'auto',
         'ipprotocol' => 'inet46',
         'nordr' => true
       )
     );
-    if (write_config(sprintf('Updated outbound NAT configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
+    if (write_config(sprintf('Updated NAT configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
       filter_configure();
     }
     EOF
-    {% if outbound_nat_check is changed %}
-    php -f /tmp/update_outbound_nat.php
+    {% if nat_check is changed %}
+    php -f /tmp/update_nat.php
     {% endif %}
-    rm -f /tmp/update_outbound_nat.php
-  changed_when: outbound_nat_check is changed
+    rm -f /tmp/update_nat.php
+  changed_when: nat_check is changed
   when: primary

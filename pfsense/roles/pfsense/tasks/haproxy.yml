@@ -1,0 +1,21 @@
+---
+- name: Configure haproxy backends
+  pfsensible.core.pfsense_haproxy_backend:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    balance: "{{ item.balance | default('roundrobin') }}"
+    server_state_enabled: "{{ item.server_state_enabled | default(true) }}"
+  loop: "{{ pfsense.haproxy.backends | default([]) }}"
+  when: primary
+
+- name: Configure haproxy backend servers
+  pfsensible.core.pfsense_haproxy_backend_server:
+    backend: "{{ item.backend }}"
+    name: "{{ item.name }}"
+    address: "{{ item.address }}"
+    port: "{{ item.port }}"
+    state: "{{ item.state | default('present') }}"
+    weight: "{{ item.weight | default(100) }}"
+    enabled: "{{ item.enabled | default(true) }}"
+  loop: "{{ pfsense.haproxy.backend_servers | default([]) }}"
+  when: primary

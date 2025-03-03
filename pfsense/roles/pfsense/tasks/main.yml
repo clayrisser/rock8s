@@ -17,5 +17,7 @@
   import_tasks: routes.yml
 - name: Configure nat
   import_tasks: nat.yml
-# - name: Install and configure packages
-#   import_tasks: packages.yml
+- name: Install packages
+  import_tasks: packages.yml
+# - name: configure haproxy
+#   import_tasks: haproxy.yml
