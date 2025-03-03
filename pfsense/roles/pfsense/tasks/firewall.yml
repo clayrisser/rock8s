@@ -1,5 +1,5 @@
 ---
-- name: Define service port mappings
+- name: Port mappings
   set_fact:
     service_ports:
       dns: 53
@@ -31,6 +31,7 @@
       syslog: 514
       telnet: 23
       vnc: 5900
+  when: primary | bool
 
 - name: Validate interface rules
   assert:
@@ -39,47 +40,105 @@
       - item.value.rules is not defined or item.value.rules | length <= 50
     fail_msg: "Invalid rules for interface {{ item.key }}. Rules must be a list with max 50 entries."
   loop: "{{ pfsense.network.interfaces | dict2items }}"
-  when: pfsense.network.interfaces is defined
+  when:
+    - pfsense.network.interfaces is defined
+    - primary | bool
+
+- name: Validate rule format
+  assert:
+    that:
+      - rule.1 is match('^(allow|deny)\s+(tcp\s+|udp\s+|icmp\s+)?from\s+\S+\s+to\s+\S+(\s+port\s+\S+)?$')
+      - not (rule.1 is match('.*\sport\s+.*') and not rule.1 is match('.*\s(tcp|udp)\s+.*'))
+      - not (rule.1 is match('.*\sport\s+(\d+):(\d+).*') and (rule.1 | regex_replace('.*\sport\s+(\d+):(\d+).*', '\1') | int) >= (rule.1 | regex_replace('.*\sport\s+(\d+):(\d+).*', '\2') | int))
+      - not (rule.1 is match('.*\sport\s+.*') and not (rule.1 is match('.*\sport\s+(\d+)$') or rule.1 is match('.*\sport\s+(\d+):(\d+)$') or rule.1 is match('.*\sport\s+(' + service_ports.keys() | join('|') + ')$')))
+      - not (rule.1 is match('.*\s(from|to)\s+\d+\.\d+\.\d+\.\d+/\d+.*') and not rule.1 is match('.*\s(from|to)\s+\d+\.\d+\.\d+\.\d+/\d+.*'))
+      - not (rule.1 is match('.*\s(from|to)\s+\d+\.\d+\.\d+\.\d+-\d+\.\d+\.\d+\.\d+.*') and not rule.1 is match('.*\s(from|to)\s+\d+\.\d+\.\d+\.\d+-\d+\.\d+\.\d+\.\d+.*'))
+      - not (',' in rule.1)
+    fail_msg: |
+      Invalid rule format: {{ rule.1 }}
+      Format: allow/deny [tcp|udp|icmp] from SOURCE to DEST [port PORT]
+      SOURCE/DEST can be: self, any, interface, CIDR, or IP range
+  loop: "{{ pfsense.network.interfaces | dict2items | subelements('value.rules') }}"
+  loop_control:
+    loop_var: rule
+    label: "{{ rule.1 }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - primary | bool
+
+- name: Process rules with ports
+  set_fact:
+    processed_interfaces: |
+      {% set result = [] %}
+      {% for iface in pfsense.network.interfaces | dict2items %}
+        {% set rules = [] %}
+        {% for rule in iface.value.rules | default([]) %}
+          {% if ' port ' in rule %}
+            {% set port = rule | regex_replace('^.*port\\s+([\\S]+).*$', '\\1') %}
+            {% if port in service_ports %}
+              {% set _ = rules.append({'rule': rule, 'port': service_ports[port] | string}) %}
+            {% elif ':' in port %}
+              {% set range = port.split(':') %}
+              {% set _ = rules.append({'rule': rule, 'port': range[0] ~ '-' ~ range[1]}) %}
+            {% elif port | regex_search('^\\d+$') %}
+              {% set _ = rules.append({'rule': rule, 'port': port}) %}
+            {% endif %}
+          {% else %}
+            {% set _ = rules.append({'rule': rule}) %}
+          {% endif %}
+        {% endfor %}
+        {% set _ = result.append({'key': iface.key, 'rules': rules}) %}
+      {% endfor %}
+      {{ result | to_json }}
+  when: primary | bool
 
 - name: Configure interface firewall rules
   pfsensible.core.pfsense_rule:
-    name: "{{ '%03d' | format(idx + 1) }} {{ rule | regex_replace('^(allow|deny)\\s+', '\\1 ') | title }}"
-    action: "{{ rule | regex_replace('^(allow|deny).*', '\\1') | replace('allow', 'pass') | replace('deny', 'block') }}"
-    interface: "{{ interface }}"
-    protocol: "{{ rule | regex_search('proto\\s+(\\w+)', '\\1') | default('any') }}"
-    source:
-      network: >-
-        {{
-          (rule | regex_search('from\\s+([^\\s]+)', '\\1') | default('any'))
-          | replace('SELF_NET', interface | upper + '_NET')
-          | regex_replace('([A-Z][A-Z0-9]+)_NET(?!_)', '\1_NET')
-        }}
-      port: >-
-        {{
-          (rule | regex_search('port\\s+([^\\s]+)', '\\1') | default('any'))
-          | regex_replace('^(\\w+)$', service_ports['\1'] | default('\1'))
-          | regex_replace(',\\s*', ',')
-        }}
-    destination:
-      network: >-
-        {{
-          (rule | regex_search('to\\s+([^\\s]+)', '\\1') | default('any'))
-          | replace('SELF_NET', interface | upper + '_NET')
-          | regex_replace('([A-Z][A-Z0-9]+)_NET(?!_)', '\1_NET')
-        }}
-      port: >-
-        {{
-          (rule | regex_search('port\\s+([^\\s]+)', '\\1') | default('any'))
-          | regex_replace('^(\\w+)$', service_ports['\1'] | default('\1'))
-          | regex_replace(',\\s*', ',')
-        }}
+    name: "{{ item.1.rule }}"
+    action: "{{ (item.1.rule | regex_replace('^(\\w+).*$', '\\1') == 'allow') | ternary('pass', 'block') }}"
+    interface: "{{ item.0.key }}"
+    protocol: >-
+      {%- if ' tcp ' in item.1.rule -%}
+      tcp
+      {%- elif ' udp ' in item.1.rule -%}
+      udp
+      {%- elif ' icmp ' in item.1.rule -%}
+      icmp
+      {%- else -%}
+      any
+      {%- endif -%}
+    source: >-
+      {%- set src = item.1.rule | regex_replace('^.*from\\s+(\\S+)\\s+to.*$', '\\1') -%}
+      {%- if src == 'self' -%}
+      {{ item.0.key }}
+      {%- elif src | regex_search('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}$') -%}
+      {"network": "{{ src }}"}
+      {%- elif src | regex_search('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}-\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$') -%}
+      {"range": {"from": "{{ src | regex_replace('^(.+)-.*$', '\\1') }}", "to": "{{ src | regex_replace('^.+-(.+)$', '\\1') }}"}}
+      {%- else -%}
+      any
+      {%- endif -%}
+    destination: >-
+      {%- set dst = item.1.rule | regex_replace('^.*to\\s+(\\S+)(?:\\s+port.*)?$', '\\1') -%}
+      {%- if dst == 'self' -%}
+      {{ item.0.key }}
+      {%- elif dst == 'any' -%}
+      any
+      {%- elif dst | regex_search('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}$') -%}
+      {"network": "{{ dst }}"}
+      {%- elif dst | regex_search('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}-\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$') -%}
+      {"range": {"from": "{{ dst | regex_replace('^(.+)-.*$', '\\1') }}", "to": "{{ dst | regex_replace('^.+-(.+)$', '\\1') }}"}}
+      {%- else -%}
+      {{ dst }}
+      {%- endif -%}
+    destination_port: "{{ item.1.port | default(omit) }}"
     state: present
-  loop: "{{ item.value.rules | default([]) }}"
+  with_subelements:
+    - "{{ processed_interfaces | from_json }}"
+    - rules
   loop_control:
-    loop_var: rule
-    index_var: idx
-    label: "{{ interface }}: {{ '%03d' | format(idx + 1) }} {{ rule }}"
-  vars:
-    interface: "{{ item.key }}"
-  with_items: "{{ pfsense.network.interfaces | dict2items }}"
-  when: pfsense.network.interfaces is defined
+    index_var: rule_idx
+    label: "{{ item.1.rule }}"
+  when:
+    - pfsense.network.interfaces is defined
+    - primary | bool

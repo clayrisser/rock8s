@@ -1,7 +1,7 @@
 ---
 - name: Check sync configuration
   ansible.builtin.shell: |-
-    cat << 'EOF' > /tmp/check_sync.php
+    cat <<EOF > /tmp/check_sync.php
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -121,7 +121,7 @@
 
 - name: Configure sync
   ansible.builtin.shell: |-
-    cat << 'EOF' > /tmp/update_sync.php
+    cat <<EOF > /tmp/update_sync.php
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -177,3 +177,34 @@
     {% endif %}
     rm -f /tmp/update_sync.php
   changed_when: sync_check is changed
+
+- name: Configure pfsync firewall rule
+  pfsensible.core.pfsense_rule:
+    name: "ha state sync"
+    action: "pass"
+    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    protocol: "pfsync"
+    source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
+    destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
+    state: present
+
+- name: Configure carp firewall rule
+  pfsensible.core.pfsense_rule:
+    name: "ha carp"
+    action: "pass"
+    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    protocol: "carp"
+    source: "any"
+    destination: "any"
+    state: present
+
+- name: Configure xmlrpc sync firewall rule
+  pfsensible.core.pfsense_rule:
+    name: "ha xmlrpc"
+    action: "pass"
+    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    protocol: "tcp"
+    source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
+    destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
+    destination_port: "443"
+    state: present
