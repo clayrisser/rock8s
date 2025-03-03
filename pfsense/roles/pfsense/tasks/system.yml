@@ -1,0 +1,53 @@
+- name: Get dns record for hostname
+  ansible.builtin.shell: |
+    dig +short {{ ansible_host }}
+  register: dns_lookup
+  changed_when: false
+
+- name: Check system
+  ansible.builtin.shell: |
+    cat <<EOF > /tmp/check_system_advanced.php
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+      $config = parse_config();
+    }
+    $current = array(
+      'althostnames' => config_get_path('system/webgui/althostnames', '')
+    );
+    $desired = array(
+      'althostnames' => "{{ ansible_host }},{{ dns_lookup.stdout | default('') }}"
+    );
+    echo json_encode(array(
+      'changed' => $current != $desired,
+      'current' => $current,
+      'desired' => $desired
+    ));
+    EOF
+    php -f /tmp/check_system_advanced.php
+    rm -f /tmp/check_system_advanced.php
+  register: system_advanced_check
+  changed_when: (system_advanced_check.stdout | from_json).changed
+
+- name: Configure system
+  ansible.builtin.shell: |
+    cat <<EOF > /tmp/update_system_advanced.php
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+      $config = parse_config();
+    }
+    config_set_path('system/webgui/althostnames', "{{ ansible_host }} {{ dns_lookup.stdout | default('') }}");
+    write_config('Updated system advanced configuration from ansible');
+    EOF
+    {% if system_advanced_check is changed %}
+    php -f /tmp/update_system_advanced.php
+    {% endif %}
+    rm -f /tmp/update_system_advanced.php
+  changed_when: system_advanced_check is changed

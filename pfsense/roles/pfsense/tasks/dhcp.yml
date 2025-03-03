@@ -1,7 +1,7 @@
 ---
 - name: Check dhcp configuration
-  ansible.builtin.shell: |-
-    cat << 'EOF' > /tmp/check_dhcp.php
+  ansible.builtin.shell: |
+    cat <<EOF > /tmp/check_dhcp.php
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -76,7 +76,7 @@
 
 - name: Configure dhcp
   ansible.builtin.shell: |-
-    cat << 'EOF' > /tmp/update_dhcp.php
+    cat <<EOF > /tmp/update_dhcp.php
     <?php
     require_once("config.inc");
     require_once("util.inc");

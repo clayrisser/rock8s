@@ -65,12 +65,9 @@ _main() {
                 ;;
         esac
     done
-
     [ -z "$_NAME" ] && {
         _fail "cluster name required"
     }
-
-    _validate_cluster_name "$_NAME"
     _CLUSTER_DIR="$(_get_cluster_dir "$_NAME")"
     _KUBESPRAY_CLUSTER_DIR="$_CLUSTER_DIR/kubespray"
 
