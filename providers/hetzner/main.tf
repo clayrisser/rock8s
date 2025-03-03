@@ -4,9 +4,10 @@ resource "hcloud_ssh_key" "node" {
 }
 
 resource "hcloud_network" "lan" {
-  count    = var.purpose == "pfsense" ? 1 : 0
-  name     = local.network.lan.name
-  ip_range = local.network.lan.subnet
+  count             = var.purpose == "pfsense" ? 1 : 0
+  name              = local.network.lan.name
+  ip_range          = local.network.lan.subnet
+  delete_protection = true
 }
 
 data "hcloud_network" "lan" {
@@ -31,14 +32,16 @@ resource "hcloud_network_route" "default" {
 }
 
 resource "hcloud_server" "nodes" {
-  count       = length(local.node_configs)
-  name        = local.node_configs[count.index].name
-  server_type = local.node_configs[count.index].server_type
-  image       = coalesce(local.node_configs[count.index].image, var.image)
-  iso         = var.purpose == "pfsense" ? var.pfsense_iso : null
-  location    = var.location
-  ssh_keys    = [hcloud_ssh_key.node.id]
-  user_data   = var.user_data != "" ? var.user_data : null
+  count              = length(local.node_configs)
+  name               = local.node_configs[count.index].name
+  server_type        = local.node_configs[count.index].server_type
+  image              = coalesce(local.node_configs[count.index].image, var.image)
+  iso                = var.purpose == "pfsense" ? var.pfsense_iso : null
+  location           = var.location
+  ssh_keys           = [hcloud_ssh_key.node.id]
+  user_data          = var.user_data != "" ? var.user_data : null
+  delete_protection  = var.purpose != "worker"
+  rebuild_protection = var.purpose != "worker"
   labels = merge(
     {
       cluster = var.cluster_name
