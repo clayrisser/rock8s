@@ -3,12 +3,14 @@
   import_tasks: dashboard.yml
 - name: Configure interfaces
   import_tasks: interfaces.yml
-- name: Configure firewall rules
-  import_tasks: firewall.yml
 - name: Configure setup
   import_tasks: setup.yml
+- name: Configure system
+  import_tasks: system.yml
 - name: Configure sync
   import_tasks: sync.yml
+- name: Configure firewall rules
+  import_tasks: firewall.yml
 - name: Configure dhcp
   import_tasks: dhcp.yml
 - name: Configure routes

@@ -34,5 +34,3 @@ pfsense:
       wan:
         rules:
           - allow from self to self
-          - allow tcp from self to any port http
-          - deny tcp from 10.0.0.0/8 to 172.20.0.0-172.20.255.200 port https

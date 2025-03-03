@@ -6,7 +6,7 @@
 
 - name: Check system
   ansible.builtin.shell: |
-    cat <<EOF > /tmp/check_system_advanced.php
+    cat > /tmp/check_system_advanced.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -19,7 +19,7 @@
       'althostnames' => config_get_path('system/webgui/althostnames', '')
     );
     $desired = array(
-      'althostnames' => "{{ ansible_host }},{{ dns_lookup.stdout | default('') }}"
+      'althostnames' => "{{ ansible_host }} {{ dns_lookup.stdout | default('') }}"
     );
     echo json_encode(array(
       'changed' => $current != $desired,
@@ -34,7 +34,7 @@
 
 - name: Configure system
   ansible.builtin.shell: |
-    cat <<EOF > /tmp/update_system_advanced.php
+    cat > /tmp/update_system_advanced.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
