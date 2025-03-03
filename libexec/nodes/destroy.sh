@@ -183,6 +183,7 @@ _main() {
     cd "$CLUSTER_DIR/provider"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
         [ ! -f "$_PROVIDER_DIR/.terraform.lock.hcl" ] || \
+        [ ! -d "$TF_DATA_DIR/providers" ] || \
         [ "$_PROVIDER_DIR/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
         (find "$_PROVIDER_DIR" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
         terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
