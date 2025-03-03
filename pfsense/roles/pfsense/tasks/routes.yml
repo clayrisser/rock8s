@@ -1,7 +1,7 @@
 ---
 - name: Check routes configuration
-  ansible.builtin.shell: |-
-    cat <<EOF > /tmp/check_routes.php
+  ansible.builtin.shell: |
+    cat > /tmp/check_routes.php << 'EOF'
     <?php
     require_once("globals.inc");
     require_once("config.inc");

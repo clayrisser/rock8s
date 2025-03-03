@@ -1,7 +1,12 @@
 ---
+- name: Set sync interface
+  set_fact:
+    sync_interface: "{{ {'key': 'sync', 'value': pfsense.network.interfaces.interfaces.sync} if pfsense.network.interfaces.interfaces.sync is defined else {'key': 'lan', 'value': pfsense.network.interfaces.lan} }}"
+  when: pfsense.network.interfaces.lan is defined
+
 - name: Check sync configuration
-  ansible.builtin.shell: |-
-    cat <<EOF > /tmp/check_sync.php
+  ansible.builtin.shell: |
+    cat > /tmp/check_sync.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -41,11 +46,6 @@
         'pfhostid' => config_get_path('hasync/pfhostid', '')
       )
     );
-    {% if pfsense.network.interfaces.sync is defined %}
-    {% set sync_interface = {'key': 'sync', 'value': pfsense.network.interfaces.sync} %}
-    {% elif pfsense.network.interfaces.lan is defined %}
-    {% set sync_interface = {'key': 'lan', 'value': pfsense.network.interfaces.lan} %}
-    {% endif %}
     $desired = array(
       'hasync' => array(
         'enable' => '',
@@ -77,7 +77,7 @@
         'pfhostid' => ''
       )
     );
-    {% if sync_interface is defined and ansible_play_hosts | length > 1 and primary %}
+    {% if ansible_play_hosts | length > 1 and primary %}
     $desired['hasync'] = array(
       'enable' => 'yes',
       'synchronizetoip' => '{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}',
@@ -120,8 +120,8 @@
   changed_when: (sync_check.stdout | from_json).changed
 
 - name: Configure sync
-  ansible.builtin.shell: |-
-    cat <<EOF > /tmp/update_sync.php
+  ansible.builtin.shell: |
+    cat > /tmp/update_sync.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
@@ -131,15 +131,10 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
-    {% if pfsense.network.interfaces.sync is defined %}
-    {% set sync_interface = {'key': 'sync', 'value': pfsense.network.interfaces.sync} %}
-    {% elif pfsense.network.interfaces.lan is defined %}
-    {% set sync_interface = {'key': 'lan', 'value': pfsense.network.interfaces.lan} %}
-    {% endif %}
     if (isset($config['hasync'])) {
       unset($config['hasync']);
     }
-    {% if sync_interface is defined and ansible_play_hosts | length > 1 and primary %}
+    {% if ansible_play_hosts | length > 1 and primary %}
     config_set_path('hasync/enable', 'yes');
     config_set_path('hasync/synchronizetoip', '{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}');
     config_set_path('hasync/synchronizetoport', '22');
@@ -182,7 +177,7 @@
   pfsensible.core.pfsense_rule:
     name: "ha state sync"
     action: "pass"
-    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    interface: "{{ pfsense.network.interfaces.interfaces.sync is defined | ternary('sync', 'lan') }}"
     protocol: "pfsync"
     source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
     destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
@@ -192,7 +187,7 @@
   pfsensible.core.pfsense_rule:
     name: "ha carp"
     action: "pass"
-    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    interface: "{{ pfsense.network.interfaces.interfaces.sync is defined | ternary('sync', 'lan') }}"
     protocol: "carp"
     source: "any"
     destination: "any"
@@ -202,7 +197,7 @@
   pfsensible.core.pfsense_rule:
     name: "ha xmlrpc"
     action: "pass"
-    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    interface: "{{ pfsense.network.interfaces.interfaces.sync is defined | ternary('sync', 'lan') }}"
     protocol: "tcp"
     source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
     destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
