@@ -17,12 +17,14 @@ locals {
   }
   node_configs = flatten([
     for group in var.nodes : [
-      for i in range(coalesce(group.count,
+      for i in range(
         max(
+          coalesce(group.count, 0),
           length(coalesce(try(group.ipv4s, []), [])),
-          length(coalesce(try(group.hostnames, []), []))
+          length(coalesce(try(group.hostnames, []), [])),
+          1
         )
-        )) : {
+        ) : {
         name        = "${local.tenant == "" ? "" : "${local.tenant}-"}${var.cluster_name}-${var.purpose}-${i + 1}"
         server_type = group.type
         image       = group.image

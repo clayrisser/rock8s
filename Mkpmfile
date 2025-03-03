@@ -2,6 +2,7 @@ include $(MKPM)/mkpm
 include $(MKPM)/dotenv
 
 CLOC ?= cloc
+TERRAFORM ?= terraform
 
 .PHONY: kubernetes kubernetes/%
 kubernetes: kubernetes/cluster
