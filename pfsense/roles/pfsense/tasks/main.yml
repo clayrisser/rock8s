@@ -15,7 +15,7 @@
   import_tasks: dhcp.yml
 - name: Configure routes
   import_tasks: routes.yml
-# - name: Configure NAT
-#   import_tasks: nat.yml
+- name: Configure nat
+  import_tasks: nat.yml
 # - name: Install and configure packages
 #   import_tasks: packages.yml

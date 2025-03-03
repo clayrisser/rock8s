@@ -1,4 +1,111 @@
 ---
-# - name: Configure nat
-#   import_tasks: nat/outbound.yml
-#   when: primary
+- name: Check outbound nat configuration
+  ansible.builtin.shell: |
+    cat > /tmp/check_outbound_nat.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    $current = array(
+      'nat' => array(
+        'outbound' => array(
+          'mode' => isset($config['nat']['outbound']['mode']) ? $config['nat']['outbound']['mode'] : '',
+          'rule' => isset($config['nat']['outbound']['rule']) ? $config['nat']['outbound']['rule'] : array()
+        )
+      )
+    );
+    $desired = array(
+      'nat' => array(
+        'outbound' => array(
+          'mode' => 'hybrid',
+          'rule' => array(
+            array(
+              'interface' => 'wan',
+              'source' => array(
+                'any' => true
+              ),
+              'destination' => array(
+                'any' => true
+              ),
+              'target' => '',
+              'natport' => 'auto',
+              'ipprotocol' => 'inet46',
+              'nordr' => true
+            ),
+            array(
+              'interface' => 'wan',
+              'source' => array(
+                'network' => '{{ pfsense.network.interfaces.lan.subnet }}'
+              ),
+              'destination' => array(
+                'any' => true
+              ),
+              'target' => '',
+              'natport' => 'auto',
+              'ipprotocol' => 'inet46',
+              'nordr' => true
+            )
+          )
+        )
+      )
+    );
+    echo json_encode(array(
+      'changed' => $current != $desired,
+      'current' => $current,
+      'desired' => $desired
+    ));
+    EOF
+    php -f /tmp/check_outbound_nat.php
+    rm -f /tmp/check_outbound_nat.php
+  register: outbound_nat_check
+  changed_when: (outbound_nat_check.stdout | from_json).changed
+  when: primary
+
+- name: Configure outbound nat
+  ansible.builtin.shell: |
+    cat > /tmp/update_outbound_nat.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    require_once("interfaces.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    if (!isset($config['nat'])) {
+        $config['nat'] = array();
+    }
+    if (!isset($config['nat']['outbound'])) {
+        $config['nat']['outbound'] = array();
+    }
+    $config['nat']['outbound']['mode'] = 'hybrid';
+    $config['nat']['outbound']['rule'] = array(
+      array(
+        'interface' => 'wan',
+        'source' => array(
+          'network' => '{{ pfsense.network.interfaces.lan.subnet }}'
+        ),
+        'destination' => array(
+          'any' => true
+        ),
+        'target' => '',
+        'natport' => 'auto',
+        'ipprotocol' => 'inet46',
+        'nordr' => true
+      )
+    );
+    if (write_config(sprintf('Updated outbound NAT configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
+      filter_configure();
+    }
+    EOF
+    {% if outbound_nat_check is changed %}
+    php -f /tmp/update_outbound_nat.php
+    {% endif %}
+    rm -f /tmp/update_outbound_nat.php
+  changed_when: outbound_nat_check is changed
+  when: primary
