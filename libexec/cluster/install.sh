@@ -4,20 +4,19 @@ set -e
 
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
+: "${KUBESPRAY_VERSION:=v2.24.0}"
+: "${KUBESPRAY_REPO:=https://github.com/kubernetes-sigs/kubespray.git}"
+
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster create - create kubernetes cluster
+       rock8s cluster install - install kubernetes cluster
 
 SYNOPSIS
-       rock8s cluster create [-h] [-o <format>] <name>
+       rock8s cluster install [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update]
 
 DESCRIPTION
-       create a new kubernetes cluster using kubespray
-
-ARGUMENTS
-       name
-              name of the cluster to create
+       install kubernetes cluster using kubespray
 
 OPTIONS
        -h, --help
@@ -26,12 +25,23 @@ OPTIONS
        -o, --output=<format>
               output format (default: text)
               supported formats: text, json, yaml
+
+       -t, --tenant <tenant>
+              tenant name (default: current user)
+
+       --cluster <cluster>
+              name of the cluster to install kubernetes on (required)
+
+       --update
+              update ansible collections
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _NAME=""
+    _CLUSTER=""
+    _TENANT="$ROCK8S_TENANT"
+    _UPDATE=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -50,70 +60,148 @@ _main() {
                         ;;
                 esac
                 ;;
+            -t|--tenant|-t=*|--tenant=*)
+                case "$1" in
+                    *=*)
+                        _TENANT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _TENANT="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --update)
+                _UPDATE="1"
+                shift
+                ;;
             -*)
                 _help
                 exit 1
                 ;;
             *)
-                if [ -z "$_NAME" ]; then
-                    _NAME="$1"
-                    shift
-                else
-                    _help
-                    exit 1
-                fi
+                _help
+                exit 1
                 ;;
         esac
     done
-    [ -z "$_NAME" ] && {
+    if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
-    }
-    _CLUSTER_DIR="$(_get_cluster_dir "$_NAME")"
-    _KUBESPRAY_CLUSTER_DIR="$_CLUSTER_DIR/kubespray"
-
-    # Clone Kubespray if not already present
-    if [ ! -d "$ROCK8S_KUBESPRAY_PATH" ]; then
-        _log "Cloning Kubespray repository..."
-        git clone https://github.com/kubernetes-sigs/kubespray.git "$ROCK8S_KUBESPRAY_PATH"
     fi
-
-    # Create cluster directory structure
-    mkdir -p "$_KUBESPRAY_CLUSTER_DIR"
-    cp -rfp "$ROCK8S_KUBESPRAY_PATH/inventory/sample"/* "$_KUBESPRAY_CLUSTER_DIR/"
-
-    # Initialize Python virtual environment
-    _log "Initializing Python virtual environment..."
-    python3 -m venv "$_KUBESPRAY_CLUSTER_DIR/venv"
-    . "$_KUBESPRAY_CLUSTER_DIR/venv/bin/activate"
-    pip install -r "$ROCK8S_KUBESPRAY_PATH/requirements.txt"
-
-    # Check if we have nodes.json from a provider
-    if [ -f "$_CLUSTER_DIR/nodes.json" ]; then
-        _log "Generating inventory from nodes.json..."
-        python "$ROCK8S_LIB_PATH/libexec/kubespray/generate_inventory.py" \
-            --nodes "$_CLUSTER_DIR/nodes.json" \
-            --output "$_KUBESPRAY_CLUSTER_DIR/inventory.yml"
+    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
+    if [ ! -d "$_CLUSTER_DIR" ]; then
+        _fail "cluster $_CLUSTER not found"
     fi
+    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
+    if [ ! -f "$_CONFIG_FILE" ]; then
+        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    fi
+    _MASTER_OUTPUT="$_CLUSTER_DIR/master/output.json"
+    if [ ! -f "$_MASTER_OUTPUT" ]; then
+        _fail "master output.json not found"
+    fi
+    _WORKER_OUTPUT="$_CLUSTER_DIR/worker/output.json"
+    if [ ! -f "$_WORKER_OUTPUT" ]; then
+        _fail "worker output.json not found"
+    fi
+    _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
+    if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
+        _fail "network.lan.subnet not found in config.yaml"
+    fi
+    _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
+    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
+        _fail "network.entrypoint not found in config.yaml"
+    fi
+    _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
+    _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
+    _SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
+    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
+    _ensure_system
+    if [ ! -d "$_KUBESPRAY_DIR" ]; then
+        git clone --depth 1 --branch "$KUBESPRAY_VERSION" "$KUBESPRAY_REPO" "$_KUBESPRAY_DIR"
+    fi
+    _VENV_DIR="$_KUBESPRAY_DIR/venv"
+    if [ ! -d "$_VENV_DIR" ]; then
+        python3 -m venv "$_VENV_DIR"
+    fi
+    . "$_VENV_DIR/bin/activate"
+    if command -v uv >/dev/null 2>&1; then
+        uv pip install -r "$_KUBESPRAY_DIR/requirements.txt"
+    else
+        pip install -r "$_KUBESPRAY_DIR/requirements.txt"
+    fi
+    if [ ! -d "$_CLUSTER_DIR/inventory" ]; then
+        cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
+    fi
+    cp "$ROCK8S_LIB_PATH/kubernetes/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml"
+    _MTU="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.mtu')"
+    if [ -z "$_MTU" ] || [ "$_MTU" = "null" ]; then
+        _MTU="1500"
+    fi
+    _DUELSTACK="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dualstack')"
+    if [ "$_DUELSTACK" = "false" ]; then
+        _DUELSTACK="false"
+    else
+        _DUELSTACK="true"
+    fi
+    _METALLB="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.metallb')"
+    if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
+        _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
+    fi
+    cp "$ROCK8S_LIB_PATH/kubernetes/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
+    cat >> "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml" <<EOF
 
-    # Verify inventory exists
-    [ ! -f "$_KUBESPRAY_CLUSTER_DIR/inventory.yml" ] && {
-        _fail "no inventory file found at $_KUBESPRAY_CLUSTER_DIR/inventory.yml"
-    }
+enable_dual_stack_networks: $_DUELSTACK
+supplementary_addresses_in_ssl_keys: [$_ENTRYPOINT]
+calico_mtu: $_MTU
+calico_veth_mtu: $(($_MTU - 50))
+metallb: "$_METALLB"
+EOF
+    cat > "$_CLUSTER_DIR/inventory/inventory.ini" <<EOF
+[kube_control_plane]
+$(echo "$_MASTER_NODES")
 
-    # Run the Kubespray playbook
-    _log "Running Kubespray playbook..."
-    ansible-playbook -i "$_KUBESPRAY_CLUSTER_DIR/inventory.yml" \
-        "$ROCK8S_KUBESPRAY_PATH/cluster.yml" \
-        -b -v "$@"
+[etcd]
+$(echo "$_MASTER_NODES")
 
-    # Save kubeconfig
-    _log "Saving kubeconfig..."
-    mkdir -p "$_CLUSTER_DIR/auth"
-    ansible -i "$_KUBESPRAY_CLUSTER_DIR/inventory.yml" \
-        -m fetch -a "src=/etc/kubernetes/admin.conf dest=$_CLUSTER_DIR/auth/kubeconfig flat=yes" \
-        kube_control_plane[0]
+[kube_node]
+$(echo "$_WORKER_NODES")
 
-    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+[k8s-cluster:children]
+kube_node
+kube_control_plane
+
+[kube_control_plane:vars]
+node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
+
+[kube_node:vars]
+node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
+EOF
+    exit
+    ANSIBLE_SSH_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY" \
+        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
+        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -u root --become --become-user=root \
+        "$_KUBESPRAY_DIR/cluster.yml" -b -v
+    ANSIBLE_SSH_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY" \
+        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
+        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -u root --become --become-user=root \
+        "$_KUBESPRAY_DIR/postinstall.yml" -b -v
+    printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"

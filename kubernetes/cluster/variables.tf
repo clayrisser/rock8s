@@ -1,7 +1,3 @@
-variable "cluster_prefix" {
-  default = "kops"
-}
-
 variable "iteration" {
   default = 0
 }
@@ -166,7 +162,7 @@ variable "cloudflare_email" {
   default = ""
 }
 
-variable "cluster_entrypoint" {
+variable "entrypoint" {
   default = ""
 }
 
@@ -203,5 +199,9 @@ variable "s3_secret_key" {
 }
 
 variable "vault" {
+  default = false
+}
+
+variable "openebs" {
   default = false
 }

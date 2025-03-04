@@ -1,5 +1,5 @@
 locals {
-  cluster_entrypoint = var.cluster_entrypoint != "" ? var.cluster_entrypoint : local.load_balancer
+  entrypoint         = var.entrypoint != "" ? var.entrypoint : local.load_balancer
   ingress_ports      = [for port in split(",", var.ingress_ports) : port]
   kanister           = var.kanister && var.flux && var.olm
   kubeconfig         = jsonencode(local.kubeconfig_json)

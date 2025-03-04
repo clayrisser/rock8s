@@ -122,17 +122,17 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
     fi
+    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
+    if [ ! -d "$_CLUSTER_DIR" ]; then
+        _fail "cluster $_CLUSTER not found"
+    fi
+    _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
     if [ "$_SSH_PASSWORD" = "1" ]; then
         command -v sshpass >/dev/null 2>&1 || {
             _fail "sshpass is not installed"
         }
     fi
     _ensure_system
-    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$_CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
-    fi
-    _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
     mkdir -p "$_PFSENSE_DIR"
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$ROCK8S_TENANT/clusters/$_CLUSTER/config.yaml"
     if [ ! -f "$_CONFIG_FILE" ]; then
