@@ -22,6 +22,7 @@ dhcpdv
 dialogopts
 disablechecksumoffloading
 dotenv
+DUELSTACK
 elif
 endfor
 endswith
@@ -45,6 +46,7 @@ kanister
 karpenter
 kbst
 keygen
+krew
 kubeconfig
 kubespray
 kustomization
@@ -54,6 +56,7 @@ libexec
 logincss
 mconfalonieri
 mdns
+memberlist
 metallb
 mjson
 mkpm
@@ -133,8 +136,10 @@ syscalld
 terraformrc
 tfstate
 tfvars
+tollerations
 traceroute
 venv
+veth
 virtio
 vtnet
 webgui

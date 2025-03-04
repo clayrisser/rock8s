@@ -22,6 +22,9 @@ COMMANDS
        configure
               configure an existing cluster with operators
 
+       install
+              install kubernetes on a cluster
+
        upgrade
               upgrade an existing cluster
 
@@ -34,6 +37,7 @@ COMMANDS
 SEE ALSO
        rock8s cluster create --help
        rock8s cluster configure --help
+       rock8s cluster install --help
        rock8s cluster upgrade --help
        rock8s cluster node --help
        rock8s cluster reset --help
@@ -62,7 +66,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            create|configure|upgrade|node|reset)
+            create|configure|install|upgrade|node|reset)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
