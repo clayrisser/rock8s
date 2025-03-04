@@ -228,3 +228,78 @@ users:
       - $(cat "$_SSH_PUBLIC_KEY")
 EOF
 }
+
+_calculate_metallb() {
+    _SUBNET="$1"
+    _SUBNET_PREFIX="$(echo "$_SUBNET" | cut -d'/' -f1)"
+    _SUBNET_MASK="$(echo "$_SUBNET" | cut -d'/' -f2)"
+    IFS='.'
+    set -- $(echo "$_SUBNET_PREFIX")
+    _OCTET1="$1"
+    _OCTET2="$2"
+    _OCTET3="$3"
+    _OCTET4="$4"
+    unset IFS
+    _POW_VAL=$((32 - _SUBNET_MASK))
+    _TOTAL_IPS=1
+    _i=0
+    while [ $_i -lt $_POW_VAL ]; do
+        _TOTAL_IPS=$((_TOTAL_IPS * 2))
+        _i=$((_i + 1))
+    done
+    _METALLB_COUNT="$((_TOTAL_IPS / 20))"
+    [ "$_METALLB_COUNT" -lt 10 ] && _METALLB_COUNT=10
+    [ "$_METALLB_COUNT" -gt 100 ] && _METALLB_COUNT=100
+    if [ "$_METALLB_COUNT" -ge "$_TOTAL_IPS" ]; then
+        _METALLB_COUNT="$((_TOTAL_IPS / 2))"
+        [ "$_METALLB_COUNT" -lt 5 ] && _METALLB_COUNT=5
+    fi
+    _START_IP_NUM="$((_TOTAL_IPS - _METALLB_COUNT - 1))"
+    _END_IP_NUM="$((_TOTAL_IPS - 2))"
+    _START_OCTET4="$(( (_OCTET4 + _START_IP_NUM) % 256 ))"
+    _START_OCTET3="$(( (_OCTET3 + ((_OCTET4 + _START_IP_NUM) / 256)) % 256 ))"
+    _START_OCTET2="$(( (_OCTET2 + ((_OCTET3 + ((_OCTET4 + _START_IP_NUM) / 256)) / 256)) % 256 ))"
+    _START_OCTET1="$(( _OCTET1 + ((_OCTET2 + ((_OCTET3 + ((_OCTET4 + _START_IP_NUM) / 256)) / 256)) / 256) ))"
+    _END_OCTET4="$(( (_OCTET4 + _END_IP_NUM) % 256 ))"
+    _END_OCTET3="$(( (_OCTET3 + ((_OCTET4 + _END_IP_NUM) / 256)) % 256 ))"
+    _END_OCTET2="$(( (_OCTET2 + ((_OCTET3 + ((_OCTET4 + _END_IP_NUM) / 256)) / 256)) % 256 ))"
+    _END_OCTET1="$(( _OCTET1 + ((_OCTET2 + ((_OCTET3 + ((_OCTET4 + _END_IP_NUM) / 256)) / 256)) / 256) ))"
+    _START_IP="${_START_OCTET1}.${_START_OCTET2}.${_START_OCTET3}.${_START_OCTET4}"
+    _END_IP="${_END_OCTET1}.${_END_OCTET2}.${_END_OCTET3}.${_END_OCTET4}"
+    _METALLB_RANGE="${_START_IP}-${_END_IP}"
+    if [ -z "$_METALLB_RANGE" ] || [ "$_START_OCTET1" -gt 255 ] || [ "$_END_OCTET1" -gt 255 ]; then
+        if [ "$_SUBNET_MASK" -le "8" ]; then
+            _NETWORK_BASE="$(echo "$_SUBNET_PREFIX" | cut -d'.' -f1)"
+            _METALLB_RANGE="${_NETWORK_BASE}.255.255.200-${_NETWORK_BASE}.255.255.254"
+        elif [ "$_SUBNET_MASK" -le "16" ]; then
+            _NETWORK_BASE="$(echo "$_SUBNET_PREFIX" | cut -d'.' -f1-2)"
+            _METALLB_RANGE="${_NETWORK_BASE}.255.200-${_NETWORK_BASE}.255.254"
+        elif [ "$_SUBNET_MASK" -le "24" ]; then
+            _NETWORK_BASE="$(echo "$_SUBNET_PREFIX" | cut -d'.' -f1-3)"
+            _METALLB_RANGE="${_NETWORK_BASE}.200-${_NETWORK_BASE}.254"
+        else
+            _IP_BASE="$(echo "$_SUBNET_PREFIX" | cut -d'.' -f1-3)"
+            _LAST_OCTET="$(echo "$_SUBNET_PREFIX" | cut -d'.' -f4)"
+            _POW_VAL=$((32 - _SUBNET_MASK))
+            _MAX_POW=1
+            _i=0
+            while [ $_i -lt $_POW_VAL ]; do
+                _MAX_POW=$((_MAX_POW * 2))
+                _i=$((_i + 1))
+            done
+            _MAX_IP="$((_MAX_POW + _LAST_OCTET - 2))"
+            _MIN_IP="$((_MAX_IP - 10 > _LAST_OCTET ? _MAX_IP - 10 : _LAST_OCTET + 1))"
+            _METALLB_RANGE="${_IP_BASE}.${_MIN_IP}-${_IP_BASE}.${_MAX_IP}"
+        fi
+    fi
+    echo "$_METALLB_RANGE"
+}
+
+_calculate_first_ip() {
+    _RANGE="$1"
+    if echo "$_RANGE" | grep -q '/'; then
+        echo "$_RANGE" | cut -d'/' -f1 | sed 's/\.0$/.1/'
+    else
+        echo "$_RANGE" | cut -d'-' -f1
+    fi
+}

@@ -44,7 +44,7 @@ resource "null_resource" "wait-for-ingress-nginx" {
     command     = <<EOF
 s=5
 while [ "$s" -ge "5" ]; do
-  _s=$(echo $(curl -v $CLUSTER_ENTRYPOINT 2>&1 | grep -E '^< HTTP') | awk '{print $3}' | head -c 1)
+  _s=$(echo $(curl -v $ENTRYPOINT 2>&1 | grep -E '^< HTTP') | awk '{print $3}' | head -c 1)
   if [ "$_s" != "" ]; then
     s=$_s
   fi
@@ -55,7 +55,7 @@ done
 EOF
     interpreter = ["bash", "-c"]
     environment = {
-      CLUSTER_ENTRYPOINT = local.cluster_entrypoint
+      ENTRYPOINT = local.entrypoint
     }
   }
   depends_on = [

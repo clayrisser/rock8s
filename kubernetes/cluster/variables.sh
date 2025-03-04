@@ -11,26 +11,26 @@ fi
 if [ "$EMAIL" = "" ] && [ "$CLOUDFLARE_EMAIL" != "" ]; then
     EMAIL="$CLOUDFLARE_EMAIL"
 fi
-if [ "$RANCHER_HOSTNAME" = "" ] && [ "$CLUSTER_ENTRYPOINT" != "" ]; then
-    RANCHER_HOSTNAME="$CLUSTER_ENTRYPOINT"
+if [ "$RANCHER_HOSTNAME" = "" ] && [ "$ENTRYPOINT" != "" ]; then
+    RANCHER_HOSTNAME="$ENTRYPOINT"
 fi
 
 if [ "$EMAIL" = "" ]; then
     echo "missing EMAIL" >&2
     exit 1
 fi
-if [ "$CLUSTER_ENTRYPOINT" = "" ]; then
-    echo "missing CLUSTER_ENTRYPOINT" >&2
+if [ "$ENTRYPOINT" = "" ]; then
+    echo "missing ENTRYPOINT" >&2
     exit 1
 fi
-if ! host "$CLUSTER_ENTRYPOINT" >/dev/null 2>&1; then
-    echo "cluster entrypoint $CLUSTER_ENTRYPOINT does not resolve" >&2
+if ! host "$ENTRYPOINT" >/dev/null 2>&1; then
+    echo "entrypoint $ENTRYPOINT does not resolve" >&2
     exit 1
 fi
 
 export TF_VAR_cluster_name="$CLUSTER_NAME"
 export TF_VAR_email="$EMAIL"
-export TF_VAR_cluster_entrypoint="$CLUSTER_ENTRYPOINT"
+export TF_VAR_entrypoint="$ENTRYPOINT"
 export TF_VAR_argocd="$ARGOCD"
 export TF_VAR_cluster_issuer="$CLUSTER_ISSUER"
 export TF_VAR_crossplane="$CROSSPLANE"

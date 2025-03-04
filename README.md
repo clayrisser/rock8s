@@ -17,7 +17,7 @@
     ```bash
     CLUSTER_NAME=rock8s
     EMAIL=you@example.com
-    CLUSTER_ENTRYPOINT=cluster.example.com
+    ENTRYPOINT=cluster.example.com
     HETZNER_TOKEN=your_token
     HETZNER_MASTERS="cpx31:1"
     HETZNER_WORKERS="cx41:2 cx51:3 cpx31:2"
