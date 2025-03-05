@@ -76,12 +76,13 @@
 
 - name: Configure dhcp
   ansible.builtin.shell: |-
-    cat <<EOF > /tmp/update_dhcp.php
+    cat > /tmp/update_dhcp.php << 'EOF'
     <?php
     require_once("config.inc");
     require_once("util.inc");
     require_once("config.lib.inc");
     require_once("system.inc");
+    $config = null;
     global $config;
     if (!is_array($config)) {
         $config = parse_config();

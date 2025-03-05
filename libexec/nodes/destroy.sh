@@ -189,7 +189,7 @@ _main() {
         terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
-    terraform destroy $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -state="$_PURPOSE_DIR/terraform.tfstate" -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+    terraform destroy $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     rm -rf "$_PURPOSE_DIR"
     if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
         rm -rf "$CLUSTER_DIR/provider"

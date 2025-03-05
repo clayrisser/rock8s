@@ -206,9 +206,8 @@ _main() {
         fi
         _IPV6_SUBNET="fd${_PREFIX}::/64"
     fi
-    _IP_BASE="$(echo "$_NETWORK_IP" | cut -d'.' -f1,2,3)"
-    _PRIMARY_IP="${_IP_BASE}.2"
-    _SECONDARY_IP="${_IP_BASE}.3"
+    _PRIMARY_IP="$(_calculate_next_ipv4 "$_NETWORK_IP" 2)"
+    _SECONDARY_IP="$(_calculate_next_ipv4 "$_NETWORK_IP" 3)"
     _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
     _PRIMARY_IPV6="${_IPV6_PREFIX}2"
     _SECONDARY_IPV6="${_IPV6_PREFIX}3"
@@ -273,7 +272,6 @@ EOF
     ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
         PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
         ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
-        -e hello=world \
         -e "@$_PFSENSE_DIR/vars.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
         "$_PFSENSE_DIR/ansible/playbooks/configure.yml"
