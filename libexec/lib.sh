@@ -295,11 +295,102 @@ _calculate_metallb() {
     echo "$_METALLB_RANGE"
 }
 
-_calculate_first_ip() {
-    _RANGE="$1"
-    if echo "$_RANGE" | grep -q '/'; then
-        echo "$_RANGE" | cut -d'/' -f1 | sed 's/\.0$/.1/'
-    else
-        echo "$_RANGE" | cut -d'-' -f1
+_calculate_next_ipv4() {
+    _IP="$1"
+    _INCREMENT="${2:-1}"
+    if echo "$_IP" | grep -q '/'; then
+        _IP="$(echo "$_IP" | cut -d'/' -f1)"
     fi
+    if echo "$_IP" | grep -q '-'; then
+        _IP="$(echo "$_IP" | cut -d'-' -f1)"
+    fi
+    _OCTET1="$(echo "$_IP" | cut -d'.' -f1)"
+    _OCTET2="$(echo "$_IP" | cut -d'.' -f2)"
+    _OCTET3="$(echo "$_IP" | cut -d'.' -f3)"
+    _OCTET4="$(echo "$_IP" | cut -d'.' -f4)"
+    _NEW_OCTET4=$((_OCTET4 + _INCREMENT))
+    _NEW_OCTET3=$_OCTET3
+    _NEW_OCTET2=$_OCTET2
+    _NEW_OCTET1=$_OCTET1
+    if [ $_NEW_OCTET4 -gt 255 ]; then
+        _NEW_OCTET3=$((_OCTET3 + (_NEW_OCTET4 / 256)))
+        _NEW_OCTET4=$((_NEW_OCTET4 % 256))
+        if [ $_NEW_OCTET3 -gt 255 ]; then
+            _NEW_OCTET2=$((_OCTET2 + (_NEW_OCTET3 / 256)))
+            _NEW_OCTET3=$((_NEW_OCTET3 % 256))
+            if [ $_NEW_OCTET2 -gt 255 ]; then
+                _NEW_OCTET1=$((_OCTET1 + (_NEW_OCTET2 / 256)))
+                _NEW_OCTET2=$((_NEW_OCTET2 % 256))
+                if [ $_NEW_OCTET1 -gt 255 ]; then
+                    _error "ip address overflow"
+                    return 1
+                fi
+            fi
+        fi
+    fi
+    echo "${_NEW_OCTET1}.${_NEW_OCTET2}.${_NEW_OCTET3}.${_NEW_OCTET4}"
+}
+
+_register_kubeconfig() {
+    _KUBECONFIG_FILE="$1"
+    _CLUSTER_NAME="$2"
+    if [ -z "$_KUBECONFIG_FILE" ] || [ -z "$_CLUSTER_NAME" ]; then
+        _fail "register_kubeconfig <kubeconfig_file> <cluster_name>"
+    fi
+    if ! command -v kubectl >/dev/null 2>&1; then
+        _fail "kubectl is not installed"
+    fi
+    export KUBECONFIG="$HOME/.kube/config:$_KUBECONFIG_FILE"
+    mkdir -p "$HOME/.kube"
+    if [ -f "$HOME/.kube/config" ]; then
+        cp "$HOME/.kube/config" "$HOME/.kube/config.bak"
+    fi
+    kubectl config view --merge --flatten > "$HOME/.kube/_config"
+    mv "$HOME/.kube/_config" "$HOME/.kube/config"
+    _NEW_CONTEXT="$(kubectl config get-contexts --kubeconfig="$_KUBECONFIG_FILE" -o name | head -n 1)"
+    _NEW_CLUSTER_NAME="$(kubectl config view --kubeconfig="$_KUBECONFIG_FILE" -o jsonpath='{.clusters[0].name}')"
+    _NEW_USER_NAME="$(kubectl config view --kubeconfig="$_KUBECONFIG_FILE" -o jsonpath='{.users[0].name}')"
+    kubectl config unset "contexts.$_CLUSTER_NAME" >/dev/null 2>&1 || true
+    kubectl config unset "clusters.$_CLUSTER_NAME" >/dev/null 2>&1 || true
+    kubectl config unset "users.$_CLUSTER_NAME" >/dev/null 2>&1 || true
+    kubectl config rename-context "$_NEW_CONTEXT" "$_CLUSTER_NAME" >/dev/null 2>&1 || true
+    kubectl config view --raw -o json | jq '
+      .contexts |= map(select(.name != "'"$_CLUSTER_NAME"'")) |
+      .clusters |= map(select(.name != "'"$_CLUSTER_NAME"'")) |
+      .users |= map(select(.name != "'"$_CLUSTER_NAME"'")) |
+      .contexts[] |= if .name == "'"$_NEW_CONTEXT"'" then .name = "'"$_CLUSTER_NAME"'" else . end |
+      .clusters[] |= if .name == "'"$_NEW_CLUSTER_NAME"'" then .name = "'"$_CLUSTER_NAME"'" else . end |
+      .users[] |= if .name == "'"$_NEW_USER_NAME"'" then .name = "'"$_CLUSTER_NAME"'" else . end |
+      .contexts[] |= if .name == "'"$_CLUSTER_NAME"'" then .context.cluster = "'"$_CLUSTER_NAME"'" | .context.user = "'"$_CLUSTER_NAME"'" else . end
+    ' | json2yaml > "$HOME/.kube/config.tmp"
+    mv "$HOME/.kube/config.tmp" "$HOME/.kube/config"
+    chmod 600 "$HOME/.kube/config"
+    kubectl config use-context "$_CLUSTER_NAME"
+    _CONTEXTS=$(kubectl config get-contexts -o name)
+    for _USER in $(kubectl config view -o jsonpath='{.users[*].name}'); do
+        _USER_IN_CONTEXTS=0
+        for _CONTEXT in $_CONTEXTS; do
+            _CONTEXT_USER="$(kubectl config view -o jsonpath="{.contexts[?(@.name=='$_CONTEXT')].context.user}")"
+            if [ "$_CONTEXT_USER" = "$_USER" ]; then
+                _USER_IN_CONTEXTS=1
+                break
+            fi
+        done
+        if [ "$_USER_IN_CONTEXTS" = "0" ]; then
+            kubectl config unset "users.$_USER" >/dev/null 2>&1 || true
+        fi
+    done
+    for _CLUSTER in $(kubectl config view -o jsonpath='{.clusters[*].name}'); do
+        _CLUSTER_IN_CONTEXTS=0
+        for _CONTEXT in $_CONTEXTS; do
+            _CONTEXT_CLUSTER="$(kubectl config view -o jsonpath="{.contexts[?(@.name=='$_CONTEXT')].context.cluster}")"
+            if [ "$_CONTEXT_CLUSTER" = "$_CLUSTER" ]; then
+                _CLUSTER_IN_CONTEXTS=1
+                break
+            fi
+        done
+        if [ "$_CLUSTER_IN_CONTEXTS" = "0" ]; then
+            kubectl config unset "clusters.$_CLUSTER" >/dev/null 2>&1 || true
+        fi
+    done
 }

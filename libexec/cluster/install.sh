@@ -126,8 +126,22 @@ _main() {
         _fail "network.entrypoint not found in config.yaml"
     fi
     _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
+    _MASTER_IPS="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _MASTER_EXTERNAL_IPS="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _ENTRYPOINT_IP="$(host "$_ENTRYPOINT" | grep 'has address' | head -n1 | awk '{print $NF}')"
+    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
+    if [ -n "$_ENTRYPOINT_IP" ]; then
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IP\""
+    fi
+    for _IP in $_MASTER_IPS; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IP\""
+    done
+    for _IP in $_MASTER_EXTERNAL_IPS; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IP\""
+    done
     _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
-    _SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
+    _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
+    _WORKER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_WORKER_OUTPUT")"
     _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
     _ensure_system
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
@@ -165,20 +179,20 @@ _main() {
     cat >> "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml" <<EOF
 
 enable_dual_stack_networks: $_DUELSTACK
-supplementary_addresses_in_ssl_keys: [$_ENTRYPOINT]
+supplementary_addresses_in_ssl_keys: [$_SUPPLEMENTARY_ADDRESSES]
 calico_mtu: $_MTU
 calico_veth_mtu: $(($_MTU - 50))
 metallb: "$_METALLB"
 EOF
     cat > "$_CLUSTER_DIR/inventory/inventory.ini" <<EOF
 [kube_control_plane]
-$(echo "$_MASTER_NODES")
+$(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
 
 [etcd]
-$(echo "$_MASTER_NODES")
+$(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
 
 [kube_node]
-$(echo "$_WORKER_NODES")
+$(echo "$_WORKER_NODES") ansible_ssh_private_key_file=$_WORKER_SSH_PRIVATE_KEY
 
 [k8s-cluster:children]
 kube_node
@@ -190,16 +204,17 @@ node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
 [kube_node:vars]
 node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
 EOF
-    exit
-    ANSIBLE_SSH_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY" \
+    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
+        ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -u root --become --become-user=root \
+        -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/cluster.yml" -b -v
-    ANSIBLE_SSH_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY" \
+    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
+        ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -u root --become --become-user=root \
+        -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/postinstall.yml" -b -v
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }

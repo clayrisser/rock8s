@@ -20,18 +20,14 @@ OPTIONS
               tenant name (default: current user)
 
 COMMANDS
-       create
-              create cluster nodes
-
-       update
-              update existing cluster nodes
+       apply
+              create new cluster nodes or update existing ones
 
        destroy
               destroy cluster nodes
 
 SEE ALSO
-       rock8s nodes create --help
-       rock8s nodes update --help
+       rock8s nodes apply --help
        rock8s nodes destroy --help
 EOF
 }
@@ -59,7 +55,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            create|update|destroy)
+            apply|destroy)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

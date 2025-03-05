@@ -52,7 +52,7 @@
 
 - name: Configure routes
   ansible.builtin.shell: |-
-    cat <<EOF > /tmp/update_routes.php
+    cat > /tmp/update_routes.php << 'EOF'
     <?php
     require_once("globals.inc");
     require_once("config.inc");
@@ -60,6 +60,7 @@
     require_once("config.lib.inc");
     require_once("interfaces.inc");
     require_once("gwlb.inc");
+    $config = null;
     global $config;
     $config = parse_config(true);
     $network = '';
