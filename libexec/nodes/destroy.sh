@@ -10,7 +10,7 @@ NAME
        rock8s nodes destroy - destroy cluster nodes
 
 SYNOPSIS
-       rock8s nodes destroy [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] [--force] <purpose>
+       rock8s nodes destroy [-h] [-o <format>] [--cluster <cluster>] [--tenant <tenant>] [--force] [-y|--yes] <purpose>
 
 DESCRIPTION
        destroy cluster nodes for a specific purpose (pfsense, master, or worker)
@@ -36,8 +36,8 @@ OPTIONS
        --force
               skip dependency checks for destruction order
 
-       --non-interactive
-              fail instead of prompting for missing values
+       -y, --yes
+              skip confirmation prompt
 EOF
 }
 
@@ -45,8 +45,8 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _PURPOSE=""
     _CLUSTER=""
-    _NON_INTERACTIVE=0
     _FORCE=0
+    _YES=0
     _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
@@ -82,8 +82,8 @@ _main() {
                 _FORCE=1
                 shift
                 ;;
-            --non-interactive)
-                _NON_INTERACTIVE=1
+            -y|--yes)
+                _YES=1
                 shift
                 ;;
             -t|--tenant|-t=*|--tenant=*)
@@ -120,7 +120,6 @@ _main() {
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
         _fail "purpose $_PURPOSE not found"
     fi
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _ensure_system
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
     if [ ! -f "$_CONFIG_FILE" ]; then
@@ -189,7 +188,7 @@ _main() {
         terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
-    terraform destroy $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+    terraform destroy $([ "$_YES" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     rm -rf "$_PURPOSE_DIR"
     if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
         rm -rf "$CLUSTER_DIR/provider"

@@ -36,7 +36,7 @@ EOF
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _CLUSTER=""
+    _CLUSTER="$ROCK8S_CLUSTER"
     _NON_INTERACTIVE=0
     _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do

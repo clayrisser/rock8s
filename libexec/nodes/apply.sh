@@ -38,6 +38,9 @@ OPTIONS
 
        --non-interactive
               fail instead of prompting for missing values
+
+       -y, --yes
+              skip confirmation prompt
 EOF
 }
 
@@ -47,6 +50,7 @@ _main() {
     _CLUSTER=""
     _NON_INTERACTIVE=0
     _FORCE=0
+    _YES=0
     _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
@@ -84,6 +88,10 @@ _main() {
                 ;;
             --non-interactive)
                 _NON_INTERACTIVE=1
+                shift
+                ;;
+            -y|--yes)
+                _YES=1
                 shift
                 ;;
             -t|--tenant|-t=*|--tenant=*)
@@ -236,7 +244,7 @@ _main() {
         terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
-    terraform apply $([ "$NON_INTERACTIVE" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
+    terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     terraform output -json > "$_PURPOSE_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
