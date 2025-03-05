@@ -19,6 +19,9 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name (default: current user)
 
+       --cluster <cluster>
+              name of the cluster to manage nodes for
+
 COMMANDS
        apply
               create new cluster nodes or update existing ones
@@ -37,6 +40,7 @@ _main() {
     _CMD=""
     _CMD_ARGS=""
     _TENANT="$ROCK8S_TENANT"
+    _CLUSTER="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -51,6 +55,18 @@ _main() {
                         ;;
                     *)
                         _TENANT="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
                         shift 2
                         ;;
                 esac
@@ -72,6 +88,7 @@ _main() {
         exit 1
     fi
     export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/nodes/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
         _fail "unknown command: $_CMD"
