@@ -10,14 +10,10 @@ NAME
        rock8s cluster reset - reset kubernetes cluster
 
 SYNOPSIS
-       rock8s cluster reset [-h] [-o <format>] <name>
+       rock8s cluster reset [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes]
 
 DESCRIPTION
-       reset/remove an existing kubernetes cluster
-
-ARGUMENTS
-       name
-              name of the cluster to reset
+       reset kubernetes cluster (removes all kubernetes components but keeps the infrastructure)
 
 OPTIONS
        -h, --help
@@ -26,12 +22,23 @@ OPTIONS
        -o, --output=<format>
               output format (default: text)
               supported formats: text, json, yaml
+
+       -t, --tenant <tenant>
+              tenant name (default: current user)
+
+       --cluster <cluster>
+              name of the cluster to reset (required)
+
+       -y, --yes
+              skip confirmation prompt
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _NAME=""
+    _CLUSTER="$ROCK8S_CLUSTER"
+    _TENANT="$ROCK8S_TENANT"
+    _YES=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -50,42 +57,72 @@ _main() {
                         ;;
                 esac
                 ;;
+            -t|--tenant|-t=*|--tenant=*)
+                case "$1" in
+                    *=*)
+                        _TENANT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _TENANT="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -y|--yes)
+                _YES="1"
+                shift
+                ;;
             -*)
                 _help
                 exit 1
                 ;;
             *)
-                if [ -z "$_NAME" ]; then
-                    _NAME="$1"
-                    shift
-                else
-                    _help
-                    exit 1
-                fi
+                _help
+                exit 1
                 ;;
         esac
     done
-
-    [ -z "$_NAME" ] && {
+    if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
-    }
-
-    _CLUSTER_DIR="$(_get_cluster_dir "$_NAME")"
-    _KUBESPRAY_CLUSTER_DIR="$_CLUSTER_DIR/kubespray"
-
-    [ ! -d "$_KUBESPRAY_CLUSTER_DIR" ] && {
-        _fail "cluster '$_NAME' not found"
-    }
-
-    # Activate virtual environment
-    . "$_KUBESPRAY_CLUSTER_DIR/venv/bin/activate"
-
-    _log "Running Kubespray reset playbook..."
-    ansible-playbook -i "$_KUBESPRAY_CLUSTER_DIR/inventory.yml" \
-        "$ROCK8S_KUBESPRAY_PATH/reset.yml" \
-        -b -v "$@"
-
-    printf '{"name":"%s"}\n' "$_NAME" | _format_output "$_FORMAT" cluster
+    fi
+    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
+    if [ ! -d "$_CLUSTER_DIR" ]; then
+        _fail "cluster $_CLUSTER not found"
+    fi
+    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
+    if [ ! -f "$_CONFIG_FILE" ]; then
+        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    fi
+    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
+    if [ ! -d "$_KUBESPRAY_DIR" ]; then
+        _fail "kubespray directory not found"
+    fi
+    _ensure_system
+    _VENV_DIR="$_KUBESPRAY_DIR/venv"
+    if [ ! -d "$_VENV_DIR" ]; then
+        _fail "kubespray virtual environment not found"
+    fi
+    . "$_VENV_DIR/bin/activate"
+    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
+        ANSIBLE_HOST_KEY_CHECKING=False \
+        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
+        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -u admin --become --become-user=root \
+        "$_KUBESPRAY_DIR/reset.yml" -b -v
+    printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"

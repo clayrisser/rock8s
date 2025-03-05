@@ -7,17 +7,13 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster node rm - remove node from cluster
+       rock8s cluster scale - scale cluster nodes
 
 SYNOPSIS
-       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] <node>
+       rock8s cluster scale [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]
 
 DESCRIPTION
-       remove a node from an existing kubernetes cluster
-
-ARGUMENTS
-       node
-              name of the node to remove
+       scale nodes in an existing kubernetes cluster
 
 OPTIONS
        -h, --help
@@ -31,7 +27,7 @@ OPTIONS
               tenant name (default: current user)
 
        --cluster <cluster>
-              name of the cluster to remove node from (required)
+              name of the cluster to scale (required)
 EOF
 }
 
@@ -39,7 +35,6 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
-    _NODE=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -87,21 +82,13 @@ _main() {
                 exit 1
                 ;;
             *)
-                if [ -z "$_NODE" ]; then
-                    _NODE="$1"
-                    shift
-                else
-                    _help
-                    exit 1
-                fi
+                _help
+                exit 1
                 ;;
         esac
     done
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
-    fi
-    if [ -z "$_NODE" ]; then
-        _fail "node name required"
     fi
     _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
     if [ ! -d "$_CLUSTER_DIR" ]; then
@@ -125,12 +112,9 @@ _main() {
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -e "node=$_NODE" \
-        -e "reset_nodes=false" \
-        -e "allow_ungraceful_removal=true" \
         -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/remove-node.yml" -b -v
-    printf '{"name":"%s","node":"%s"}\n' "$_CLUSTER" "$_NODE" | _format_output "$_FORMAT" cluster
+        "$_KUBESPRAY_DIR/scale.yml" -b -v
+    printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@"

@@ -16,20 +16,17 @@ DESCRIPTION
        manage kubernetes cluster nodes
 
 COMMANDS
-       add
-              add nodes to the cluster
-
        rm
               remove a node from the cluster
 
 SEE ALSO
-       rock8s cluster node add --help
        rock8s cluster node rm --help
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _CLUSTER="$ROCK8S_CLUSTER"
     _CMD=""
     _CMD_ARGS=""
     while test $# -gt 0; do
@@ -50,7 +47,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            add|rm)
+            rm)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

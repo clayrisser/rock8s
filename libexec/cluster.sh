@@ -10,7 +10,7 @@ NAME
        rock8s cluster - manage kubernetes clusters
 
 SYNOPSIS
-       rock8s cluster [-h] [-o <format>] <command> [<args>]
+       rock8s cluster [-h] [-o <format>] [--cluster <cluster>] <command> [<args>]
 
 DESCRIPTION
        create and manage kubernetes clusters
@@ -28,6 +28,9 @@ COMMANDS
        node
               manage cluster nodes
 
+       scale
+              scale cluster nodes
+
        login
               login to a kubernetes cluster
 
@@ -39,6 +42,7 @@ SEE ALSO
        rock8s cluster install --help
        rock8s cluster upgrade --help
        rock8s cluster node --help
+       rock8s cluster scale --help
        rock8s cluster login --help
        rock8s cluster reset --help
 EOF
@@ -46,6 +50,7 @@ EOF
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _CLUSTER="$ROCK8S_CLUSTER"
     _CMD=""
     _CMD_ARGS=""
     while test $# -gt 0; do
@@ -66,7 +71,19 @@ _main() {
                         ;;
                 esac
                 ;;
-            configure|install|upgrade|node|login|reset)
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            configure|install|upgrade|node|scale|login|reset)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
@@ -83,6 +100,7 @@ _main() {
         exit 1
     fi
     export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/cluster/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
         _fail "unknown cluster command: $_CMD"
