@@ -16,9 +16,6 @@ DESCRIPTION
        create and manage kubernetes clusters
 
 COMMANDS
-       create
-              create a new kubernetes cluster
-
        configure
               configure an existing cluster with operators
 
@@ -31,15 +28,18 @@ COMMANDS
        node
               manage cluster nodes
 
+       login
+              login to a kubernetes cluster
+
        reset
               reset/remove the cluster
 
 SEE ALSO
-       rock8s cluster create --help
        rock8s cluster configure --help
        rock8s cluster install --help
        rock8s cluster upgrade --help
        rock8s cluster node --help
+       rock8s cluster login --help
        rock8s cluster reset --help
 EOF
 }
@@ -66,7 +66,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            create|configure|install|upgrade|node|reset)
+            configure|install|upgrade|node|login|reset)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"
