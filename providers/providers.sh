@@ -45,7 +45,7 @@ prompt_text() {
         { _ANSWER=$(whiptail --title "$_TITLE" \
             --backtitle "Rock8s Configuration" \
             --inputbox "$_PROMPT" \
-            0 0 \
+            10 60 \
             "$_EFFECTIVE_DEFAULT" \
             3>&1 1>&2 2>&3); _EXIT_CODE=$?; } || true
         if [ $_EXIT_CODE -eq $WHIPTAIL_CANCEL ] || [ $_EXIT_CODE -eq $WHIPTAIL_ESC ]; then
@@ -56,7 +56,7 @@ prompt_text() {
             { whiptail --title "Error" \
                 --backtitle "Rock8s Configuration" \
                 --infobox "This field is required. Please enter a value." \
-                8 60 \
+                0 0 \
                 3>&1 1>&2 2>&3; } || true
             continue
         fi
@@ -91,7 +91,7 @@ prompt_password() {
         { _ANSWER=$(whiptail --title "$_TITLE" \
             --backtitle "Rock8s Configuration" \
             --passwordbox "$_PROMPT" \
-            8 60 \
+            10 60 \
             3>&1 1>&2 2>&3); _EXIT_CODE=$?; } || true
         if [ $_EXIT_CODE -eq $WHIPTAIL_CANCEL ] || [ $_EXIT_CODE -eq $WHIPTAIL_ESC ]; then
             if [ "$_REQUIRED" = "0" ] && [ -n "$_ENV_VALUE" ]; then
@@ -105,7 +105,7 @@ prompt_password() {
             { whiptail --title "Error" \
                 --backtitle "Rock8s Configuration" \
                 --infobox "This field is required. Please enter a value." \
-                8 60 \
+                0 0 \
                 3>&1 1>&2 2>&3; } || true
             continue
         fi
@@ -186,8 +186,7 @@ prompt_select() {
         --default-item "$_EFFECTIVE_DEFAULT" \
         --notags \
         --menu "$_PROMPT" \
-        0 0 \
-        $# \
+        0 0 0 \
         $_MENU_ITEMS \
         3>&1 1>&2 2>&3)
     _EXIT_CODE=$?
@@ -231,9 +230,9 @@ prompt_multiselect() {
     _ANSWER=$(whiptail --title "Select Options" \
         --backtitle "Rock8s Configuration" \
         --separate-output \
+        --notags \
         --checklist "$_PROMPT" \
-        0 0 \
-        $_ITEM_COUNT \
+        0 0 0 \
         $_MENU_ITEMS \
         3>&1 1>&2 2>&3)
     _EXIT_CODE=$?
