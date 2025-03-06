@@ -1,22 +1,24 @@
-locals {
-  gitlab_registry = "registry.${var.gitlab_hostname}"
-}
-
 resource "kubernetes_secret" "registry" {
   metadata {
-    name      = "registry"
+    name      = "registries"
     namespace = "kube-system"
   }
+  type = "kubernetes.io/dockerconfigjson"
   data = {
     ".dockerconfigjson" = jsonencode({
       auths = {
-        "${local.gitlab_registry}" = {
-          auth = "${base64encode("${var.gitlab_username}:${var.gitlab_token}")}"
-        }
+        for name, auth in var.registries : name => (
+          can(auth.username) ?
+          {
+            auth = base64encode("${auth.username}:${auth.password}")
+          } :
+          {
+            auth = auth.token
+          }
+        )
       }
     })
   }
-  type = "kubernetes.io/dockerconfigjson"
 }
 
 resource "kubectl_manifest" "sync-registry" {

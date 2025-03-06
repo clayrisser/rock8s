@@ -1,7 +1,3 @@
-variable "iteration" {
-  default = 0
-}
-
 variable "rancher_admin_password" {
   default = "rancherP@ssw0rd"
 }
@@ -10,32 +6,24 @@ variable "kanister_bucket" {
   type = string
 }
 
-variable "api_strategy" {
-  default = "LB"
-  validation {
-    condition     = contains(["DNS", "LB"], var.api_strategy)
-    error_message = "Allowed values for entrypoint_strategy are \"DNS\" or \"LB\"."
-  }
-}
-
 variable "rancher" {
   default = false
 }
 
 variable "cluster_issuer" {
-  default = false
+  default = true
 }
 
 variable "external_dns" {
-  default = false
+  default = true
 }
 
 variable "flux" {
-  default = false
+  default = true
 }
 
 variable "kanister" {
-  default = false
+  default = true
 }
 
 variable "rancher_logging" {
@@ -51,7 +39,7 @@ variable "ingress_nginx" {
 }
 
 variable "olm" {
-  default = false
+  default = true
 }
 
 variable "rancher_istio" {
@@ -59,7 +47,7 @@ variable "rancher_istio" {
 }
 
 variable "rancher_monitoring" {
-  default = false
+  default = true
 }
 
 variable "longhorn" {
@@ -67,15 +55,15 @@ variable "longhorn" {
 }
 
 variable "reloader" {
-  default = false
+  default = true
 }
 
 variable "argocd" {
-  default = false
+  default = true
 }
 
 variable "karpenter" {
-  default = false
+  default = true
 }
 
 variable "kyverno" {
@@ -91,7 +79,7 @@ variable "tempo" {
 }
 
 variable "integration_operator" {
-  default = false
+  default = true
 }
 
 variable "retention_hours" {
@@ -99,7 +87,10 @@ variable "retention_hours" {
 }
 
 variable "ingress_ports" {
-  default = "80,443"
+  default = [
+    "80",
+    "443"
+  ]
 }
 
 variable "email" {
@@ -115,7 +106,7 @@ variable "rancher_hostname" {
 }
 
 variable "ceph" {
-  default = true
+  default = false
 }
 
 variable "ceph_monitors" {
@@ -166,24 +157,20 @@ variable "entrypoint" {
   default = ""
 }
 
-variable "gitlab_hostname" {
-  default = "gitlab.com"
-}
-
-variable "gitlab_username" {
+variable "git_username" {
   default = ""
 }
 
-variable "gitlab_token" {
+variable "git_password" {
   default = ""
 }
 
-variable "gitlab_repo" {
+variable "git_repo" {
   default = ""
 }
 
 variable "s3" {
-  default = false
+  default = true
 }
 
 variable "s3_endpoint" {
@@ -203,5 +190,14 @@ variable "vault" {
 }
 
 variable "openebs" {
-  default = false
+  default = true
+}
+
+variable "registries" {
+  type = map(object({
+    username = optional(string)
+    password = optional(string)
+    token    = optional(string)
+  }))
+  default = {}
 }

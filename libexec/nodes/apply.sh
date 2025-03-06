@@ -168,6 +168,7 @@ _main() {
             _PROVIDER="$(whiptail --title "Select Provider" --notags --menu "Choose your cloud provider" 0 0 0 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || _fail "provider selection cancelled"
         fi
         mkdir -p "$(dirname "$_CONFIG_FILE")"
+        _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
         if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
             { _ERROR="$(sh "$_PROVIDER_DIR/config.sh" "$_CONFIG_FILE")"; _EXIT_CODE="$?"; } || true
             if [ "$_EXIT_CODE" -ne 0 ]; then
@@ -175,6 +176,16 @@ _main() {
                     _fail "$_ERROR"
                 else
                     _fail "provider config script failed"
+                fi
+            fi
+            if [ -f "$_CONFIG_FILE" ]; then
+                { _ERROR="$(sh "$ROCK8S_LIB_PATH/providers/addons.sh" "$_CONFIG_FILE")"; _EXIT_CODE="$?"; } || true
+                if [ "$_EXIT_CODE" -ne 0 ]; then
+                    if [ -n "$_ERROR" ]; then
+                        _fail "$_ERROR"
+                    else
+                        _fail "addons config script failed"
+                    fi
                 fi
             fi
             if [ ! -f "$_CONFIG_FILE" ]; then
