@@ -157,7 +157,7 @@ _main() {
     else
         _NODES_JSON="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense.nodes')"
         if [ -z "$_NODES_JSON" ] || [ "$_NODES_JSON" = "null" ]; then
-            _fail "pfsense.nodes not specified in config.yaml"
+            _fail ".pfsense.nodes not specified in config.yaml"
         fi
         _NODE_COUNT="$(echo "$_NODES_JSON" | jq -r 'length')"
         _PRIMARY_HOSTNAME="$(echo "$_NODES_JSON" | jq -r '.[0].hostname // .[0].ip')"

@@ -149,26 +149,45 @@ _main() {
     if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
         _fail ".network.entrypoint not specified in config.yaml"
     fi
-    _ADDONS_DIR="$CLUSTER_DIR/addons"
+    export _ADDONS_DIR="$CLUSTER_DIR/addons"
     mkdir -p "$_ADDONS_DIR"
-    rm -rf "$_ADDONS_DIR/terraform"
-    cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"
-    echo "$_CONFIG_JSON" | jq -e '.cluster // {}' > $_ADDONS_DIR/terraform.tfvars.json
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_entrypoint="$_ENTRYPOINT"
     export TF_VAR_kubeconfig="$_KUBECONFIG"
+    
+    # Export cluster configuration as Terraform variables if present
+    if echo "$_CONFIG_JSON" | jq -e '.cluster' > /dev/null 2>&1; then
+        echo "{
+    \"cluster_name\": \"$_CLUSTER\",
+    \"entrypoint\": \"$_ENTRYPOINT\",
+    \"kubeconfig\": \"$_KUBECONFIG\"" > "$_ADDONS_DIR/terraform.tfvars.json"
+        
+        # Add cluster configuration to tfvars file
+        echo "$_CONFIG_JSON" | jq '.cluster' >> "$_ADDONS_DIR/terraform.tfvars.json"
+        # Close the JSON object
+        echo "}" >> "$_ADDONS_DIR/terraform.tfvars.json"
+    else
+        # Create basic tfvars file without cluster configuration
+        echo "{
+    \"cluster_name\": \"$_CLUSTER\",
+    \"entrypoint\": \"$_ENTRYPOINT\",
+    \"kubeconfig\": \"$_KUBECONFIG\"
+}" > "$_ADDONS_DIR/terraform.tfvars.json"
+    fi
+    
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
-    cd "$_ADDONS_DIR/terraform"
+    
+    cd "$_ADDONS_DIR"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
-        [ ! -f "$ROCK8S_LIB_PATH/addons" ] || \
+        [ ! -f "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" ] || \
         [ ! -d "$TF_DATA_DIR/providers" ] || \
         [ "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
         (find "$ROCK8S_LIB_PATH/addons" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
-        terraform init -backend=true -backend-config="path=$_ADDONS_DIR/terraform.tfstate" >&2
+        terraform init -backend=true -backend-config="path=terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
-    echo terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
-    echo terraform output -json > "$_ADDONS_DIR/output.json"
+    terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve" || true) >&2
+    terraform output -json > "$_ADDONS_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" | \
         _format_output "$_FORMAT"
