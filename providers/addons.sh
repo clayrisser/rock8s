@@ -1,6 +1,13 @@
 #!/bin/sh
 
-AVAILABLE_ADDONS="
+_AVAILABLE_REGISTRIES="
+docker.io
+ghcr.io
+registry.gitlab.com
+public.ecr.aws
+quay.io"
+
+_AVAILABLE_ADDONS="
 ingress_nginx
 ceph
 s3
@@ -24,7 +31,7 @@ vault
 openebs
 cluster_issuer"
 
-DEFAULT_ENABLED_ADDONS="
+_DEFAULT_ENABLED_ADDONS="
 ingress_nginx
 external_dns
 flux
@@ -62,7 +69,7 @@ _GIT_USERNAME=""
 _GIT_PASSWORD=""
 _GIT_REPO=""
 _RETENTION_HOURS="168"
-_KANISTER_BUCKET="kanister"
+_KANISTER_BUCKET="${CLUSTER}-kanister"
 
 _is_addon_enabled() {
     for _SELECTED_ADDON in $_SELECTED_ADDONS; do
@@ -73,12 +80,32 @@ _is_addon_enabled() {
     return 1
 }
 
-_AVAILABLE_ADDONS="$(echo "$AVAILABLE_ADDONS" | tr '\n' ' ' | xargs)"
-export DEFAULT_ADDONS="$(echo "$DEFAULT_ENABLED_ADDONS" | tr '\n' ' ' | xargs)"
-_SELECTED_ADDONS="$(prompt_multiselect "Select addons to enable" "DEFAULT_ADDONS" $_AVAILABLE_ADDONS)"
+_SELECTED_REGISTRIES="$(prompt_multiselect "Select registries to configure" "" $_AVAILABLE_REGISTRIES)"
+_REGISTRIES=""
+for _REGISTRY in $_SELECTED_REGISTRIES; do
+    _REGISTRY_USERNAME="$(prompt_text "Enter username for $_REGISTRY" "" "" 1)"
+    _REGISTRY_PASSWORD="$(prompt_password "Enter password for $_REGISTRY" "" 1)"
+    if [ -n "$_REGISTRIES" ]; then
+        _REGISTRIES="$_REGISTRIES
+  $_REGISTRY:
+    username: \"$_REGISTRY_USERNAME\"
+    password: \"$_REGISTRY_PASSWORD\""
+    else
+        _REGISTRIES="  $_REGISTRY:
+    username: \"$_REGISTRY_USERNAME\"
+    password: \"$_REGISTRY_PASSWORD\""
+    fi
+done
+
+if [ -z "$ADDONS" ]; then
+    ADDONS="$(echo "$_DEFAULT_ENABLED_ADDONS" | tr '\n' ' ' | xargs)"
+fi
+export ADDONS
+_AVAILABLE_ADDONS="$(echo "$_AVAILABLE_ADDONS" | tr '\n' ' ' | xargs)"
+_SELECTED_ADDONS="$(prompt_multiselect "Select addons to enable" "ADDONS" $_AVAILABLE_ADDONS)"
 
 _ADDONS_CONFIG=""
-for _ADDON in $AVAILABLE_ADDONS; do
+for _ADDON in $_AVAILABLE_ADDONS; do
     _ENABLED="false"
     for _SELECTED_ADDON in $_SELECTED_ADDONS; do
         if [ "$_ADDON" = "$_SELECTED_ADDON" ]; then
@@ -86,7 +113,6 @@ for _ADDON in $AVAILABLE_ADDONS; do
             break
         fi
     done
-    
     if [ -n "$_ADDONS_CONFIG" ]; then
         _ADDONS_CONFIG="$_ADDONS_CONFIG
   $_ADDON: $_ENABLED"
@@ -98,57 +124,67 @@ done
 for _ADDON in $_SELECTED_ADDONS; do
     case $_ADDON in
         ceph)
-            _CEPH_MONITORS="$(prompt_text "Enter ceph monitors (comma-separated)" "" "" 1)"
-            _CEPH_ADMIN_ID="$(prompt_text "Enter ceph admin id" "" "" 1)"
-            _CEPH_ADMIN_KEY="$(prompt_password "Enter ceph admin key" "" 1)"
-            _CEPH_CLUSTER_ID="$(prompt_text "Enter ceph cluster id" "" "" 1)"
-            _CEPH_RBD_POOL="$(prompt_text "Enter ceph rbd pool" "" "$_CEPH_RBD_POOL")"
+            _CEPH_MONITORS="$(prompt_text "Enter ceph monitors" "CEPH_MONITORS" "" 1)"
+            _CEPH_ADMIN_ID="$(prompt_text "Enter ceph admin id" "CEPH_ADMIN_ID" "" 1)"
+            _CEPH_ADMIN_KEY="$(prompt_password "Enter ceph admin key" "CEPH_ADMIN_KEY" 1)"
+            _CEPH_CLUSTER_ID="$(prompt_text "Enter ceph cluster id" "CEPH_CLUSTER_ID" "" 1)"
+            _CEPH_RBD_POOL="$(prompt_text "Enter ceph rbd pool" "CEPH_RBD_POOL" "$_CEPH_RBD_POOL")"
             ;;
         s3)
-            _S3_ENDPOINT="$(prompt_text "Enter s3 endpoint" "" "" 1)"
-            _S3_ACCESS_KEY="$(prompt_text "Enter s3 access key" "" "" 1)"
-            _S3_SECRET_KEY="$(prompt_password "Enter s3 secret key" "" 1)"
+            _S3_ENDPOINT="$(prompt_text "Enter s3 endpoint" "S3_ENDPOINT" "" 1)"
+            _S3_ACCESS_KEY="$(prompt_text "Enter s3 access key" "S3_ACCESS_KEY" "" 1)"
+            _S3_SECRET_KEY="$(prompt_password "Enter s3 secret key" "S3_SECRET_KEY" 1)"
             ;;
         external_dns)
-            _USE_PDNS="$(prompt_boolean "Do you want to use powerdns" "" "0")"
-            if [ "$_USE_PDNS" = "1" ]; then
-                _PDNS_API_URL="$(prompt_text "Enter powerdns api url" "" "" 1)"
-                _PDNS_API_KEY="$(prompt_password "Enter powerdns api key" "" 1)"
-            else
-                _USE_CLOUDFLARE="$(prompt_boolean "Do you want to use cloudflare" "" "0")"
-                if [ "$_USE_CLOUDFLARE" = "1" ]; then
-                    _CLOUDFLARE_EMAIL="$(prompt_text "Enter cloudflare email" "" "" 1)"
-                    _CLOUDFLARE_API_KEY="$(prompt_password "Enter cloudflare api key" "" 1)"
-                fi
-            fi
+            _DNS_PROVIDER="$(prompt_select "Select dns provider" "DNS_PROVIDER" "cloudflare" "powerdns" "cloudflare")"
+            case $_DNS_PROVIDER in
+                powerdns)
+                    _PDNS_API_URL="$(prompt_text "Enter powerdns api url" "PDNS_API_URL" "" 1)"
+                    _PDNS_API_KEY="$(prompt_password "Enter powerdns api key" "PDNS_API_KEY" 1)"
+                    ;;
+                cloudflare)
+                    _CLOUDFLARE_EMAIL="$(prompt_text "Enter cloudflare email" "CLOUDFLARE_EMAIL" "" 1)"
+                    _CLOUDFLARE_API_KEY="$(prompt_password "Enter cloudflare api key" "CLOUDFLARE_API_KEY" 1)"
+                    ;;
+            esac
             ;;
         rancher)
-            _RANCHER_TOKEN="$(prompt_password "Enter rancher token" "" 1)"
-            _RANCHER_HOSTNAME="$(prompt_text "Enter rancher hostname" "" "" 1)"
+            _RANCHER_TOKEN="$(prompt_password "Enter rancher token" "RANCHER_TOKEN" 1)"
+            _RANCHER_HOSTNAME="$(prompt_text "Enter rancher hostname" "RANCHER_HOSTNAME" "" 1)"
             ;;
         flux)
-            _GIT_REPO="$(prompt_text "Enter git repository" "" "" 1)"
-            if echo "$_GIT_REPO" | grep -q "gitlab.com" && [ -n "$REGISTRIES" ]; then
-                _GIT_USERNAME=""
-                _GIT_PASSWORD=""
-            else
-                _GIT_USERNAME="$(prompt_text "Enter git username" "" "")"
+            _GIT_REPO="$(prompt_text "Enter git repository" "GIT_REPO" "" 1)"
+            if ! (echo "$_GIT_REPO" | grep -q "gitlab.com" && echo "$_REGISTRIES" | grep -q "gitlab.com"); then
+                _GIT_USERNAME="$(prompt_text "Enter git username" "GIT_USERNAME" "")"
                 if [ -n "$_GIT_USERNAME" ]; then
-                    _GIT_PASSWORD="$(prompt_password "Enter git password" "")"
+                    _GIT_PASSWORD="$(prompt_password "Enter git password" "GIT_PASSWORD" 1)"
+                else
+                    _GIT_PASSWORD=""
                 fi
             fi
             ;;
         tempo)
-            _RETENTION_HOURS="$(prompt_text "Enter retention hours" "" "$_RETENTION_HOURS")"
+            _RETENTION_HOURS="$(prompt_text "Enter retention hours" "RETENTION_HOURS" "$_RETENTION_HOURS")"
             ;;
         kanister)
-            _KANISTER_BUCKET="$(prompt_text "Enter kanister bucket name" "" "$_KANISTER_BUCKET")"
+            _KANISTER_BUCKET="$(prompt_text "Enter kanister bucket name" "KANISTER_BUCKET" "$_KANISTER_BUCKET")"
             ;;
     esac
 done
 
 if [ -z "$_CLOUDFLARE_EMAIL" ]; then
-    _EMAIL="$(prompt_text "Enter your email address" "" "" 1)"
+    _EMAIL="$(prompt_text "Enter your email address" "EMAIL" "" 1)"
+fi
+
+if [ -n "$_REGISTRIES" ]; then
+    cat <<EOF >> "$_CONFIG_FILE"
+registries:
+$_REGISTRIES
+EOF
+else
+    cat <<EOF >> "$_CONFIG_FILE"
+registries:
+EOF
 fi
 
 cat <<EOF >> "$_CONFIG_FILE"
@@ -165,7 +201,8 @@ fi
 
 if _is_addon_enabled "ceph"; then
     cat <<EOF >> "$_CONFIG_FILE"
-  ceph_monitors: $_CEPH_MONITORS
+  ceph_monitors:
+$(echo "$_CEPH_MONITORS" | tr ',' ' ' | tr -s ' ' '\n' | sed '/^$/d' | sed 's/^/    - /')
   ceph_admin_id: $_CEPH_ADMIN_ID
   ceph_admin_key: $_CEPH_ADMIN_KEY
   ceph_cluster_id: $_CEPH_CLUSTER_ID

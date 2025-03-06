@@ -170,6 +170,7 @@ _main() {
         mkdir -p "$(dirname "$_CONFIG_FILE")"
         _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
         if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_CONFIG_FILE" ] && [ "$_NON_INTERACTIVE" = "0" ]; then
+            export CLUSTER="$_CLUSTER"
             { _ERROR="$(sh "$_PROVIDER_DIR/config.sh" "$_CONFIG_FILE")"; _EXIT_CODE="$?"; } || true
             if [ "$_EXIT_CODE" -ne 0 ]; then
                 if [ -n "$_ERROR" ]; then
