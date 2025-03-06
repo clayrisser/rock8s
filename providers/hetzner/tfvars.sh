@@ -13,13 +13,13 @@ fi
 
 case "$_PURPOSE" in
     pfsense)
-        yaml2json | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers, .provider)'
+        yaml2json | jq '. + {nodes: .pfsense} | del(.pfsense, .masters, .workers, .provider, .registries, .addons)'
         ;;
     master)
-        yaml2json | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers, .provider)'
+        yaml2json | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers, .provider, .registries, .addons)'
         ;;
     worker)
-        yaml2json | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers, .provider)'
+        yaml2json | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers, .provider, .registries, .addons)'
         ;;
     *)
         echo "invalid purpose $_PURPOSE" >&2

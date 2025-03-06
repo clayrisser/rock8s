@@ -1,7 +1,7 @@
 module "cluster-issuer" {
   source            = "./modules/cluster_issuer"
   enabled           = var.cluster_issuer
-  letsencrypt_email = var.email
+  letsencrypt_email = local.email
   issuers = {
     letsencrypt = true
     selfsigned  = true

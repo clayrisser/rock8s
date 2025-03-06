@@ -51,6 +51,9 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name (default: current user)
 
+       --cluster <cluster>
+              name of the cluster to manage
+
 COMMANDS
        nodes
               create and manage cluster nodes
@@ -73,6 +76,7 @@ _main() {
     _CMD=""
     _CMD_ARGS=""
     _TENANT="$ROCK8S_TENANT"
+    _CLUSTER="$ROCK8S_CLUSTER"
     if [ -z "$_TENANT" ]; then
         _TENANT="default"
     fi
@@ -110,6 +114,18 @@ _main() {
                         ;;
                 esac
                 ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
             nodes|cluster|pfsense)
                 _CMD="$1"
                 shift
@@ -127,6 +143,7 @@ _main() {
         exit 1
     fi
     export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then

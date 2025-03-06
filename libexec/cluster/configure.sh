@@ -153,7 +153,7 @@ _main() {
     mkdir -p "$_ADDONS_DIR"
     rm -rf "$_ADDONS_DIR/terraform"
     cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"
-    echo "$_CONFIG_JSON" | jq -e '.cluster // {}' > $_ADDONS_DIR/terraform.tfvars.json
+    echo "$_CONFIG_JSON" | jq -e '.addons // {}' > $_ADDONS_DIR/terraform.tfvars.json
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_entrypoint="$_ENTRYPOINT"
     export TF_VAR_kubeconfig="$_KUBECONFIG"
