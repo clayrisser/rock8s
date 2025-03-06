@@ -132,7 +132,7 @@ _main() {
     _ensure_system
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
     export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
+    _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
     _IS_UPDATE=0
     if [ -d "$_PURPOSE_DIR" ] && [ -f "$_PURPOSE_DIR/output.json" ]; then
         _IS_UPDATE=1
@@ -213,15 +213,8 @@ _main() {
     if [ ! -d "$_PROVIDER_DIR" ]; then
         _fail "provider $_PROVIDER not found"
     fi
-    if [ "$_IS_UPDATE" = "1" ]; then
-        rm -rf "$CLUSTER_DIR/provider"
-        cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
-    else
-        if [ ! -d "$CLUSTER_DIR/provider" ]; then
-            mkdir -p "$CLUSTER_DIR"
-            cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
-        fi
-    fi
+    rm -rf "$CLUSTER_DIR/provider"
+    cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     yaml2json < "$_CONFIG_FILE" | sh "$CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ "$_PURPOSE" != "pfsense" ]; then
         export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"

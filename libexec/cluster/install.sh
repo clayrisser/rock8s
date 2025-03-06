@@ -119,11 +119,11 @@ _main() {
     fi
     _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
     if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
-        _fail "network.lan.subnet not found in config.yaml"
+        _fail ".network.lan.subnet not found in config.yaml"
     fi
     _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
     if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
-        _fail "network.entrypoint not found in config.yaml"
+        _fail ".network.entrypoint not found in config.yaml"
     fi
     _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
     _MASTER_IPS="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
@@ -160,7 +160,7 @@ _main() {
     if [ ! -d "$_CLUSTER_DIR/inventory" ]; then
         cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
     fi
-    cp "$ROCK8S_LIB_PATH/kubernetes/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml"
+    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml"
     _MTU="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.mtu')"
     if [ -z "$_MTU" ] || [ "$_MTU" = "null" ]; then
         _MTU="1500"
@@ -175,7 +175,7 @@ _main() {
     if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
         _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
     fi
-    cp "$ROCK8S_LIB_PATH/kubernetes/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
+    cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
     cat >> "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml" <<EOF
 
 enable_dual_stack_networks: $_DUELSTACK
@@ -216,6 +216,7 @@ EOF
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/postinstall.yml" -b -v
+    "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" --cluster "$_CLUSTER" --tenant "$_TENANT" --kubeconfig "$_CLUSTER_DIR/kube.yaml" --output json > /dev/null
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 

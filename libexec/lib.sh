@@ -334,63 +334,32 @@ _calculate_next_ipv4() {
 _register_kubeconfig() {
     _KUBECONFIG_FILE="$1"
     _CLUSTER_NAME="$2"
-    if [ -z "$_KUBECONFIG_FILE" ] || [ -z "$_CLUSTER_NAME" ]; then
-        _fail "register_kubeconfig <kubeconfig_file> <cluster_name>"
-    fi
-    if ! command -v kubectl >/dev/null 2>&1; then
-        _fail "kubectl is not installed"
-    fi
-    export KUBECONFIG="$HOME/.kube/config:$_KUBECONFIG_FILE"
-    mkdir -p "$HOME/.kube"
-    if [ -f "$HOME/.kube/config" ]; then
-        cp "$HOME/.kube/config" "$HOME/.kube/config.bak"
-    fi
-    kubectl config view --merge --flatten > "$HOME/.kube/_config"
-    mv "$HOME/.kube/_config" "$HOME/.kube/config"
+    _TARGET_KUBECONFIG="${KUBECONFIG_PATH:-$HOME/.kube/config}"
     _NEW_CONTEXT="$(kubectl config get-contexts --kubeconfig="$_KUBECONFIG_FILE" -o name | head -n 1)"
+    if [ -z "$_NEW_CONTEXT" ]; then
+        _fail "context not found in kubeconfig file"
+    fi
     _NEW_CLUSTER_NAME="$(kubectl config view --kubeconfig="$_KUBECONFIG_FILE" -o jsonpath='{.clusters[0].name}')"
     _NEW_USER_NAME="$(kubectl config view --kubeconfig="$_KUBECONFIG_FILE" -o jsonpath='{.users[0].name}')"
+    mkdir -p "$(dirname "$_TARGET_KUBECONFIG")"
+    if [ -f "$_TARGET_KUBECONFIG" ]; then
+        cp "$_TARGET_KUBECONFIG" "$_TARGET_KUBECONFIG.bak"
+    fi
+    export KUBECONFIG="$_TARGET_KUBECONFIG:$_KUBECONFIG_FILE"
+    _TMP_CONFIG="$(mktemp)"
+    kubectl config view --merge --flatten > "$_TMP_CONFIG"
+    mv "$_TMP_CONFIG" "$_TARGET_KUBECONFIG"
+    export KUBECONFIG="$_TARGET_KUBECONFIG"
     kubectl config unset "contexts.$_CLUSTER_NAME" >/dev/null 2>&1 || true
     kubectl config unset "clusters.$_CLUSTER_NAME" >/dev/null 2>&1 || true
     kubectl config unset "users.$_CLUSTER_NAME" >/dev/null 2>&1 || true
-    kubectl config rename-context "$_NEW_CONTEXT" "$_CLUSTER_NAME" >/dev/null 2>&1 || true
+    kubectl config rename-context "$_NEW_CONTEXT" "$_CLUSTER_NAME" >/dev/null
     kubectl config view --raw -o json | jq '
-      .contexts |= map(select(.name != "'"$_CLUSTER_NAME"'")) |
-      .clusters |= map(select(.name != "'"$_CLUSTER_NAME"'")) |
-      .users |= map(select(.name != "'"$_CLUSTER_NAME"'")) |
-      .contexts[] |= if .name == "'"$_NEW_CONTEXT"'" then .name = "'"$_CLUSTER_NAME"'" else . end |
       .clusters[] |= if .name == "'"$_NEW_CLUSTER_NAME"'" then .name = "'"$_CLUSTER_NAME"'" else . end |
       .users[] |= if .name == "'"$_NEW_USER_NAME"'" then .name = "'"$_CLUSTER_NAME"'" else . end |
       .contexts[] |= if .name == "'"$_CLUSTER_NAME"'" then .context.cluster = "'"$_CLUSTER_NAME"'" | .context.user = "'"$_CLUSTER_NAME"'" else . end
-    ' | json2yaml > "$HOME/.kube/config.tmp"
-    mv "$HOME/.kube/config.tmp" "$HOME/.kube/config"
-    chmod 600 "$HOME/.kube/config"
-    kubectl config use-context "$_CLUSTER_NAME"
-    _CONTEXTS=$(kubectl config get-contexts -o name)
-    for _USER in $(kubectl config view -o jsonpath='{.users[*].name}'); do
-        _USER_IN_CONTEXTS=0
-        for _CONTEXT in $_CONTEXTS; do
-            _CONTEXT_USER="$(kubectl config view -o jsonpath="{.contexts[?(@.name=='$_CONTEXT')].context.user}")"
-            if [ "$_CONTEXT_USER" = "$_USER" ]; then
-                _USER_IN_CONTEXTS=1
-                break
-            fi
-        done
-        if [ "$_USER_IN_CONTEXTS" = "0" ]; then
-            kubectl config unset "users.$_USER" >/dev/null 2>&1 || true
-        fi
-    done
-    for _CLUSTER in $(kubectl config view -o jsonpath='{.clusters[*].name}'); do
-        _CLUSTER_IN_CONTEXTS=0
-        for _CONTEXT in $_CONTEXTS; do
-            _CONTEXT_CLUSTER="$(kubectl config view -o jsonpath="{.contexts[?(@.name=='$_CONTEXT')].context.cluster}")"
-            if [ "$_CONTEXT_CLUSTER" = "$_CLUSTER" ]; then
-                _CLUSTER_IN_CONTEXTS=1
-                break
-            fi
-        done
-        if [ "$_CLUSTER_IN_CONTEXTS" = "0" ]; then
-            kubectl config unset "clusters.$_CLUSTER" >/dev/null 2>&1 || true
-        fi
-    done
+    ' | json2yaml > "$_TARGET_KUBECONFIG.tmp"
+    mv "$_TARGET_KUBECONFIG.tmp" "$_TARGET_KUBECONFIG"
+    chmod 600 "$_TARGET_KUBECONFIG"
+    kubectl config use-context "$_CLUSTER_NAME" >/dev/null
 }

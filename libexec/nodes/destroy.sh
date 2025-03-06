@@ -137,7 +137,7 @@ _main() {
     if [ ! -d "$CLUSTER_DIR" ]; then
         _fail "cluster $_CLUSTER not found"
     fi
-    export _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
+    _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
     if [ ! -d "$_PURPOSE_DIR" ] || [ ! -f "$_PURPOSE_DIR/output.json" ]; then
         _fail "nodes $_PURPOSE not found"
     fi
