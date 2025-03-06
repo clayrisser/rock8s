@@ -91,7 +91,7 @@ prompt_password() {
         { _ANSWER=$(whiptail --title "$_TITLE" \
             --backtitle "Rock8s Configuration" \
             --passwordbox "$_PROMPT" \
-            0 0 \
+            8 60 \
             3>&1 1>&2 2>&3); _EXIT_CODE=$?; } || true
         if [ $_EXIT_CODE -eq $WHIPTAIL_CANCEL ] || [ $_EXIT_CODE -eq $WHIPTAIL_ESC ]; then
             if [ "$_REQUIRED" = "0" ] && [ -n "$_ENV_VALUE" ]; then
@@ -153,7 +153,7 @@ prompt_boolean() {
     return 0
 }
 
-prompt_enum() {
+prompt_select() {
     _PROMPT="$1"
     _ENV_VAR="$2"
     _DEFAULT="$3"

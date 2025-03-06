@@ -16,7 +16,7 @@ secret:
   adminKey: ${var.admin_key}
 csiConfig:
   - clusterID: ${var.cluster_id}
-    monitors: ${var.monitors}
+    monitors: ${join(",", var.monitors)}
 nodeplugin:
   httpMetrics:
     containerPort: 8082
@@ -54,7 +54,7 @@ secret:
   userKey: ${var.admin_key}
 csiConfig:
   - clusterID: ${var.cluster_id}
-    monitors: ${var.monitors}
+    monitors: ${join(",", var.monitors)}
 nodeplugin:
   httpMetrics:
     containerPort: 8083
