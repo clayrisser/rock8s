@@ -11,7 +11,8 @@ variable "rbd_version" {
 }
 
 variable "monitors" {
-  default = ""
+  type    = list(string)
+  default = []
 }
 
 variable "admin_id" {

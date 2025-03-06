@@ -110,7 +110,8 @@ variable "ceph" {
 }
 
 variable "ceph_monitors" {
-  default = ""
+  type    = list(string)
+  default = []
 }
 
 variable "ceph_admin_id" {

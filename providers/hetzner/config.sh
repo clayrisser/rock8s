@@ -2,7 +2,7 @@
 
 set -e
 
-AVAILABLE_LOCATIONS="
+_AVAILABLE_LOCATIONS="
 nbg1
 fsn1
 hel1
@@ -10,7 +10,7 @@ sin
 hil
 ash"
 
-AVAILABLE_SERVER_TYPES="
+_AVAILABLE_SERVER_TYPES="
 cpx11
 cpx21
 cpx31
@@ -31,58 +31,34 @@ cx32
 cx42
 cx52"
 
-AVAILABLE_REGISTRIES="
-docker.io
-ghcr.io
-registry.gitlab.com
-public.ecr.aws
-quay.io"
+_DEFAULT_LOCATION="nbg1"
+_DEFAULT_NETWORK="172.20.0.0/16"
+_DEFAULT_PFSENSE_TYPE="cx22"
+_DEFAULT_MASTER_TYPE="cx32"
+_DEFAULT_WORKER_TYPE="cx22"
+_DEFAULT_WORKER_COUNT="2"
 
-DEFAULT_LOCATION="nbg1"
-DEFAULT_MASTER_COUNT="1"
-DEFAULT_WORKER_TYPE="cx22"
-DEFAULT_PFSENSE_TYPE="cx22"
-DEFAULT_MASTER_TYPE="cx32"
-DEFAULT_WORKER_COUNT="2"
-
-: "${LOCATION:=$DEFAULT_LOCATION}"
-: "${NETWORK:=$DEFAULT_NETWORK}"
+: "${LOCATION:=$_DEFAULT_LOCATION}"
+: "${NETWORK:=$_DEFAULT_NETWORK}"
 
 _CONFIG_FILE="$1"
 . "$(dirname "$0")/../providers.sh"
 
-_LOCATION="$(prompt_enum "Select location" "LOCATION" "$DEFAULT_LOCATION" $AVAILABLE_LOCATIONS)"
-_ENTRYPOINT="$(prompt_text "Enter network entrypoint" "ENTRYPOINT" "" 1)"
-_PFSENSE_TYPE="$(prompt_enum "Select pfsense node type" "" "$DEFAULT_PFSENSE_TYPE" $AVAILABLE_SERVER_TYPES)"
+_LOCATION="$(prompt_select "Select location" "LOCATION" "$_DEFAULT_LOCATION" $_AVAILABLE_LOCATIONS)"
+_ENTRYPOINT="$(prompt_text "Enter network entrypoint" "ENTRYPOINT" "$_DEFAULT_ENTRYPOINT" 1)"
+_PFSENSE_TYPE="$(prompt_select "Select pfsense node type" "PFSENSE_TYPE" "$_DEFAULT_PFSENSE_TYPE" $_AVAILABLE_SERVER_TYPES)"
 
-_PRIMARY_HOSTNAME="$(prompt_text "Enter primary pfsense hostname" "" "" 1)"
-_SECONDARY_HOSTNAME="$(prompt_text "Enter secondary pfsense hostname" "" "")"
+_PRIMARY_HOSTNAME="$(prompt_text "Enter primary pfsense hostname" "PRIMARY_HOSTNAME" "" 1)"
+_SECONDARY_HOSTNAME="$(prompt_text "Enter secondary pfsense hostname" "SECONDARY_HOSTNAME" "")"
 
 _PFSENSE_HOSTNAMES="[\"$_PRIMARY_HOSTNAME\""
 if [ -n "$_SECONDARY_HOSTNAME" ]; then
     _PFSENSE_HOSTNAMES="$_PFSENSE_HOSTNAMES,\"$_SECONDARY_HOSTNAME\""
 fi
 _PFSENSE_HOSTNAMES="$_PFSENSE_HOSTNAMES]"
-_MASTER_TYPE="$(prompt_enum "Select master node type" "" "$DEFAULT_MASTER_TYPE" $AVAILABLE_SERVER_TYPES)"
-_WORKER_TYPE="$(prompt_enum "Select worker node type" "" "$DEFAULT_WORKER_TYPE" $AVAILABLE_SERVER_TYPES)"
-_WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "" "$DEFAULT_WORKER_COUNT" 1)"
-
-_SELECTED_REGISTRIES="$(prompt_multiselect "Select registries to configure" "" $AVAILABLE_REGISTRIES)"
-_REGISTRIES=""
-for _REGISTRY in $_SELECTED_REGISTRIES; do
-    _REGISTRY_USERNAME="$(prompt_text "Enter username for $_REGISTRY" "" "")"
-    _REGISTRY_PASSWORD="$(prompt_password "Enter password for $_REGISTRY" "")"
-    if [ -n "$_REGISTRIES" ]; then
-        _REGISTRIES="$_REGISTRIES
-  $_REGISTRY:
-    username: \"$_REGISTRY_USERNAME\"
-    password: \"$_REGISTRY_PASSWORD\""
-    else
-        _REGISTRIES="  $_REGISTRY:
-    username: \"$_REGISTRY_USERNAME\"
-    password: \"$_REGISTRY_PASSWORD\""
-    fi
-done
+_MASTER_TYPE="$(prompt_select "Select master node type" "MASTER_TYPE" "$_DEFAULT_MASTER_TYPE" $_AVAILABLE_SERVER_TYPES)"
+_WORKER_TYPE="$(prompt_select "Select worker node type" "WORKER_TYPE" "$_DEFAULT_WORKER_TYPE" $_AVAILABLE_SERVER_TYPES)"
+_WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "WORKER_COUNT" "$_DEFAULT_WORKER_COUNT" 1)"
 
 cat <<EOF > "$_CONFIG_FILE"
 image: debian-12
@@ -102,14 +78,3 @@ workers:
   - type: $_WORKER_TYPE
     count: $_WORKER_COUNT
 EOF
-
-if [ -n "$_REGISTRIES" ]; then
-    cat <<EOF >> "$_CONFIG_FILE"
-registries:
-$_REGISTRIES
-EOF
-else
-    cat <<EOF >> "$_CONFIG_FILE"
-registries:
-EOF
-fi
