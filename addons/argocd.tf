@@ -26,10 +26,10 @@ provider "argocd" {
 }
 
 resource "argocd_repository" "git" {
-  count    = (var.argocd && var.gitlab_repo != "") ? 1 : 0
-  repo     = var.gitlab_repo
-  username = var.gitlab_username
-  password = var.gitlab_token
+  count    = (var.argocd && var.git_repo != "") ? 1 : 0
+  repo     = var.git_repo
+  username = var.git_username
+  password = var.git_password
   insecure = false
 }
 
