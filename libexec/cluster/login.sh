@@ -19,7 +19,7 @@ NAME
        rock8s cluster login - login to kubernetes cluster
 
 SYNOPSIS
-       rock8s cluster login [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]
+       rock8s cluster login [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--kubeconfig <path>]
 
 DESCRIPTION
        login to kubernetes cluster and configure kubectl
@@ -37,6 +37,9 @@ OPTIONS
 
        --cluster <cluster>
               name of the cluster to login to (required)
+
+       --kubeconfig <path>
+              path to the kubeconfig file (default: $HOME/.kube/config)
 EOF
 }
 
@@ -44,6 +47,7 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
+    _KUBECONFIG="$HOME/.kube/config"
     trap _cleanup EXIT INT TERM
     while test $# -gt 0; do
         case "$1" in
@@ -83,6 +87,18 @@ _main() {
                         ;;
                     *)
                         _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --kubeconfig|--kubeconfig=*)
+                case "$1" in
+                    *=*)
+                        _KUBECONFIG="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _KUBECONFIG="$2"
                         shift 2
                         ;;
                 esac
@@ -136,7 +152,7 @@ _main() {
         _fail "network.entrypoint not found in config.yaml"
     fi
     _ensure_system
-    mkdir -p "$HOME/.kube"
+    mkdir -p "$(dirname "$_KUBECONFIG")"
     _TEMP_KUBECONFIG="$(mktemp)"
     _TEMP_FILES="$_TEMP_FILES $_TEMP_KUBECONFIG"
     ssh -i "$_SSH_KEY_FILE" -o StrictHostKeyChecking=no admin@"$_MASTER_IP" "sudo cat /etc/kubernetes/admin.conf" > "$_TEMP_KUBECONFIG"
@@ -146,8 +162,8 @@ _main() {
         jq ".clusters[0].cluster.server = \"https://$_MASTER_IP:6443\"" | \
         json2yaml > "$_TEMP_KUBECONFIG_TMP"
     mv "$_TEMP_KUBECONFIG_TMP" "$_TEMP_KUBECONFIG"
-    _register_kubeconfig "$_TEMP_KUBECONFIG" "$_ENTRYPOINT"
-    printf '{"name":"%s","entrypoint":"%s","server":"%s"}\n' "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IP" | _format_output "$_FORMAT" cluster
+    KUBECONFIG_PATH="$_KUBECONFIG" _register_kubeconfig "$_TEMP_KUBECONFIG" "$_ENTRYPOINT"
+    printf '{"name":"%s","entrypoint":"%s","server":"%s","kubeconfig":"%s"}\n' "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IP" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@" 
