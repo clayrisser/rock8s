@@ -160,15 +160,15 @@ _main() {
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
     cd "$_ADDONS_DIR/terraform"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
-        [ ! -f "$ROCK8S_LIB_PATH/addons" ] || \
+        [ ! -f "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" ] || \
         [ ! -d "$TF_DATA_DIR/providers" ] || \
         [ "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
         (find "$ROCK8S_LIB_PATH/addons" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
         terraform init -backend=true -backend-config="path=$_ADDONS_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
-    echo terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
-    echo terraform output -json > "$_ADDONS_DIR/output.json"
+    terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
+    terraform output -json > "$_ADDONS_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" | \
         _format_output "$_FORMAT"
