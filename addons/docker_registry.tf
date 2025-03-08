@@ -1,4 +1,5 @@
 resource "kubernetes_secret" "registry" {
+  count = length(var.registries) > 0 ? 1 : 0
   metadata {
     name      = "registries"
     namespace = "kube-system"
@@ -22,12 +23,12 @@ resource "kubernetes_secret" "registry" {
 }
 
 resource "kubectl_manifest" "sync-registry" {
-  count     = var.kyverno ? 1 : 0
+  count     = length(var.registries) > 0 ? 1 : 0
   yaml_body = <<EOF
 apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+kind: Policy
 metadata:
-  name: sync-registry
+  name: ${kubernetes_secret.registry[0].metadata.0.name}
 spec:
   background: true
   mutateExistingOnPolicyUpdate: true
@@ -36,18 +37,19 @@ spec:
       match:
         resources:
           kinds:
-            - Namespace
-      generate:
-        apiVersion: v1
-        kind: Secret
-        name: ${kubernetes_secret.registry.metadata.0.name}
-        namespace: '{{request.object.metadata.name}}'
-        synchronize: true
-        clone:
-          namespace: ${kubernetes_secret.registry.metadata.0.namespace}
-          name: ${kubernetes_secret.registry.metadata.0.name}
+            - v1/Pod
+      mutate:
+        targets:
+          - apiVersion: v1
+            kind: Pod
+        patchStrategicMerge:
+          spec:
+            imagePullSecrets:
+              - name: ${kubernetes_secret.registry[0].metadata.0.name}
+            containers:
+              - (name): "*"
+                imagePullSecrets:
+                  - namespace: ${kubernetes_secret.registry[0].metadata.0.namespace}
+                    name: ${kubernetes_secret.registry[0].metadata.0.name}
 EOF
-  depends_on = [
-    module.kyverno,
-  ]
 }

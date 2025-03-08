@@ -1,21 +1,526 @@
 ---
-- name: Configure haproxy backends
-  pfsensible.core.pfsense_haproxy_backend:
-    name: "{{ item.name }}"
-    state: "{{ item.state | default('present') }}"
-    balance: "{{ item.balance | default('roundrobin') }}"
-    server_state_enabled: "{{ item.server_state_enabled | default(true) }}"
-  loop: "{{ pfsense.haproxy.backends | default([]) }}"
+- name: Define haproxy regex patterns
+  set_fact:
+    haproxy_regex_key_val: '[a-zA-Z]+(?:=[^:;]+)?'
+    haproxy_regex_key_vals: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?'
+    haproxy_regex_port: '\\d+'
+    haproxy_regex_host_port: '[^:@]+:\\d+'
+    haproxy_regex_weight: '(?:@\\d+)?'
+    haproxy_regex_target: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?[^:@]+:\\d+(?:@\\d+)?'
+    haproxy_regex_shared_config: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*\\s*\\|\\s*)?'
+    haproxy_regex_targets: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?[^:@]+:\\d+(?:@\\d+)?(?:\\s*,\\s*(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?[^:@]+:\\d+(?:@\\d+)?)*'
+    haproxy_regex_frontend: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?(?:[^:]+:)?\\d+'
+
+- name: Parse haproxy rules
+  set_fact:
+    parsed_rules: "{{ pfsense.haproxy.rules | default([]) }}"
+
+- name: Validate haproxy rules
+  ansible.builtin.assert:
+    that:
+      - item is match('^{{ haproxy_regex_frontend }}\\s*->\\s*{{ haproxy_regex_shared_config }}{{ haproxy_regex_targets }}')
+    fail_msg: |
+      Invalid rule format: {{ item }}
+      Format: [key[=val];...:][host:]port -> [shared_key[=val];...|][[key[=val];...:][host:]port[@weight],...]
+  loop: "{{ parsed_rules }}"
+
+# Supported key/values (most pass directly to HAProxy config):
+# Frontend:
+#   Special handling:
+#   - ssl[=cert_name] : Enable SSL with optional cert name (default: 67c7191f7c801)
+#   - mode=(http|tcp) : Protocol mode (default: http)
+#   Pass-through (examples):
+#   - maxconn=N : Maximum connections
+#   - backlog=N : Connection backlog
+#   - timeout=N : Connection timeout
+#
+# Backend (shared or per-target):
+#   Special handling:
+#   - balance=(roundrobin|static-rr|leastconn|source|uri) : Load balancing method (default: roundrobin)
+#   - check=(http|tcp|ssl|mysql|pgsql|smtp) : Health check type (default: TCP)
+#   Pass-through (examples):
+#   - weight=N : Server weight for balancing
+#   - cookie=NAME : Session persistence
+#   - maxconn=N : Maximum connections
+#   - inter=N : Check interval (ms)
+#   - rise=N : Rise count for health checks
+#   - fall=N : Fall count for health checks
+
+- name: Check haproxy system settings
+  ansible.builtin.shell: |
+    cat > /tmp/check_system.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    function array_compare($a1, $a2) {
+        if (count($a1) !== count($a2)) {
+            return false;
+        }
+        foreach ($a1 as $key => $value) {
+            if (!array_key_exists($key, $a2)) {
+                return false;
+            }
+            if (is_array($value)) {
+                if (!is_array($a2[$key])) {
+                    return false;
+                }
+                if (!array_compare($value, $a2[$key])) {
+                    return false;
+                }
+            } else if ($value !== $a2[$key]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    $config = parse_config(true);
+    if (!isset($config["installedpackages"])) {
+        $config["installedpackages"] = array();
+    }
+    if (!isset($config["installedpackages"]["haproxy"])) {
+        $config["installedpackages"]["haproxy"] = array();
+    }
+    $maxconn = "10000";
+    $stats_port = "2200";
+    $desired_global = array(
+        "maxconn" => $maxconn,
+        "enabled" => "",
+        "section" => "global"
+    );
+    $desired_stats = array(
+        'stats_port' => $stats_port,
+        'stats_enabled' => 'yes',
+        'stats_bind' => '127.0.0.1:' . $stats_port,
+        'stats_uri' => '/haproxy?stats',
+        'stats_realm' => 'HAProxy Statistics'
+    );
+    $current_stats = array(
+        'stats_port' => isset($config['installedpackages']['haproxy']['stats']['stats_port']) ? $config['installedpackages']['haproxy']['stats']['stats_port'] : '',
+        'stats_enabled' => isset($config['installedpackages']['haproxy']['stats']['stats_enabled']) ? $config['installedpackages']['haproxy']['stats']['stats_enabled'] : '',
+        'stats_bind' => isset($config['installedpackages']['haproxy']['stats']['stats_bind']) ? $config['installedpackages']['haproxy']['stats']['stats_bind'] : '',
+        'stats_uri' => isset($config['installedpackages']['haproxy']['stats']['stats_uri']) ? $config['installedpackages']['haproxy']['stats']['stats_uri'] : '',
+        'stats_realm' => isset($config['installedpackages']['haproxy']['stats']['stats_realm']) ? $config['installedpackages']['haproxy']['stats']['stats_realm'] : ''
+    );
+    if (!isset($config["installedpackages"]["haproxy"]["global"]) ||
+        !array_compare($config["installedpackages"]["haproxy"]["global"], $desired_global) ||
+        !isset($config["installedpackages"]["haproxy"]["maxconn"]) ||
+        $config["installedpackages"]["haproxy"]["maxconn"] !== $maxconn ||
+        !array_compare($current_stats, $desired_stats) ||
+        $config['installedpackages']['haproxy']['localstatsport'] !== $stats_port) {
+        echo "CHANGED";
+    } else {
+        echo "UNCHANGED";
+    }
+    EOF
+    php -f /tmp/check_system.php
+    rm -f /tmp/check_system.php
+  register: haproxy_system_check
+  changed_when: haproxy_system_check.stdout == "CHANGED"
+
+- name: Configure haproxy system settings
+  ansible.builtin.shell: |
+    cat > /tmp/configure_system.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    $config = parse_config(true);
+    if (!isset($config["installedpackages"])) {
+        $config["installedpackages"] = array();
+    }
+    if (!isset($config["installedpackages"]["haproxy"])) {
+        $config["installedpackages"]["haproxy"] = array();
+    }
+    $maxconn = "10000";
+    $required_maxfiles = intval($maxconn) * 2 + 31;
+    $stats_port = "2200";
+    $config["installedpackages"]["haproxy"]["global"] = array(
+        "maxconn" => $maxconn,
+        "enabled" => "",
+        "section" => "global"
+    );
+    $config["installedpackages"]["haproxy"]["maxconn"] = $maxconn;
+    $config['installedpackages']['haproxy']['stats'] = array(
+        'stats_port' => $stats_port,
+        'stats_enabled' => 'yes',
+        'stats_bind' => '127.0.0.1:' . $stats_port,
+        'stats_uri' => '/haproxy?stats',
+        'stats_realm' => 'HAProxy Statistics'
+    );
+    $config['installedpackages']['haproxy']['localstatsport'] = $stats_port;
+    write_config();
+    haproxy_configure();
+    echo "CHANGED";
+    EOF
+    php -f /tmp/configure_system.php || echo "UNCHANGED"
+    rm -f /tmp/configure_system.php
+  register: haproxy_system_config
+  changed_when: haproxy_system_config.stdout == "CHANGED"
+  when: haproxy_system_check.stdout == "CHANGED"
+
+- name: Check haproxy configuration
+  ansible.builtin.shell: |
+    cat > /tmp/check_haproxy.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    function array_compare($a1, $a2) {
+        $a1_filtered = array_filter($a1, function($key) {
+            return $key !== "id" && $key !== "_index";
+        }, ARRAY_FILTER_USE_KEY);
+        $a2_filtered = array_filter($a2, function($key) {
+            return $key !== "id" && $key !== "_index";
+        }, ARRAY_FILTER_USE_KEY);
+        if (count($a1_filtered) !== count($a2_filtered)) {
+            return false;
+        }
+        foreach ($a1_filtered as $key => $value) {
+            if (!array_key_exists($key, $a2_filtered)) {
+                return false;
+            }
+            if (is_array($value)) {
+                if (!is_array($a2_filtered[$key])) {
+                    return false;
+                }
+                if ($key === "item") {
+                    if (count($value) !== count($a2_filtered[$key])) {
+                        return false;
+                    }
+                    $value_sorted = $value;
+                    $a2_value_sorted = $a2_filtered[$key];
+                    usort($value_sorted, function($a, $b) {
+                        return strcmp(json_encode($a), json_encode($b));
+                    });
+                    usort($a2_value_sorted, function($a, $b) {
+                        return strcmp(json_encode($a), json_encode($b));
+                    });
+                    for ($i = 0; $i < count($value_sorted); $i++) {
+                        if (!array_compare($value_sorted[$i], $a2_value_sorted[$i])) {
+                            return false;
+                        }
+                    }
+                } else if (!array_compare($value, $a2_filtered[$key])) {
+                    return false;
+                }
+            } else if ($value !== $a2_filtered[$key]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    function config_exists() {
+        global $config;
+        if (!isset($config['installedpackages'])) return false;
+        if (!isset($config['installedpackages']['haproxy'])) return false;
+        if (!isset($config['installedpackages']['haproxy']['ha_backends'])) return false;
+        if (!isset($config['installedpackages']['haproxy']['ha_pools'])) return false;
+        return true;
+    }
+    $current = array(
+        'frontends' => array(),
+        'backends' => array()
+    );
+    if (config_exists()) {
+        if (isset($config['installedpackages']['haproxy']['ha_backends']['item'])) {
+            $current['frontends'] = $config['installedpackages']['haproxy']['ha_backends']['item'];
+        }
+        if (isset($config['installedpackages']['haproxy']['ha_pools']['item'])) {
+            $current['backends'] = $config['installedpackages']['haproxy']['ha_pools']['item'];
+        }
+    }
+    function get_next_id($type) {
+        global $config;
+        $id = 100;
+        if (isset($config['installedpackages']['haproxy'])) {
+            if ($type === 'frontend' && isset($config['installedpackages']['haproxy']['ha_backends']['item'])) {
+                foreach ($config['installedpackages']['haproxy']['ha_backends']['item'] as $item) {
+                    if (isset($item['id']) && intval($item['id']) >= $id) {
+                        $id = intval($item['id']) + 1;
+                    }
+                }
+            }
+            if ($type === 'backend' && isset($config['installedpackages']['haproxy']['ha_pools']['item'])) {
+                foreach ($config['installedpackages']['haproxy']['ha_pools']['item'] as $item) {
+                    if (isset($item['id']) && intval($item['id']) >= $id) {
+                        $id = intval($item['id']) + 1;
+                    }
+                }
+            }
+            if ($type === 'server' && isset($config['installedpackages']['haproxy']['ha_pools']['item'])) {
+                foreach ($config['installedpackages']['haproxy']['ha_pools']['item'] as $pool) {
+                    if (isset($pool['ha_servers']['item'])) {
+                        foreach ($pool['ha_servers']['item'] as $server) {
+                            if (isset($server['id']) && intval($server['id']) >= $id) {
+                                $id = intval($server['id']) + 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return strval($id);
+    }
+    function parse_key_values($str) {
+        $result = array();
+        if (empty($str)) return $result;
+        $pairs = explode(';', $str);
+        foreach ($pairs as $pair) {
+            $pair = trim($pair);
+            if (empty($pair)) continue;
+            if (strpos($pair, '=') === false) {
+                $result[$pair] = '';
+            } else {
+                list($key, $value) = explode('=', $pair, 2);
+                $result[trim($key)] = trim($value);
+            }
+        }
+        return $result;
+    }
+    function parse_frontend_target($str) {
+        $parts = explode(':', trim($str));
+        $result = array(
+            'rules' => array(),
+            'host' => '',
+            'port' => ''
+        );
+        switch(count($parts)) {
+            case 3:
+                $result['rules'] = parse_key_values($parts[0]);
+                $result['host'] = $parts[1];
+                $result['port'] = $parts[2];
+                break;
+            case 2:
+                $result['host'] = $parts[0];
+                $result['port'] = $parts[1];
+                break;
+            case 1:
+                $result['port'] = $parts[0];
+                break;
+        }
+        return $result;
+    }
+    function parse_backend_target($str) {
+        $result = array(
+            'rules' => array(),
+            'host' => '',
+            'port' => '',
+            'weight' => ''
+        );
+        $parts = explode('@', trim($str));
+        $target = $parts[0];
+        if (count($parts) > 1) {
+            $result['weight'] = trim($parts[1]);
+        }
+        $parts = explode(':', trim($target));
+        switch(count($parts)) {
+            case 3:
+                $result['rules'] = parse_key_values($parts[0]);
+                $result['host'] = $parts[1];
+                $result['port'] = $parts[2];
+                break;
+            case 2:
+                if (strpos($parts[0], '=') !== false || strpos($parts[0], ';') !== false) {
+                    $result['rules'] = parse_key_values(array_shift($parts));
+                    $result['host'] = $parts[0];
+                    $result['port'] = $parts[1];
+                } else {
+                    $result['host'] = $parts[0];
+                    $result['port'] = $parts[1];
+                }
+                break;
+            case 1:
+                $result['port'] = $parts[0];
+                break;
+        }
+        return $result;
+    }
+    $rules = {{ parsed_rules | to_json }};
+    $desired = array(
+        'frontends' => array(),
+        'backends' => array()
+    );
+    foreach ($rules as $rule) {
+        list($frontend_part, $backend_part) = explode('->', trim($rule), 2);
+        $frontend = parse_frontend_target(trim($frontend_part));
+        $port = $frontend['port'];
+        $shared_config = array();
+        $backend_targets_str = trim($backend_part);
+        if (strpos($backend_targets_str, '|') !== false) {
+            list($shared_opts, $backend_targets_str) = explode('|', $backend_targets_str, 2);
+            $shared_config = parse_key_values(trim($shared_opts));
+        }
+        $frontend_name = $rule;
+        $backend_name = $rule;
+        $frontend_config = array(
+            'name' => $frontend_name,
+            'status' => 'active',
+            'type' => isset($frontend['rules']['mode']) ? $frontend['rules']['mode'] : 'http',
+            'httpclose' => 'http-keep-alive',
+            'backend_serverpool' => $backend_name,
+            'advanced' => '',
+            'ha_acls' => '',
+            'ha_certificates' => '',
+            'clientcert_ca' => '',
+            'clientcert_crl' => '',
+            'a_extaddr' => array(
+                'item' => array(
+                    array(
+                        'extaddr' => 'wan_ipv4',
+                        'extaddr_port' => $port,
+                        '_index' => ''
+                    )
+                )
+            ),
+            'a_actionitems' => '',
+            'a_errorfiles' => '',
+            'id' => strval(get_next_id('frontend'))
+        );
+        if (isset($frontend['rules']['ssl'])) {
+            $frontend_config['ssloffloadcert'] = $frontend['rules']['ssl'];
+            $frontend_config['ssloffloadacl_an'] = 'yes';
+        }
+        foreach ($frontend['rules'] as $key => $value) {
+            if ($key !== 'ssl') {
+                $frontend_config[$key] = $value;
+            }
+        }
+        $desired['frontends'][] = $frontend_config;
+        $backend = array(
+            'name' => $backend_name,
+            'descr' => $rule,
+            'status' => 'active',
+            'ha_servers' => array('item' => array()),
+            'a_acl' => '',
+            'a_actionitems' => '',
+            'errorfiles' => '',
+            'advanced' => '',
+            'advanced_backend' => '',
+            'balance' => isset($shared_config['balance']) ? $shared_config['balance'] : 'roundrobin',
+            'check_type' => isset($shared_config['check']) ? strtoupper($shared_config['check']) : 'TCP',
+            'id' => strval(get_next_id('backend'))
+        );
+        foreach ($shared_config as $key => $value) {
+            if (!in_array($key, array('balance', 'check'))) {
+                $backend[$key] = $value;
+            }
+        }
+        $backend_targets = array_map('trim', explode(',', $backend_targets_str));
+        foreach ($backend_targets as $idx => $target) {
+            $target_info = parse_backend_target($target);
+            $server = array(
+                'status' => 'active',
+                'name' => "srv_{$port}_{$idx}",
+                'descr' => $target,
+                'address' => $target_info['host'],
+                'port' => $target_info['port'],
+                '_index' => '',
+                'id' => strval(get_next_id('server')),
+                'check' => ''
+            );
+            if (!empty($target_info['weight'])) {
+                $server['weight'] = $target_info['weight'];
+            }
+            foreach ($target_info['rules'] as $key => $value) {
+                $server[$key] = $value;
+            }
+            $backend['ha_servers']['item'][] = $server;
+        }
+        $desired['backends'][] = $backend;
+    }
+    $changed = !array_compare($current, $desired);
+    $config_exists = config_exists();
+    echo json_encode(array(
+        'changed' => $changed,
+        'current' => $current,
+        'desired' => $desired,
+        'config_exists' => $config_exists
+    ));
+    EOF
+    php -f /tmp/check_haproxy.php
+    rm -f /tmp/check_haproxy.php
+  register: haproxy_check
+  changed_when: haproxy_check.stdout == "CHANGED"
   when: primary
 
-- name: Configure haproxy backend servers
-  pfsensible.core.pfsense_haproxy_backend_server:
-    backend: "{{ item.backend }}"
-    name: "{{ item.name }}"
-    address: "{{ item.address }}"
-    port: "{{ item.port }}"
-    state: "{{ item.state | default('present') }}"
-    weight: "{{ item.weight | default(100) }}"
-    enabled: "{{ item.enabled | default(true) }}"
-  loop: "{{ pfsense.haproxy.backend_servers | default([]) }}"
-  when: primary
+- name: Configure haproxy
+  ansible.builtin.shell: |
+    cat > /tmp/update_haproxy.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    error_reporting(E_ERROR | E_PARSE);
+    try {
+        $check_result = json_decode('{{ haproxy_check.stdout }}', true);
+        $desired = $check_result['desired'];
+        $current = $check_result['current'];
+        $changed = $check_result['changed'];
+        if (!$changed) {
+            echo "UNCHANGED";
+            exit(0);
+        }
+        $config = parse_config(true);
+        if (!isset($config['installedpackages'])) {
+            $config['installedpackages'] = array();
+        }
+        if (!isset($config['installedpackages']['haproxy'])) {
+            $config['installedpackages']['haproxy'] = array();
+        }
+        if (!isset($config['notifications'])) {
+            $config['notifications'] = array('notification_settings' => array());
+        }
+        if (!isset($config['installedpackages']['haproxy']['ha_backends'])) {
+            $config['installedpackages']['haproxy']['ha_backends'] = array('item' => array());
+        }
+        if (!isset($config['installedpackages']['haproxy']['ha_pools'])) {
+            $config['installedpackages']['haproxy']['ha_pools'] = array('item' => array());
+        }
+        $config['installedpackages']['haproxy']['ha_backends']['item'] = $desired['frontends'];
+        $config['installedpackages']['haproxy']['ha_pools']['item'] = $desired['backends'];
+        if (write_config()) {
+            haproxy_configure();
+            echo "CHANGED";
+            exit(0);
+        } else {
+            echo "FAILED: Could not write config";
+            exit(1);
+        }
+    } catch (Exception $e) {
+        echo "FAILED: " . $e->getMessage();
+        exit(1);
+    }
+    EOF
+    php /tmp/update_haproxy.php
+    rm -f /tmp/update_haproxy.php
+  register: haproxy_config
+  changed_when: haproxy_config.stdout == "CHANGED"
+  failed_when: haproxy_config.stdout.startswith("FAILED") or haproxy_config.rc != 0
+  when: primary and ((haproxy_check.stdout | from_json).changed or not (haproxy_check.stdout | from_json).config_exists)
+
+- name: Verify HAProxy configuration
+  ansible.builtin.shell: |
+    cat > /tmp/verify_config.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    $config = parse_config(true);
+    $haproxy_config = array();
+    if (isset($config['installedpackages']['haproxy']['global'])) {
+        $haproxy_config['global'] = $config['installedpackages']['haproxy']['global'];
+    }
+    if (isset($config['installedpackages']['haproxy']['stats'])) {
+        $haproxy_config['stats'] = $config['installedpackages']['haproxy']['stats'];
+    }
+    echo json_encode($haproxy_config, JSON_PRETTY_PRINT);
+    EOF
+    php /tmp/verify_config.php
+    rm -f /tmp/verify_config.php
+  register: haproxy_verify
+  changed_when: false
