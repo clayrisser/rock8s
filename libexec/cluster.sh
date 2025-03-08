@@ -4,6 +4,9 @@ set -e
 
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
+export KUBESPRAY_VERSION="${KUBESPRAY_VERSION:-v2.24.0}"
+export KUBESPRAY_REPO="${KUBESPRAY_REPO:-https://github.com/kubernetes-sigs/kubespray.git}"
+
 _help() {
     cat <<EOF >&2
 NAME

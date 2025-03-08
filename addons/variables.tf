@@ -94,11 +94,11 @@ variable "ingress_ports" {
 }
 
 variable "email" {
-  type = string
+  default = ""
 }
 
 variable "rancher_token" {
-  type = string
+  default = ""
 }
 
 variable "rancher_hostname" {

@@ -122,7 +122,7 @@ _main() {
     _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
     _PROVIDER="$([ -f "$_CONFIG_FILE" ] && (yaml2json < "$_CONFIG_FILE" | jq -r '.provider') || true)"
     if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
-        _fail "provider not specified in config.yaml"
+        _fail ".provider not found in config.yaml"
     fi
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
@@ -147,7 +147,7 @@ _main() {
     _CONFIG_JSON=$(yaml2json < "$_CONFIG_FILE")
     _ENTRYPOINT=$(echo "$_CONFIG_JSON" | jq -r '.network.entrypoint // ""')
     if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
-        _fail ".network.entrypoint not specified in config.yaml"
+        _fail ".network.entrypoint not found in config.yaml"
     fi
     _ADDONS_DIR="$CLUSTER_DIR/addons"
     mkdir -p "$_ADDONS_DIR"
@@ -164,11 +164,11 @@ _main() {
         [ ! -d "$TF_DATA_DIR/providers" ] || \
         [ "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
         (find "$ROCK8S_LIB_PATH/addons" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
-        terraform init -backend=true -backend-config="path=$_ADDONS_DIR/terraform.tfstate" >&2
+        terraform init -upgrade -backend=true -backend-config="path=$_ADDONS_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
     terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
-    terraform output -json > "$_ADDONS_DIR/output.json"
+    echo terraform output -json > "$_ADDONS_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" | \
         _format_output "$_FORMAT"

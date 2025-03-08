@@ -4,9 +4,6 @@ set -e
 
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
-: "${KUBESPRAY_VERSION:=v2.24.0}"
-: "${KUBESPRAY_REPO:=https://github.com/kubernetes-sigs/kubespray.git}"
-
 _help() {
     cat <<EOF >&2
 NAME
@@ -160,7 +157,7 @@ _main() {
     if [ ! -d "$_CLUSTER_DIR/inventory" ]; then
         cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
     fi
-    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml"
+    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/vars.yml"
     _MTU="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.mtu')"
     if [ -z "$_MTU" ] || [ "$_MTU" = "null" ]; then
         _MTU="1500"
@@ -176,7 +173,7 @@ _main() {
         _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
     fi
     cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
-    cat >> "$_CLUSTER_DIR/inventory/group_vars/all/vars.yml" <<EOF
+    cat >> "$_CLUSTER_DIR/inventory/vars.yml" <<EOF
 
 enable_dual_stack_networks: $_DUELSTACK
 supplementary_addresses_in_ssl_keys: [$_SUPPLEMENTARY_ADDRESSES]
@@ -208,12 +205,14 @@ EOF
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/cluster.yml" -b -v
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/postinstall.yml" -b -v
     "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" --cluster "$_CLUSTER" --tenant "$_TENANT" --kubeconfig "$_CLUSTER_DIR/kube.yaml" --output json > /dev/null

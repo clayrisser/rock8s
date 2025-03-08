@@ -28,8 +28,8 @@ provider "argocd" {
 resource "argocd_repository" "git" {
   count    = (var.argocd && var.git_repo != "") ? 1 : 0
   repo     = var.git_repo
-  username = var.git_username
-  password = var.git_password
+  username = local.git_username
+  password = local.git_password
   insecure = false
 }
 

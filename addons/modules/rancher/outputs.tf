@@ -7,5 +7,5 @@ output "token" {
 }
 
 output "api_url" {
-  value = "https://${var.rancher_hostname}"
+  value = local.api_url
 }

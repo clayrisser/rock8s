@@ -11,5 +11,7 @@ locals {
   rancher_logging    = var.rancher_logging && var.rancher_monitoring && local.rancher
   rancher_project_id = var.rancher ? module.rancher.system_project_id : ""
   tempo              = var.tempo && local.rancher_logging
-  email              = var.email ? var.email : var.cloudflare_email
+  email              = var.email != "" ? var.email : var.cloudflare_email
+  git_username       = var.git_username != "" ? var.git_username : (can(regex("gitlab.com", var.git_repo)) ? var.registries["registry.gitlab.com"].username : "")
+  git_password       = var.git_password != "" ? var.git_password : (can(regex("gitlab.com", var.git_repo)) ? var.registries["registry.gitlab.com"].password : "")
 }

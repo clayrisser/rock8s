@@ -98,6 +98,39 @@ _main() {
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
     fi
+    _MASTER_OUTPUT="$_CLUSTER_DIR/master/output.json"
+    if [ ! -f "$_MASTER_OUTPUT" ]; then
+        _fail "master output.json not found"
+    fi
+    _WORKER_OUTPUT="$_CLUSTER_DIR/worker/output.json"
+    if [ ! -f "$_WORKER_OUTPUT" ]; then
+        _fail "worker output.json not found"
+    fi
+    _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
+    if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
+        _fail ".network.lan.subnet not found in config.yaml"
+    fi
+    _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
+    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
+        _fail ".network.entrypoint not found in config.yaml"
+    fi
+    _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
+    _MASTER_IPS="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _MASTER_EXTERNAL_IPS="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _ENTRYPOINT_IP="$(host "$_ENTRYPOINT" | grep 'has address' | head -n1 | awk '{print $NF}')"
+    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
+    if [ -n "$_ENTRYPOINT_IP" ]; then
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IP\""
+    fi
+    for _IP in $_MASTER_IPS; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IP\""
+    done
+    for _IP in $_MASTER_EXTERNAL_IPS; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IP\""
+    done
+    _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
+    _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
+    _WORKER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_WORKER_OUTPUT")"
     _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
         _fail "kubespray directory not found"
@@ -105,15 +138,74 @@ _main() {
     _ensure_system
     _VENV_DIR="$_KUBESPRAY_DIR/venv"
     if [ ! -d "$_VENV_DIR" ]; then
-        _fail "kubespray virtual environment not found"
+        python3 -m venv "$_VENV_DIR"
     fi
     . "$_VENV_DIR/bin/activate"
+    if command -v uv >/dev/null 2>&1; then
+        uv pip install -r "$_KUBESPRAY_DIR/requirements.txt"
+    else
+        pip install -r "$_KUBESPRAY_DIR/requirements.txt"
+    fi
+    rm -rf "$_CLUSTER_DIR/inventory"
+    cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
+    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/vars.yml"
+    _MTU="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.mtu')"
+    if [ -z "$_MTU" ] || [ "$_MTU" = "null" ]; then
+        _MTU="1500"
+    fi
+    _DUELSTACK="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dualstack')"
+    if [ "$_DUELSTACK" = "false" ]; then
+        _DUELSTACK="false"
+    else
+        _DUELSTACK="true"
+    fi
+    _METALLB="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.metallb')"
+    if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
+        _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
+    fi
+    cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
+    cat >> "$_CLUSTER_DIR/inventory/vars.yml" <<EOF
+
+enable_dual_stack_networks: $_DUELSTACK
+supplementary_addresses_in_ssl_keys: [$_SUPPLEMENTARY_ADDRESSES]
+calico_mtu: $_MTU
+calico_veth_mtu: $(($_MTU - 50))
+metallb: "$_METALLB"
+EOF
+    cat > "$_CLUSTER_DIR/inventory/inventory.ini" <<EOF
+[kube_control_plane]
+$(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
+
+[etcd]
+$(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
+
+[kube_node]
+$(echo "$_WORKER_NODES") ansible_ssh_private_key_file=$_WORKER_SSH_PRIVATE_KEY
+
+[k8s-cluster:children]
+kube_node
+kube_control_plane
+
+[kube_control_plane:vars]
+node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
+
+[kube_node:vars]
+node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
+EOF
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/upgrade-cluster.yml" -b -v
+    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
+        ANSIBLE_HOST_KEY_CHECKING=False \
+        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
+        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
+        -u admin --become --become-user=root \
+        "$_KUBESPRAY_DIR/postinstall.yml" -b -v
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 
