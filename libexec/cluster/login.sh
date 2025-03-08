@@ -136,16 +136,13 @@ _main() {
     if [ ! -f "$_INVENTORY_FILE" ]; then
         _fail "inventory file not found at $_INVENTORY_FILE"
     fi
-    _MASTER_IP="$(grep -A1 '\[kube_control_plane\]' "$_INVENTORY_FILE" | tail -n1 | grep -o 'ansible_host=[^ ]*' | cut -d'=' -f2)"
-    if [ -z "$_MASTER_IP" ]; then
-        _fail "could not find control plane node ip in inventory file"
+    _MASTER_IPV4="$(grep -A1 '\[kube_control_plane\]' "$_INVENTORY_FILE" | tail -n1 | grep -o 'ansible_host=[^ ]*' | cut -d'=' -f2)"
+    if [ -z "$_MASTER_IPV4" ]; then
+        _fail "master node not found in inventory file"
     fi
     _SSH_KEY_FILE="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
     if [ -z "$_SSH_KEY_FILE" ] || [ "$_SSH_KEY_FILE" = "null" ]; then
-        _fail "ssh private key path not found in master output.json"
-    fi
-    if [ ! -f "$_SSH_KEY_FILE" ]; then
-        _fail "ssh private key file not found at $_SSH_KEY_FILE"
+        _fail "ssh key not found in output.json"
     fi
     _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
     if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
@@ -155,15 +152,12 @@ _main() {
     mkdir -p "$(dirname "$_KUBECONFIG")"
     _TEMP_KUBECONFIG="$(mktemp)"
     _TEMP_FILES="$_TEMP_FILES $_TEMP_KUBECONFIG"
-    ssh -i "$_SSH_KEY_FILE" -o StrictHostKeyChecking=no admin@"$_MASTER_IP" "sudo cat /etc/kubernetes/admin.conf" > "$_TEMP_KUBECONFIG"
-    _TEMP_KUBECONFIG_TMP="$(mktemp)"
-    _TEMP_FILES="$_TEMP_FILES $_TEMP_KUBECONFIG_TMP"
-    yaml2json < "$_TEMP_KUBECONFIG" | \
-        jq ".clusters[0].cluster.server = \"https://$_MASTER_IP:6443\"" | \
-        json2yaml > "$_TEMP_KUBECONFIG_TMP"
-    mv "$_TEMP_KUBECONFIG_TMP" "$_TEMP_KUBECONFIG"
-    KUBECONFIG_PATH="$_KUBECONFIG" _register_kubeconfig "$_TEMP_KUBECONFIG" "$_ENTRYPOINT"
-    printf '{"name":"%s","entrypoint":"%s","server":"%s","kubeconfig":"%s"}\n' "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IP" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
+    ssh -i "$_SSH_KEY_FILE" -o StrictHostKeyChecking=no admin@"$_MASTER_IPV4" "sudo cat /etc/kubernetes/admin.conf" > "$_TEMP_KUBECONFIG"
+    jq '.clusters[0].cluster.server = "https://'$_ENTRYPOINT':6443"' "$_TEMP_KUBECONFIG" | \
+        jq ".clusters[0].cluster.server = \"https://$_MASTER_IPV4:6443\"" | \
+        jq '.clusters[0].name = "'$_CLUSTER'" | .contexts[0].name = "'$_CLUSTER'" | .contexts[0].context.cluster = "'$_CLUSTER'" | .contexts[0].context.user = "'$_CLUSTER'" | .current-context = "'$_CLUSTER'" | .users[0].name = "'$_CLUSTER'"' > "$_KUBECONFIG"
+    chmod 600 "$_KUBECONFIG"
+    printf '{"name":"%s","entrypoint":"%s","server":"%s","kubeconfig":"%s"}\n' "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IPV4" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@" 

@@ -148,6 +148,10 @@ _main() {
         _NODE_COUNT="$(jq -r '.node_ips.value | length' "$_OUTPUT_JSON")"
         _PRIMARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[0] // ""')"
         _SECONDARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[1] // ""')"
+        _SHARED_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[2] // ""')"
+        if [ -n "$_SHARED_HOSTNAME" ] && [ "$_SHARED_HOSTNAME" != "null" ]; then
+            _SHARED_WAN_IPV4="$(_resolve_hostname "$_SHARED_HOSTNAME")"
+        fi
         if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
             _PRIMARY_HOSTNAME="$(jq -r '.node_ips.value | to_entries | .[0].key' "$_OUTPUT_JSON")"
         fi
@@ -175,20 +179,24 @@ _main() {
         _fail "primary hostname not found"
     fi
     if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
-        echo
+        _PASSWORD="$(whiptail --title "Enter admin password" \
+            --backtitle "Rock8s Configuration" \
+            --passwordbox " " \
+            0 0 \
+            3>&1 1>&2 2>&3)" || _fail "password required"
     fi
     _NETWORK_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.subnet')"
     if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
-        _fail "network.lan.subnet not found in config.yaml"
+        _fail ".network.lan.subnet not found in config.yaml"
     fi
     _METALLB="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.metallb')"
     if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
         _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
     fi
-    _INGRESS_IP="$(echo "$_METALLB" | cut -d'-' -f1)"
+    _INGRESS_IPV4="$(echo "$_METALLB" | cut -d'-' -f1)"
     _INTERFACE="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.interface // "vtnet1"')"
     _DNS_SERVERS="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
-    _NETWORK_IP="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f1)"
+    _NETWORK_IPV4="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f1)"
     _NETWORK_PREFIX="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f2)"
     _IPV6_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv6_subnet')"
     _ENTRYPOINT="$(echo "$_CONFIG_JSON" | jq -r '.network.entrypoint')"
@@ -198,7 +206,7 @@ _main() {
     if [ -z "$_IPV6_SUBNET" ] || [ "$_IPV6_SUBNET" = "null" ]; then
         _LAST_NONZERO_OCTET=""
         _OCTET_COUNT=1
-        for _OCTET in $(echo "$_NETWORK_IP" | tr '.' ' '); do
+        for _OCTET in $(echo "$_NETWORK_IPV4" | tr '.' ' '); do
             if [ "$_OCTET" != "0" ]; then
                 _LAST_NONZERO_OCTET="$_OCTET"
                 _LAST_NONZERO_POSITION="$_OCTET_COUNT"
@@ -212,8 +220,8 @@ _main() {
         fi
         _IPV6_SUBNET="fd${_PREFIX}::/64"
     fi
-    _PRIMARY_IP="$(_calculate_next_ipv4 "$_NETWORK_IP" 2)"
-    _SECONDARY_IP="$(_calculate_next_ipv4 "$_NETWORK_IP" 3)"
+    _PRIMARY_IPV4="$(_calculate_next_ipv4 "$_NETWORK_IPV4" 2)"
+    _SECONDARY_IPV4="$(_calculate_next_ipv4 "$_NETWORK_IPV4" 3)"
     _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
     _PRIMARY_IPV6="${_IPV6_PREFIX}2"
     _SECONDARY_IPV6="${_IPV6_PREFIX}3"
@@ -247,15 +255,20 @@ pfsense:
         interface: ${_INTERFACE}
         dhcp: ${_ENABLE_DHCP}
         ipv4:
-          primary: ${_PRIMARY_IP}/${_NETWORK_PREFIX}
-          secondary: ${_SECONDARY_IP}/${_NETWORK_PREFIX}
+          primary: ${_PRIMARY_IPV4}/${_NETWORK_PREFIX}
+          secondary: ${_SECONDARY_IPV4}/${_NETWORK_PREFIX}
         ipv6:
           primary: ${_PRIMARY_IPV6}/64
           secondary: ${_SECONDARY_IPV6}/64
+        ips:
+          - "$(_calculate_previous_ipv4 "$(_calculate_last_ipv4 "$_NETWORK_SUBNET")" 1)/${_NETWORK_PREFIX}"$([ -n "$_SHARED_WAN_IPV4" ] && echo "
+      wan:
+        ips:
+          - \"$_SHARED_WAN_IPV4\"")
   haproxy:
     rules:
-      - "8080 -> check:${_INGRESS_IP}:80"
-      - "8443 -> check:${_INGRESS_IP}:443"
+      - "8080 -> check:${_INGRESS_IPV4}:80"
+      - "8443 -> check:${_INGRESS_IPV4}:443"
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
