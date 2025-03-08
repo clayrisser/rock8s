@@ -115,18 +115,18 @@ _main() {
         _fail ".network.entrypoint not found in config.yaml"
     fi
     _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
-    _MASTER_IPS="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _MASTER_EXTERNAL_IPS="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _ENTRYPOINT_IP="$(host "$_ENTRYPOINT" | grep 'has address' | head -n1 | awk '{print $NF}')"
+    _MASTER_IPV4S="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _MASTER_EXTERNAL_IPV4S="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
     _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
-    if [ -n "$_ENTRYPOINT_IP" ]; then
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IP\""
+    if [ -n "$_ENTRYPOINT_IPV4" ]; then
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
     fi
-    for _IP in $_MASTER_IPS; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IP\""
+    for _IPV4 in $_MASTER_IPV4S; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
     done
-    for _IP in $_MASTER_EXTERNAL_IPS; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IP\""
+    for _IPV4 in $_MASTER_EXTERNAL_IPV4S; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
     done
     _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
     _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"

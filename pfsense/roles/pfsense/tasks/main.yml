@@ -1,23 +1,23 @@
 ---
-# - name: Configure dashboard
-#   import_tasks: dashboard.yml
-# - name: Configure setup
-#   import_tasks: setup.yml
-# - name: Configure system
-#   import_tasks: system.yml
-# - name: Configure dhcp
-#   import_tasks: dhcp.yml
-# - name: Configure interfaces
-#   import_tasks: interfaces.yml
-# - name: Configure sync
-#   import_tasks: sync.yml
-# - name: Configure firewall rules
-#   import_tasks: firewall.yml
-# - name: Configure routes
-#   import_tasks: routes.yml
-# - name: Configure nat
-#   import_tasks: nat.yml
-# - name: Install packages
-#   import_tasks: packages.yml
+- name: Configure dashboard
+  import_tasks: dashboard.yml
+- name: Configure setup
+  import_tasks: setup.yml
+- name: Configure system
+  import_tasks: system.yml
+- name: Configure dhcp
+  import_tasks: dhcp.yml
+- name: Configure interfaces
+  import_tasks: interfaces.yml
+- name: Configure sync
+  import_tasks: sync.yml
+- name: Configure firewall rules
+  import_tasks: firewall.yml
+- name: Configure routes
+  import_tasks: routes.yml
+- name: Configure nat
+  import_tasks: nat.yml
+- name: Install packages
+  import_tasks: packages.yml
 - name: Configure haproxy
   import_tasks: haproxy.yml
