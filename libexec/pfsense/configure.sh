@@ -42,7 +42,7 @@ EOF
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _CLUSTER=""
+    _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
     _UPDATE=""
     _PASSWORD=""
@@ -138,15 +138,16 @@ _main() {
     if [ ! -f "$_CONFIG_FILE" ]; then
         _fail "cluster configuration file not found at $_CONFIG_FILE"
     fi
-    _PROVIDER="$(yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
+    _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
+    _PROVIDER="$(echo "$_CONFIG_JSON" | jq -r '.provider')"
     if [ -n "$_PROVIDER" ] && [ "$_PROVIDER" != "null" ]; then
         _OUTPUT_JSON="$_CLUSTER_DIR/pfsense/output.json"
         if [ ! -f "$_OUTPUT_JSON" ]; then
             _fail "output.json not found for provider $_PROVIDER"
         fi
         _NODE_COUNT="$(jq -r '.node_ips.value | length' "$_OUTPUT_JSON")"
-        _PRIMARY_HOSTNAME="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[0] // ""')"
-        _SECONDARY_HOSTNAME="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense[0].hostnames[1] // ""')"
+        _PRIMARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[0] // ""')"
+        _SECONDARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[1] // ""')"
         if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
             _PRIMARY_HOSTNAME="$(jq -r '.node_ips.value | to_entries | .[0].key' "$_OUTPUT_JSON")"
         fi
@@ -155,9 +156,9 @@ _main() {
         fi
         _SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value // ""' "$_OUTPUT_JSON")"
     else
-        _NODES_JSON="$(yaml2json < "$_CONFIG_FILE" | jq -r '.pfsense.nodes')"
+        _NODES_JSON="$(echo "$_CONFIG_JSON" | jq -r '.pfsense.nodes')"
         if [ -z "$_NODES_JSON" ] || [ "$_NODES_JSON" = "null" ]; then
-            _fail ".pfsense.nodes not specified in config.yaml"
+            _fail ".pfsense.nodes not found in config.yaml"
         fi
         _NODE_COUNT="$(echo "$_NODES_JSON" | jq -r 'length')"
         _PRIMARY_HOSTNAME="$(echo "$_NODES_JSON" | jq -r '.[0].hostname // .[0].ip')"
@@ -174,21 +175,26 @@ _main() {
         _fail "primary hostname not found"
     fi
     if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
-        _PASSWORD="$(whiptail --title "Enter admin password" \
-            --backtitle "Rock8s Configuration" \
-            --passwordbox " " \
-            0 0 \
-            3>&1 1>&2 2>&3)" || _fail "password required"
+        echo
     fi
-    _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
+    _NETWORK_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.subnet')"
     if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
         _fail "network.lan.subnet not found in config.yaml"
     fi
-    _INTERFACE="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.interface // "vtnet1"')"
-    _DNS_SERVERS="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
+    _METALLB="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.metallb')"
+    if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
+        _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
+    fi
+    _INGRESS_IP="$(echo "$_METALLB" | cut -d'-' -f1)"
+    _INTERFACE="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.interface // "vtnet1"')"
+    _DNS_SERVERS="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
     _NETWORK_IP="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f1)"
     _NETWORK_PREFIX="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f2)"
-    _IPV6_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.ipv6_subnet')"
+    _IPV6_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv6_subnet')"
+    _ENTRYPOINT="$(echo "$_CONFIG_JSON" | jq -r '.network.entrypoint')"
+    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
+        _fail ".network.entrypoint not found in config.yaml"
+    fi
     if [ -z "$_IPV6_SUBNET" ] || [ "$_IPV6_SUBNET" = "null" ]; then
         _LAST_NONZERO_OCTET=""
         _OCTET_COUNT=1
@@ -211,7 +217,7 @@ _main() {
     _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
     _PRIMARY_IPV6="${_IPV6_PREFIX}2"
     _SECONDARY_IPV6="${_IPV6_PREFIX}3"
-    _ENABLE_DHCP="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dhcp // ""')"
+    _ENABLE_DHCP="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dhcp // ""')"
     if [ "$_ENABLE_DHCP" = "" ] || [ "$_ENABLE_DHCP" = "null" ]; then
         if [ "$_PROVIDER" = "hetzner" ]; then
             _ENABLE_DHCP="false"
@@ -246,6 +252,10 @@ pfsense:
         ipv6:
           primary: ${_PRIMARY_IPV6}/64
           secondary: ${_SECONDARY_IPV6}/64
+  haproxy:
+    rules:
+      - "8080 -> check:${_INGRESS_IP}:80"
+      - "8443 -> check:${_INGRESS_IP}:443"
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"

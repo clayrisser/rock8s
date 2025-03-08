@@ -1,12 +1,13 @@
 locals {
   rancher_bootstrap_password = "rancherP@ssw0rd"
+  api_url                    = var.rancher_hostname != "" ? "https://${var.rancher_hostname}" : "https://example.com"
 }
 
 provider "rancher2" {
   alias     = "bootstrap"
   bootstrap = true
   insecure  = true
-  api_url   = "https://${var.rancher_hostname}"
+  api_url   = local.api_url
 }
 
 resource "kubectl_manifest" "namespace" {
@@ -150,7 +151,7 @@ resource "rancher2_bootstrap" "admin" {
 
 provider "rancher2" {
   alias     = "admin"
-  api_url   = "https://${var.rancher_hostname}"
+  api_url   = local.api_url
   token_key = var.rancher_token != "" ? var.rancher_token : try(rancher2_bootstrap.admin[0].token, "")
 }
 
@@ -166,7 +167,7 @@ resource "rancher2_token" "this" {
 }
 
 provider "rancher2" {
-  api_url   = "https://${var.rancher_hostname}"
+  api_url   = local.api_url
   token_key = var.rancher_token != "" ? var.rancher_token : try(rancher2_token.this[0].token, "")
 }
 

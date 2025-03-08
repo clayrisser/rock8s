@@ -10,7 +10,7 @@ module "rancher" {
 }
 
 provider "rancher2" {
-  api_url   = module.rancher.api_url
+  api_url   = try(module.rancher.api_url, null)
   token_key = var.rancher_token != "" ? var.rancher_token : try(module.rancher.token, "")
 }
 

@@ -127,7 +127,7 @@ _main() {
     fi
     _PROVIDER="$(yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
     if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
-        _fail "provider not specified in config.yaml"
+        _fail ".provider not found in config.yaml"
     fi
     _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     if [ ! -d "$_PROVIDER_DIR" ]; then
@@ -185,7 +185,7 @@ _main() {
         [ ! -d "$TF_DATA_DIR/providers" ] || \
         [ "$_PROVIDER_DIR/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
         (find "$_PROVIDER_DIR" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
-        terraform init -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
+        terraform init -upgrade -backend=true -backend-config="path=$_PURPOSE_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
     terraform destroy $([ "$_YES" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2

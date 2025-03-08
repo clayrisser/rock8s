@@ -43,8 +43,8 @@ terraform {
       version = "~> 0.9.6"
     }
     argocd = {
-      source  = "oboukili/argocd"
-      version = "~> 6.0.3"
+      source = "argoproj-labs/argocd"
+      version = "~> 7.3.1"
     }
   }
 }
