@@ -24,28 +24,6 @@
       Format: [key[=val];...:][host:]port -> [shared_key[=val];...|][[key[=val];...:][host:]port[@weight],...]
   loop: "{{ parsed_rules }}"
 
-# Supported key/values (most pass directly to HAProxy config):
-# Frontend:
-#   Special handling:
-#   - ssl[=cert_name] : Enable SSL with optional cert name (default: 67c7191f7c801)
-#   - mode=(http|tcp) : Protocol mode (default: http)
-#   Pass-through (examples):
-#   - maxconn=N : Maximum connections
-#   - backlog=N : Connection backlog
-#   - timeout=N : Connection timeout
-#
-# Backend (shared or per-target):
-#   Special handling:
-#   - balance=(roundrobin|static-rr|leastconn|source|uri) : Load balancing method (default: roundrobin)
-#   - check=(http|tcp|ssl|mysql|pgsql|smtp) : Health check type (default: TCP)
-#   Pass-through (examples):
-#   - weight=N : Server weight for balancing
-#   - cookie=NAME : Session persistence
-#   - maxconn=N : Maximum connections
-#   - inter=N : Check interval (ms)
-#   - rise=N : Rise count for health checks
-#   - fall=N : Fall count for health checks
-
 - name: Check haproxy system settings
   ansible.builtin.shell: |
     cat > /tmp/check_system.php << 'EOF'
@@ -671,7 +649,7 @@
     require_once("functions.inc");
     $config = parse_config(true);
     if (!isset($config['installedpackages']) || !isset($config['installedpackages']['haproxy'])) {
-        echo "CHANGED";
+        echo "CHANGED:haproxy_sync_disabled";
         exit(0);
     }
     $haproxy_sync_enabled = isset($config['installedpackages']['haproxy']['enablesync']) &&
@@ -681,8 +659,12 @@
         !empty($config['hasync']['synchronizetoip']) &&
         isset($config['hasync']['enable']) &&
         $config['hasync']['enable'] === 'yes';
-    if (!$haproxy_sync_enabled || !$ha_sync_enabled) {
-        echo "CHANGED";
+    if (!$primary && !$haproxy_sync_enabled) {
+        echo "UNCHANGED";
+        exit(0);
+    }
+    if ($primary && $haproxy_sync_enabled !== $ha_sync_enabled) {
+        echo "CHANGED:sync_mismatch";
         exit(0);
     }
     echo "UNCHANGED";
@@ -690,7 +672,7 @@
     php -f /tmp/check_sync.php
     rm -f /tmp/check_sync.php
   register: haproxy_sync_check
-  changed_when: haproxy_sync_check.stdout_lines[-1] == "CHANGED"
+  changed_when: haproxy_sync_check.stdout_lines[-1].startswith("CHANGED")
 
 - name: Configure haproxy sync settings
   ansible.builtin.shell: |
@@ -700,8 +682,26 @@
     require_once("functions.inc");
     require_once("haproxy/haproxy.inc");
     $config = parse_config(true);
-    if (isset($config['installedpackages']['haproxy']['enablesync']) &&
-        $config['installedpackages']['haproxy']['enablesync'] === 'on') {
+    $haproxy_sync_enabled = isset($config['installedpackages']['haproxy']['enablesync']) &&
+        $config['installedpackages']['haproxy']['enablesync'] === 'on';
+    $ha_sync_enabled = isset($config['hasync']) &&
+        isset($config['hasync']['synchronizetoip']) &&
+        !empty($config['hasync']['synchronizetoip']) &&
+        isset($config['hasync']['enable']) &&
+        $config['hasync']['enable'] === 'yes';
+    if (!$primary) {
+        if ($haproxy_sync_enabled) {
+            $config['installedpackages']['haproxy']['enablesync'] = 'off';
+            if (write_config()) {
+                haproxy_configure();
+                echo "CHANGED";
+                exit(0);
+            }
+        }
+        echo "UNCHANGED";
+        exit(0);
+    }
+    if ($haproxy_sync_enabled === $ha_sync_enabled) {
         echo "UNCHANGED";
         exit(0);
     }
@@ -711,20 +711,19 @@
     if (!isset($config['installedpackages']['haproxy'])) {
         $config['installedpackages']['haproxy'] = array();
     }
-    $config['installedpackages']['haproxy']['enablesync'] = 'on';
+    $config['installedpackages']['haproxy']['enablesync'] = $ha_sync_enabled ? 'on' : 'off';
     if (write_config()) {
         haproxy_configure();
         echo "CHANGED";
         exit(0);
     }
     echo "UNCHANGED";
-    exit(1);
+    exit(0);
     EOF
     php -f /tmp/configure_sync.php || echo "UNCHANGED"
     rm -f /tmp/configure_sync.php
   register: haproxy_sync_config
   changed_when: haproxy_sync_config.stdout == "CHANGED"
-  when: primary
 
 - name: Restart haproxy service
   ansible.builtin.shell: |
@@ -746,5 +745,4 @@
     php -f /tmp/restart_haproxy.php 2>&1
     rm -f /tmp/restart_haproxy.php
   register: haproxy_restart
-  when: haproxy_check.changed or haproxy_config.changed or haproxy_system_check.changed or haproxy_system_config.changed or haproxy_sync_check.changed or haproxy_sync_config.changed
-
+  when: haproxy_check.changed or haproxy_config.changed or haproxy_system_check.changed or haproxy_system_config.changed or (haproxy_sync_check.stdout_lines[-1].startswith("CHANGED") and haproxy_sync_config.changed)
