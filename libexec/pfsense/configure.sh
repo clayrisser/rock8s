@@ -150,7 +150,7 @@ _main() {
         _SECONDARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[1] // ""')"
         _SHARED_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[2] // ""')"
         if [ -n "$_SHARED_HOSTNAME" ] && [ "$_SHARED_HOSTNAME" != "null" ]; then
-            _SHARED_WAN_IPV4="$(_resolve_hostname "$_SHARED_HOSTNAME")"
+            _WAN_SHARED_IPV4="$(_resolve_hostname "$_SHARED_HOSTNAME")"
         fi
         if [ -z "$_PRIMARY_HOSTNAME" ] || [ "$_PRIMARY_HOSTNAME" = "null" ]; then
             _PRIMARY_HOSTNAME="$(jq -r '.node_ips.value | to_entries | .[0].key' "$_OUTPUT_JSON")"
@@ -185,28 +185,28 @@ _main() {
             0 0 \
             3>&1 1>&2 2>&3)" || _fail "password required"
     fi
-    _NETWORK_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.subnet')"
-    if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
+    _LAN_NETWORK_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.subnet')"
+    if [ -z "$_LAN_NETWORK_SUBNET" ] || [ "$_LAN_NETWORK_SUBNET" = "null" ]; then
         _fail ".network.lan.subnet not found in config.yaml"
     fi
     _METALLB="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.metallb')"
     if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
-        _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
+        _METALLB="$(_calculate_metallb "$_LAN_NETWORK_SUBNET")"
     fi
-    _INGRESS_IPV4="$(echo "$_METALLB" | cut -d'-' -f1)"
-    _INTERFACE="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.interface // "vtnet1"')"
+    _LAN_INGRESS_IPV4="$(echo "$_METALLB" | cut -d'-' -f1)"
+    _LAN_INTERFACE="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.interface // "vtnet1"')"
     _DNS_SERVERS="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dns // ["1.1.1.1", "8.8.8.8"] | join(" ")')"
-    _NETWORK_IPV4="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f1)"
-    _NETWORK_PREFIX="$(echo "$_NETWORK_SUBNET" | cut -d'/' -f2)"
-    _IPV6_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv6_subnet')"
+    _LAN_NETWORK_IPV4="$(echo "$_LAN_NETWORK_SUBNET" | cut -d'/' -f1)"
+    _LAN_NETWORK_PREFIX="$(echo "$_LAN_NETWORK_SUBNET" | cut -d'/' -f2)"
+    _LAN_IPV6_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv6_subnet')"
     _ENTRYPOINT="$(echo "$_CONFIG_JSON" | jq -r '.network.entrypoint')"
     if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
         _fail ".network.entrypoint not found in config.yaml"
     fi
-    if [ -z "$_IPV6_SUBNET" ] || [ "$_IPV6_SUBNET" = "null" ]; then
+    if [ -z "$_LAN_IPV6_SUBNET" ] || [ "$_LAN_IPV6_SUBNET" = "null" ]; then
         _LAST_NONZERO_OCTET=""
         _OCTET_COUNT=1
-        for _OCTET in $(echo "$_NETWORK_IPV4" | tr '.' ' '); do
+        for _OCTET in $(echo "$_LAN_NETWORK_IPV4" | tr '.' ' '); do
             if [ "$_OCTET" != "0" ]; then
                 _LAST_NONZERO_OCTET="$_OCTET"
                 _LAST_NONZERO_POSITION="$_OCTET_COUNT"
@@ -218,19 +218,24 @@ _main() {
         else
             _PREFIX="$_LAST_NONZERO_OCTET"
         fi
-        _IPV6_SUBNET="fd${_PREFIX}::/64"
+        _LAN_IPV6_SUBNET="fd${_PREFIX}::/64"
     fi
-    _PRIMARY_IPV4="$(_calculate_next_ipv4 "$_NETWORK_IPV4" 2)"
-    _SECONDARY_IPV4="$(_calculate_next_ipv4 "$_NETWORK_IPV4" 3)"
-    _IPV6_PREFIX="$(echo "$_IPV6_SUBNET" | cut -d'/' -f1)"
-    _PRIMARY_IPV6="${_IPV6_PREFIX}2"
-    _SECONDARY_IPV6="${_IPV6_PREFIX}3"
-    _ENABLE_DHCP="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dhcp // ""')"
-    if [ "$_ENABLE_DHCP" = "" ] || [ "$_ENABLE_DHCP" = "null" ]; then
+    _LAN_PRIMARY_IPV4="$(_calculate_next_ipv4 "$_LAN_NETWORK_IPV4" 2)"
+    _LAN_SECONDARY_IPV4="$(_calculate_next_ipv4 "$_LAN_NETWORK_IPV4" 3)"
+    _LAN_IPV6_PREFIX="$(echo "$_LAN_IPV6_SUBNET" | cut -d'/' -f1)"
+    _LAN_PRIMARY_IPV6="${_LAN_IPV6_PREFIX}2"
+    _LAN_SECONDARY_IPV6="${_LAN_IPV6_PREFIX}3"
+    if [ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ]; then
+        _LAN_MASTER_IPV4="$(_calculate_next_ipv4 "$_LAN_NETWORK_IPV4" 4)"
+    else
+        _LAN_MASTER_IPV4="$(_calculate_next_ipv4 "$_LAN_NETWORK_IPV4" 3)"
+    fi
+    _LAN_ENABLE_DHCP="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dhcp // ""')"
+    if [ "$_LAN_ENABLE_DHCP" = "" ] || [ "$_LAN_ENABLE_DHCP" = "null" ]; then
         if [ "$_PROVIDER" = "hetzner" ]; then
-            _ENABLE_DHCP="false"
+            _LAN_ENABLE_DHCP="false"
         else
-            _ENABLE_DHCP="true"
+            _LAN_ENABLE_DHCP="true"
         fi
     fi
     rm -rf "$_PFSENSE_DIR/ansible"
@@ -251,24 +256,25 @@ pfsense:
   network:
     interfaces:
       lan:
-        subnet: ${_NETWORK_SUBNET}
-        interface: ${_INTERFACE}
-        dhcp: ${_ENABLE_DHCP}
+        subnet: ${_LAN_NETWORK_SUBNET}
+        interface: ${_LAN_INTERFACE}
+        dhcp: ${_LAN_ENABLE_DHCP}
         ipv4:
-          primary: ${_PRIMARY_IPV4}/${_NETWORK_PREFIX}
-          secondary: ${_SECONDARY_IPV4}/${_NETWORK_PREFIX}
+          primary: ${_LAN_PRIMARY_IPV4}/${_LAN_NETWORK_PREFIX}
+          secondary: ${_LAN_SECONDARY_IPV4}/${_LAN_NETWORK_PREFIX}
         ipv6:
-          primary: ${_PRIMARY_IPV6}/64
-          secondary: ${_SECONDARY_IPV6}/64
+          primary: ${_LAN_PRIMARY_IPV6}/64
+          secondary: ${_LAN_SECONDARY_IPV6}/64
         ips:
-          - "$(_calculate_previous_ipv4 "$(_calculate_last_ipv4 "$_NETWORK_SUBNET")" 1)/${_NETWORK_PREFIX}"$([ -n "$_SHARED_WAN_IPV4" ] && echo "
+          - "$(_calculate_previous_ipv4 "$(_calculate_last_ipv4 "$_LAN_NETWORK_SUBNET")" 1)/${_LAN_NETWORK_PREFIX}"$([ -n "$_WAN_SHARED_IPV4" ] && echo "
       wan:
         ips:
-          - \"$_SHARED_WAN_IPV4\"")
+          - \"$_WAN_SHARED_IPV4\"")
   haproxy:
     rules:
-      - "8080 -> check:${_INGRESS_IPV4}:80"
-      - "8443 -> check:${_INGRESS_IPV4}:443"
+      - "8080 -> check:${_LAN_INGRESS_IPV4}:80"
+      - "8443 -> ${_LAN_INGRESS_IPV4}:443"
+      - "6443 -> check=HTTP:${_LAN_MASTER_IPV4}:6443"
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
