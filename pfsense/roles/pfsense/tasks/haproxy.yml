@@ -377,13 +377,15 @@
         return $result;
     }
     function format_name($rule) {
-        $name = trim($rule);
-        $name = str_replace(' -> ', '_', $name);
-        $name = str_replace(':', '_', $name);
-        $name = str_replace(',', '_', $name);
-        $name = str_replace('=', '_', $name);
-        $name = str_replace('-', '_', $name);
-        return $name;
+        $parts = explode(' -> ', trim($rule));
+        $cleaned_parts = array_map(function($part) {
+            $part = trim($part); $subparts = explode(':', $part);
+            if (count($subparts) > 1 && (strpos($subparts[0], '=') !== false || strpos($subparts[0], ';') !== false)) { array_shift($subparts); return implode('-', $subparts); }
+            if (count($subparts) == 2 && preg_match('/^\\d+$/', $subparts[1])) { return implode('-', $subparts); }
+            if (count($subparts) == 3 && $subparts[0] === 'check') { array_shift($subparts); return implode('-', $subparts); }
+            return $part;
+        }, $parts);
+        return implode('_', $cleaned_parts);
     }
     $rules = {{ parsed_rules | to_json }};
     $desired = array(
@@ -452,7 +454,7 @@
             'advanced' => '',
             'advanced_backend' => '',
             'balance' => isset($shared_config['balance']) ? $shared_config['balance'] : 'roundrobin',
-            'check_type' => isset($shared_config['check']) ? strtoupper($shared_config['check']) : 'TCP',
+            'check_type' => array_key_exists('check', $shared_config) && empty($shared_config['check']) ? 'Basic' : (preg_match('/check=([^:;]+)/', $backend_targets_str, $matches) ? $matches[1] : (preg_match('/(?:^|;)check(?:;|$)/', $backend_targets_str) ? 'Basic' : 'none')),
             'id' => strval(get_next_id('backend'))
         );
         foreach ($shared_config as $key => $value) {
