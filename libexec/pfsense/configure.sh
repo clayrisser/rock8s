@@ -273,8 +273,8 @@ pfsense:
   haproxy:
     rules:
       - "8080 -> check:${_LAN_INGRESS_IPV4}:80"
-      - "8443 -> ${_LAN_INGRESS_IPV4}:443"
-      - "6443 -> check=HTTP:${_LAN_MASTER_IPV4}:6443"
+      - "8443 -> check:${_LAN_INGRESS_IPV4}:443"
+      - "6443 -> check:${_LAN_MASTER_IPV4}:6443"
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
