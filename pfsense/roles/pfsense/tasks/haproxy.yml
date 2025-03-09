@@ -354,15 +354,23 @@
             $result['weight'] = trim($parts[1]);
         }
         $parts = explode(':', trim($target));
+        if (count($parts) >= 2 && $parts[0] === 'check') {
+            $result['rules']['check'] = '';
+            array_shift($parts);
+        }
         switch(count($parts)) {
             case 3:
-                $result['rules'] = parse_key_values($parts[0]);
+                if (!isset($result['rules']['check'])) {
+                    $result['rules'] = parse_key_values($parts[0]);
+                }
                 $result['host'] = $parts[1];
                 $result['port'] = $parts[2];
                 break;
             case 2:
                 if (strpos($parts[0], '=') !== false || strpos($parts[0], ';') !== false) {
-                    $result['rules'] = parse_key_values(array_shift($parts));
+                    if (!isset($result['rules']['check'])) {
+                        $result['rules'] = parse_key_values(array_shift($parts));
+                    }
                     $result['host'] = $parts[0];
                     $result['port'] = $parts[1];
                 } else {
@@ -454,7 +462,18 @@
             'advanced' => '',
             'advanced_backend' => '',
             'balance' => isset($shared_config['balance']) ? $shared_config['balance'] : 'roundrobin',
-            'check_type' => array_key_exists('check', $shared_config) && empty($shared_config['check']) ? 'Basic' : (preg_match('/check=([^:;]+)/', $backend_targets_str, $matches) ? $matches[1] : (preg_match('/(?:^|;)check(?:;|$)/', $backend_targets_str) ? 'Basic' : 'none')),
+            'check_type' => (function() use ($shared_config, $backend_targets_str) {
+                if (preg_match('/check=([^:;]+)/', $backend_targets_str, $matches)) {
+                    return $matches[1];
+                }
+                if (preg_match('/(?:^|;)check(?::|\s*$|;)/', $backend_targets_str)) {
+                    return 'Basic';
+                }
+                if (array_key_exists('check', $shared_config) && empty($shared_config['check'])) {
+                    return 'Basic';
+                }
+                return 'none';
+            })(),
             'id' => strval(get_next_id('backend'))
         );
         foreach ($shared_config as $key => $value) {
@@ -662,18 +681,6 @@
         !empty($config['hasync']['synchronizetoip']) &&
         isset($config['hasync']['enable']) &&
         $config['hasync']['enable'] === 'yes';
-    $debug = array(
-        'haproxy_sync_enabled' => $haproxy_sync_enabled,
-        'ha_sync_enabled' => $ha_sync_enabled,
-        'haproxy_sync_setting' => isset($config['installedpackages']['haproxy']['enablesync']) ?
-            $config['installedpackages']['haproxy']['enablesync'] : 'not set',
-        'ha_sync_ip' => isset($config['hasync']['synchronizetoip']) ?
-            $config['hasync']['synchronizetoip'] : 'not set',
-        'ha_sync_setting' => isset($config['hasync']['enable']) ?
-            $config['hasync']['enable'] : 'not set'
-    );
-    file_put_contents('/tmp/sync_debug.json', json_encode($debug, JSON_PRETTY_PRINT));
-
     if (!$haproxy_sync_enabled || !$ha_sync_enabled) {
         echo "CHANGED";
         exit(0);
@@ -681,8 +688,7 @@
     echo "UNCHANGED";
     EOF
     php -f /tmp/check_sync.php
-    cat /tmp/sync_debug.json
-    rm -f /tmp/check_sync.php /tmp/sync_debug.json
+    rm -f /tmp/check_sync.php
   register: haproxy_sync_check
   changed_when: haproxy_sync_check.stdout_lines[-1] == "CHANGED"
 
