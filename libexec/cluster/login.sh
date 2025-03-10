@@ -116,48 +116,59 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
     fi
-    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$_CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
+    
+    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
+    _validate_cluster_dir "$_CLUSTER_DIR"
+    
+    _CONFIG_FILE="$(_get_cluster_config_file "$_TENANT" "$_CLUSTER")"
+    _validate_cluster_config "$_CONFIG_FILE"
+    
+    _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
+    _ENTRYPOINT="$(_get_cluster_entrypoint "$_CONFIG_JSON")"
+    
+    # Get node information
+    _MASTER_OUTPUT="$(_get_node_output_file "$_CLUSTER_DIR" "master")"
+    _validate_node_output "$_MASTER_OUTPUT" "master"
+    _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "$_MASTER_OUTPUT")"
+    _MASTER_IPV4="$(_get_node_master_ipv4 "$_MASTER_OUTPUT")"
+    
+    # Setup kubeconfig
+    if [ -z "$_KUBECONFIG" ]; then
+        _KUBECONFIG="$HOME/.kube/config"
     fi
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
+    
+    _KUBECONFIG_TMP="$(mktemp)"
+    _cleanup() {
+        rm -f "$_KUBECONFIG_TMP"
+    }
+    trap _cleanup EXIT
+    
+    # Get kubeconfig from master node
+    ssh -i "$_MASTER_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no "admin@$_MASTER_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"
+    
+    # Update server address
+    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
+    if [ -n "$_ENTRYPOINT_IPV4" ]; then
+        sed -i "s/server: https:\/\/[^:]*:/server: https:\/\/$_ENTRYPOINT_IPV4:/" "$_KUBECONFIG_TMP"
     fi
-    _MASTER_OUTPUT="$_CLUSTER_DIR/master/output.json"
-    if [ ! -f "$_MASTER_OUTPUT" ]; then
-        _fail "master output.json not found"
+    
+    # Update context name
+    sed -i "s/kubernetes-admin@kubernetes/$_CLUSTER/" "$_KUBECONFIG_TMP"
+    
+    # Merge kubeconfig
+    if [ -f "$_KUBECONFIG" ]; then
+        KUBECONFIG="$_KUBECONFIG:$_KUBECONFIG_TMP" kubectl config view --flatten > "$_KUBECONFIG.tmp"
+        mv "$_KUBECONFIG.tmp" "$_KUBECONFIG"
+    else
+        mkdir -p "$(dirname "$_KUBECONFIG")"
+        cp "$_KUBECONFIG_TMP" "$_KUBECONFIG"
     fi
-    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
-    if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        _fail "kubespray directory not found at $_KUBESPRAY_DIR"
-    fi
-    _INVENTORY_FILE="$_CLUSTER_DIR/inventory/inventory.ini"
-    if [ ! -f "$_INVENTORY_FILE" ]; then
-        _fail "inventory file not found at $_INVENTORY_FILE"
-    fi
-    _MASTER_IPV4="$(grep -A1 '\[kube_control_plane\]' "$_INVENTORY_FILE" | tail -n1 | grep -o 'ansible_host=[^ ]*' | cut -d'=' -f2)"
-    if [ -z "$_MASTER_IPV4" ]; then
-        _fail "master node not found in inventory file"
-    fi
-    _SSH_KEY_FILE="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
-    if [ -z "$_SSH_KEY_FILE" ] || [ "$_SSH_KEY_FILE" = "null" ]; then
-        _fail "ssh key not found in output.json"
-    fi
-    _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
-    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
-        _fail "network.entrypoint not found in config.yaml"
-    fi
-    _ensure_system
-    mkdir -p "$(dirname "$_KUBECONFIG")"
-    _TEMP_KUBECONFIG="$(mktemp)"
-    _TEMP_FILES="$_TEMP_FILES $_TEMP_KUBECONFIG"
-    ssh -i "$_SSH_KEY_FILE" -o StrictHostKeyChecking=no admin@"$_MASTER_IPV4" "sudo cat /etc/kubernetes/admin.conf" > "$_TEMP_KUBECONFIG"
-    jq '.clusters[0].cluster.server = "https://'$_ENTRYPOINT':6443"' "$_TEMP_KUBECONFIG" | \
-        jq ".clusters[0].cluster.server = \"https://$_MASTER_IPV4:6443\"" | \
-        jq '.clusters[0].name = "'$_CLUSTER'" | .contexts[0].name = "'$_CLUSTER'" | .contexts[0].context.cluster = "'$_CLUSTER'" | .contexts[0].context.user = "'$_CLUSTER'" | .current-context = "'$_CLUSTER'" | .users[0].name = "'$_CLUSTER'"' > "$_KUBECONFIG"
-    chmod 600 "$_KUBECONFIG"
-    printf '{"name":"%s","entrypoint":"%s","server":"%s","kubeconfig":"%s"}\n' "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IPV4" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
+    
+    # Use the new context
+    kubectl config use-context "$_CLUSTER"
+    
+    printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
+        "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IPV4" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@" 

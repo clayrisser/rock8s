@@ -7,13 +7,13 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense configure - configure pfSense
+       rock8s pfsense publish - publish HAProxy configuration
 
 SYNOPSIS
-       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password] [--non-interactive] [-y|--yes]
+       rock8s pfsense publish [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--password <password>] [--ssh-password]
 
 DESCRIPTION
-       configure pfsense settings including network interfaces, firewall rules, and system settings
+       publish HAProxy configuration to pfSense firewall for load balancing
 
 OPTIONS
        -h, --help
@@ -29,20 +29,11 @@ OPTIONS
        --cluster <cluster>
               name of the cluster to configure pfSense for (required)
 
-       --update
-              update ansible collections
-
        --password <password>
               admin password
 
        --ssh-password
               use password authentication for ssh instead of an ssh key
-
-       --non-interactive
-              fail instead of prompting for missing values
-
-       -y, --yes
-              skip confirmation prompt
 EOF
 }
 
@@ -51,10 +42,8 @@ _main() {
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _NON_INTERACTIVE=0
-    _UPDATE=""
     _PASSWORD=""
     _SSH_PASSWORD=0
-    _YES=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -113,18 +102,6 @@ _main() {
                 _SSH_PASSWORD=1
                 shift
                 ;;
-            --update)
-                _UPDATE="1"
-                shift
-                ;;
-            -y|--yes)
-                _YES=1
-                shift
-                ;;
-            --non-interactive)
-                _NON_INTERACTIVE=1
-                shift
-                ;;
             -*)
                 _help
                 exit 1
@@ -141,68 +118,26 @@ _main() {
         }
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _CLUSTER_DIR="$(_get_cluster_dir)"
     _PROVIDER="$(_get_provider)"
     _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
-    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
-        --output="$_FORMAT" \
-        --cluster="$_CLUSTER" \
-        --tenant="$_TENANT" \
-        $([ "$_YES" = "1" ] && echo "--yes") \
-        $([ "$NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
-        pfsense
     _PFSENSE_OUTPUT_JSON="$_CLUSTER_DIR/pfsense/output.json"
-    mkdir -p "$_PFSENSE_DIR"
-    _PFSENSE_SHARED_WAN_IPV4="$(_get_pfsense_shared_wan_ipv4)"
-    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+    _validate_cluster_node "$_CLUSTER_DIR" "pfsense"
+    _validate_cluster_node "$_CLUSTER_DIR" "master"
+    _PFSENSE_PRIMARY_LAN_IPV4="$(_get_pfsense_primary_lan_ipv4)"
+    _PFSENSE_SECONDARY_LAN_IPV4="$(_get_pfsense_secondary_lan_ipv4)"
+    _MASTER_OUTPUT_JSON="$(_get_node_output_file "$_CLUSTER_DIR" "master")"
+    _MASTER_IPS="$(_get_node_master_ips "$_MASTER_OUTPUT_JSON")"
+    if [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
         _PASSWORD="$(whiptail --title "Enter admin password" \
             --backtitle "Rock8s Configuration" \
             --passwordbox " " \
             0 0 \
             3>&1 1>&2 2>&3)" || _fail "password required"
     fi
-    _PFSENSE_PRIMARY_LAN_IPV4="$(_get_pfsense_primary_lan_ipv4)"
-    _PFSENSE_SECONDARY_LAN_IPV4="$(_get_pfsense_secondary_lan_ipv4)"
-    _LAN_INTERFACE="$(_get_lan_interface)"
-    _LAN_IPV4_SUBNET="$(_get_lan_ipv4_subnet)"
-    _LAN_IPV4_PREFIX="$(echo "$_LAN_IPV4_SUBNET" | cut -d'/' -f2)"
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
-    mkdir -p "$_PFSENSE_DIR/collections"
-    ansible-galaxy collection install \
-        $([ "$_UPDATE" = "1" ] && echo "--force") \
-        -r "$_PFSENSE_DIR/ansible/requirements.yml" \
-        -p "$_PFSENSE_DIR/collections"
-    mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
-    _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
-    _CONFIG="$(cat <<EOF | yaml2json
-pfsense:
-  provider: $_PROVIDER
-  password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
-  system:
-    dns: $(_get_dns_servers)
-  network:
-    interfaces:
-      lan:
-        subnet: ${_LAN_IPV4_SUBNET}
-        interface: ${_LAN_INTERFACE}
-        dhcp: ${_LAN_IPV4_DHCP}
-        ipv4:
-          primary: ${_PFSENSE_PRIMARY_LAN_IPV4}/${_LAN_IPV4_PREFIX}
-          secondary: ${_PFSENSE_SECONDARY_LAN_IPV4}/${_LAN_IPV4_PREFIX}
-        ipv6:
-          primary: $(_get_pfsense_primary_lan_ipv6)/64
-          secondary: $(_get_pfsense_secondary_lan_ipv6)/64
-        ips:
-          - $(_get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
-      wan:
-        ips:
-          - \"$_PFSENSE_SHARED_WAN_IPV4\"")
-EOF
-)"
-    echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   vars:
@@ -219,16 +154,35 @@ EOF
       primary: false
 EOF
     fi
-    if [ -n "$_SSH_PRIVATE_KEY" ] && [ "$_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
-        echo export ANSIBLE_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY"
-    fi
+    cat > "$_PFSENSE_DIR/vars.yml" <<EOF
+pfsense:
+  provider: $_PROVIDER
+  password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
+  haproxy:
+    enabled: true
+    frontends:
+      - name: k8s_api
+        bind: "*:6443"
+        mode: tcp
+        backends:
+          - name: k8s_api_backend
+            mode: tcp
+            balance: roundrobin
+            servers: $_MASTER_IPS
+    backends:
+      - name: k8s_api_backend
+        mode: tcp
+        balance: roundrobin
+        servers: $_MASTER_IPS
+EOF
     cd "$_PFSENSE_DIR/ansible"
     echo ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
         PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
         ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
         -e "@$_PFSENSE_DIR/vars.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/configure.yml"
+        "$_PFSENSE_DIR/ansible/playbooks/haproxy.yml"
+    
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
 }
 

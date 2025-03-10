@@ -103,34 +103,35 @@ _main() {
     if [ -z "$_NODE" ]; then
         _fail "node name required"
     fi
-    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$_CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
-    fi
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
-    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
-    if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        _fail "kubespray directory not found"
-    fi
-    _ensure_system
-    _VENV_DIR="$_KUBESPRAY_DIR/venv"
-    if [ ! -d "$_VENV_DIR" ]; then
-        _fail "kubespray virtual environment not found"
-    fi
+    
+    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
+    _validate_cluster_dir "$_CLUSTER_DIR"
+    
+    # Setup Kubespray
+    _KUBESPRAY_DIR="$(_get_kubespray_dir "$_CLUSTER_DIR")"
+    _validate_kubespray_dir "$_KUBESPRAY_DIR"
+    
+    _VENV_DIR="$(_get_kubespray_venv_dir "$_KUBESPRAY_DIR")"
+    _validate_kubespray_venv "$_VENV_DIR"
     . "$_VENV_DIR/bin/activate"
+    
+    # Setup inventory
+    _INVENTORY_DIR="$(_get_kubespray_inventory_dir "$_CLUSTER_DIR")"
+    _validate_kubespray_inventory "$_INVENTORY_DIR"
+    
+    # Get node information
+    _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "master")"
+    
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -i "$_INVENTORY_DIR/inventory.ini" \
+        -e "@$_INVENTORY_DIR/vars.yml" \
         -e "node=$_NODE" \
-        -e "reset_nodes=false" \
-        -e "allow_ungraceful_removal=true" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/remove-node.yml" -b -v
-    printf '{"name":"%s","node":"%s"}\n' "$_CLUSTER" "$_NODE" | _format_output "$_FORMAT" cluster
+    
+    printf '{"cluster":"%s","node":"%s"}\n' "$_CLUSTER" "$_NODE" | _format_output "$_FORMAT" node
 }
 
 _main "$@"

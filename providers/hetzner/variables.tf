@@ -56,7 +56,12 @@ variable "location" {
 variable "network" {
   type = object({
     lan = object({
-      subnet = string
+      ipv4 = object({
+        subnet = string
+      })
+      ipv6 = optional(object({
+        subnet = string
+      }))
     })
   })
 }
