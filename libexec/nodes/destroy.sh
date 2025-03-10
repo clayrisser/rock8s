@@ -31,7 +31,7 @@ OPTIONS
               tenant name (default: current user)
 
        --cluster <cluster>
-              name of the cluster to destroy nodes for (required)
+              name of the cluster to destroy nodes for
 
        --force
               skip dependency checks for destruction order
@@ -44,7 +44,7 @@ EOF
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _PURPOSE=""
-    _CLUSTER=""
+    _CLUSTER="$ROCK8S_CLUSTER"
     _FORCE=0
     _YES=0
     _TENANT="$ROCK8S_TENANT"
@@ -113,73 +113,56 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_PURPOSE" ] || [ -z "$_CLUSTER" ]; then
+    if [ -z "$_PURPOSE" ]; then
         _help
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
         _fail "purpose $_PURPOSE not found"
     fi
-    _ensure_system
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
-    _PROVIDER="$(yaml2json < "$_CONFIG_FILE" | jq -r '.provider')"
-    if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
-        _fail ".provider not found in config.yaml"
-    fi
-    _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
-    if [ ! -d "$_PROVIDER_DIR" ]; then
-        _fail "provider $_PROVIDER not found"
-    fi
-    export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
-    fi
-    _PURPOSE_DIR="$CLUSTER_DIR/$_PURPOSE"
+    _CLUSTER_DIR="$(_get_cluster_dir)"
+    _PROVIDER="$(_get_provider)"
+    _PURPOSE_DIR="$_CLUSTER_DIR/$_PURPOSE"
     if [ ! -d "$_PURPOSE_DIR" ] || [ ! -f "$_PURPOSE_DIR/output.json" ]; then
         _fail "nodes $_PURPOSE not found"
     fi
-    rm -rf "$CLUSTER_DIR/provider"
-    cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
     if [ "$_FORCE" != "1" ]; then
         case "$_PURPOSE" in
             pfsense)
-                if [ -d "$CLUSTER_DIR/master" ] || [ -d "$CLUSTER_DIR/worker" ]; then
+                if [ -d "$_CLUSTER_DIR/master" ] || [ -d "$_CLUSTER_DIR/worker" ]; then
                     _fail "nodes master and worker must be destroyed before nodes pfsense"
                 fi
                 ;;
             master)
-                if [ -d "$CLUSTER_DIR/worker" ]; then
+                if [ -d "$_CLUSTER_DIR/worker" ]; then
                     _fail "nodes worker must be destroyed before nodes master"
                 fi
                 ;;
         esac
     fi
-    rm -rf "$CLUSTER_DIR/provider.terraform"
-    if [ -d "$CLUSTER_DIR/provider/.terraform" ]; then
-        mv "$CLUSTER_DIR/provider/.terraform" "$CLUSTER_DIR/provider.terraform"
+    _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
+    if [ ! -d "$_PROVIDER_DIR" ]; then
+        _fail "provider $_PROVIDER not found"
     fi
-    rm -rf "$CLUSTER_DIR/provider"
-    cp -r "$_PROVIDER_DIR" "$CLUSTER_DIR/provider"
-    if [ -d "$CLUSTER_DIR/provider.terraform" ]; then
-        mv "$CLUSTER_DIR/provider.terraform" "$CLUSTER_DIR/provider/.terraform"
+    rm -rf "$_CLUSTER_DIR/provider"
+    cp -r "$_PROVIDER_DIR" "$_CLUSTER_DIR/provider"
+    if [ -d "$_CLUSTER_DIR/provider.terraform" ]; then
+        mv "$_CLUSTER_DIR/provider.terraform" "$_CLUSTER_DIR/provider/.terraform"
     fi
-    yaml2json < "$_CONFIG_FILE" | sh "$CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
+    echo "$(_get_config_json)" | sh "$_CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ "$_PURPOSE" != "pfsense" ]; then
         export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
     fi
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_purpose="$_PURPOSE"
     export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
-    export TF_VAR_cluster_dir="$CLUSTER_DIR"
+    export TF_VAR_cluster_dir="$_CLUSTER_DIR"
     export TF_VAR_tenant="$_TENANT"
     export TF_DATA_DIR="$_PURPOSE_DIR/.terraform"
-    if [ -f "$CLUSTER_DIR/provider/variables.sh" ]; then
-        . "$CLUSTER_DIR/provider/variables.sh"
+    if [ -f "$_CLUSTER_DIR/provider/variables.sh" ]; then
+        . "$_CLUSTER_DIR/provider/variables.sh"
     fi
-    cd "$CLUSTER_DIR/provider"
+    cd "$_CLUSTER_DIR/provider"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
         [ ! -f "$_PROVIDER_DIR/.terraform.lock.hcl" ] || \
         [ ! -d "$TF_DATA_DIR/providers" ] || \
@@ -190,11 +173,11 @@ _main() {
     fi
     terraform destroy $([ "$_YES" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     rm -rf "$_PURPOSE_DIR"
-    if [ ! -d "$CLUSTER_DIR/worker" ] && [ ! -d "$CLUSTER_DIR/master" ]; then
-        rm -rf "$CLUSTER_DIR/provider"
+    if [ ! -d "$_CLUSTER_DIR/worker" ] && [ ! -d "$_CLUSTER_DIR/master" ]; then
+        rm -rf "$_CLUSTER_DIR/provider"
     fi
-    if [ -z "$(ls -A "$CLUSTER_DIR")" ]; then
-        rm -rf "$CLUSTER_DIR"
+    if [ -z "$(ls -A "$_CLUSTER_DIR")" ]; then
+        rm -rf "$_CLUSTER_DIR"
     fi
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
