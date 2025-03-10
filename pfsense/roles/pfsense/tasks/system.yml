@@ -44,7 +44,7 @@
       $config = parse_config();
     }
     config_set_path('system/webgui/althostnames', "{{ ansible_host }} {{ dns_lookup.stdout | default('') }}");
-    write_config('Updated system advanced configuration from ansible');
+    write_config(sprintf('Updated system advanced configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
     EOF
     {% if system_advanced_check is changed %}
     php -f /tmp/update_system_advanced.php

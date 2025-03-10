@@ -11,7 +11,7 @@ locals {
   network = {
     lan = {
       name   = local.tenant == "" ? "${var.cluster_name}-lan" : "${local.tenant}-${var.cluster_name}-lan"
-      subnet = var.network.lan.subnet
+      subnet = var.network.lan.ipv4.subnet
       zone   = lookup(local.location_zones, var.location, "eu-central")
     }
   }
@@ -40,7 +40,7 @@ locals {
     for idx, server in hcloud_server.nodes :
     server.name => one(server.network).ip
   }
-  network_parts = var.purpose == "pfsense" ? split("/", var.network.lan.subnet) : []
+  network_parts = var.purpose == "pfsense" ? split("/", var.network.lan.ipv4.subnet) : []
   network_base  = length(local.network_parts) > 0 ? split(".", local.network_parts[0]) : []
   pfsense_primary_ip = var.purpose == "pfsense" && length(local.network_base) == 4 ? format("%s.%s.%s.2",
     local.network_base[0], local.network_base[1],

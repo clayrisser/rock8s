@@ -7,20 +7,13 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense - manage pfSense firewall
+       rock8s pfsense destroy - destroy pfSense firewall
 
 SYNOPSIS
-       rock8s pfsense [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] <command>
+       rock8s pfsense destroy [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] [--force] [--non-interactive]
 
 DESCRIPTION
-       configure and manage pfSense firewall
-
-COMMANDS
-       configure
-              configure pfSense settings and rules
-
-       destroy
-              destroy pfSense firewall nodes
+       destroy pfSense firewall nodes
 
 OPTIONS
        -h, --help
@@ -34,19 +27,26 @@ OPTIONS
               tenant name (default: current user)
 
        --cluster <cluster>
-              name of the cluster to manage pfSense for
+              name of the cluster to destroy pfSense for (required)
 
-SEE ALSO
-       rock8s pfsense configure --help
-       rock8s pfsense destroy --help
+       -y, --yes
+              skip confirmation prompt
+
+       --force
+              skip dependency checks for destruction order
+
+       --non-interactive
+              fail instead of prompting for missing values
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _CMD=""
-    _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
+    _CLUSTER="$ROCK8S_CLUSTER"
+    _YES=0
+    _FORCE=0
+    _NON_INTERACTIVE=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -89,10 +89,21 @@ _main() {
                         ;;
                 esac
                 ;;
-            configure|destroy)
-                _CMD="$1"
+            -y|--yes)
+                _YES=1
                 shift
-                break
+                ;;
+            --force)
+                _FORCE=1
+                shift
+                ;;
+            --non-interactive)
+                _NON_INTERACTIVE=1
+                shift
+                ;;
+            -*)
+                _help
+                exit 1
                 ;;
             *)
                 _help
@@ -100,18 +111,17 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CMD" ]; then
-        _help
-        exit 1
-    fi
-    export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
-    _SUBCMD="$ROCK8S_LIB_PATH/libexec/pfsense/$_CMD.sh"
-    if [ ! -f "$_SUBCMD" ]; then
-        _fail "unknown pfsense command: $_CMD"
-    fi
-    exec sh "$_SUBCMD" "$@"
+    export NON_INTERACTIVE="$_NON_INTERACTIVE"
+    sh "$ROCK8S_LIB_PATH/libexec/nodes/destroy.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_YES" = "1" ] && echo "--yes") \
+        $([ "$_FORCE" = "1" ] && echo "--force") \
+        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+        pfsense
 }
 
 _main "$@"

@@ -98,82 +98,50 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
     fi
-    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$_CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
-    fi
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
-    _MASTER_OUTPUT="$_CLUSTER_DIR/master/output.json"
-    if [ ! -f "$_MASTER_OUTPUT" ]; then
-        _fail "master output.json not found"
-    fi
-    _WORKER_OUTPUT="$_CLUSTER_DIR/worker/output.json"
-    if [ ! -f "$_WORKER_OUTPUT" ]; then
-        _fail "worker output.json not found"
-    fi
-    _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
-    if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
-        _fail ".network.lan.subnet not found in config.yaml"
-    fi
-    _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
-    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
-        _fail ".network.entrypoint not found in config.yaml"
-    fi
-    _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
-    _MASTER_IPV4S="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _MASTER_EXTERNAL_IPV4S="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
-    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
-    if [ -n "$_ENTRYPOINT_IPV4" ]; then
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
-    fi
-    for _IPV4 in $_MASTER_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
-    for _IPV4 in $_MASTER_EXTERNAL_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
-    _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
-    _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
-    _WORKER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_WORKER_OUTPUT")"
-    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
-    _ensure_system
+    
+    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
+    _validate_cluster_dir "$_CLUSTER_DIR"
+    
+    # Get node information
+    _MASTER_NODES="$(_get_node_private_ips "master")"
+    _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "master")"
+    _WORKER_NODES="$(_get_node_private_ips "worker")"
+    _WORKER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "worker")"
+    
+    # Setup Kubespray
+    _KUBESPRAY_DIR="$(_get_kubespray_dir "$_CLUSTER_DIR")"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
         git clone --depth 1 --branch "$KUBESPRAY_VERSION" "$KUBESPRAY_REPO" "$_KUBESPRAY_DIR"
     fi
-    _VENV_DIR="$_KUBESPRAY_DIR/venv"
+    
+    _VENV_DIR="$(_get_kubespray_venv_dir "$_KUBESPRAY_DIR")"
     if [ ! -d "$_VENV_DIR" ]; then
         python3 -m venv "$_VENV_DIR"
     fi
     . "$_VENV_DIR/bin/activate"
+    
     if command -v uv >/dev/null 2>&1; then
         uv pip install -r "$_KUBESPRAY_DIR/requirements.txt"
     else
         pip install -r "$_KUBESPRAY_DIR/requirements.txt"
     fi
-    if [ ! -d "$_CLUSTER_DIR/inventory" ]; then
-        cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
+    
+    # Setup inventory
+    _INVENTORY_DIR="$(_get_kubespray_inventory_dir "$_CLUSTER_DIR")"
+    if [ ! -d "$_INVENTORY_DIR" ]; then
+        cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_INVENTORY_DIR"
     fi
-    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/vars.yml"
-    _MTU="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.mtu')"
-    if [ -z "$_MTU" ] || [ "$_MTU" = "null" ]; then
-        _MTU="1500"
-    fi
-    _DUELSTACK="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dualstack')"
-    if [ "$_DUELSTACK" = "false" ]; then
-        _DUELSTACK="false"
-    else
-        _DUELSTACK="true"
-    fi
-    _METALLB="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.metallb')"
-    if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
-        _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
-    fi
+    
+    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_INVENTORY_DIR/vars.yml"
+    
+    # Get network settings
+    _MTU="$(_get_network_mtu)"
+    _DUELSTACK="$(_get_network_dualstack)"
+    _METALLB="$(_get_lan_metallb)"
+    _SUPPLEMENTARY_ADDRESSES="$(_get_supplementary_addresses)"
+    
     cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
-    cat >> "$_CLUSTER_DIR/inventory/vars.yml" <<EOF
+    cat >> "$_INVENTORY_DIR/vars.yml" <<EOF
 
 enable_dual_stack_networks: $_DUELSTACK
 supplementary_addresses_in_ssl_keys: [$_SUPPLEMENTARY_ADDRESSES]
@@ -181,7 +149,8 @@ calico_mtu: $_MTU
 calico_veth_mtu: $(($_MTU - 50))
 metallb: "$_METALLB"
 EOF
-    cat > "$_CLUSTER_DIR/inventory/inventory.ini" <<EOF
+    
+    cat > "$_INVENTORY_DIR/inventory.ini" <<EOF
 [kube_control_plane]
 $(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
 
@@ -201,20 +170,23 @@ node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
 [kube_node:vars]
 node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
 EOF
+    
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
+        -i "$_INVENTORY_DIR/inventory.ini" \
+        -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/cluster.yml" -b -v
+    
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
+        -i "$_INVENTORY_DIR/inventory.ini" \
+        -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/postinstall.yml" -b -v
+    
     "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" --cluster "$_CLUSTER" --tenant "$_TENANT" --kubeconfig "$_CLUSTER_DIR/kube.yaml" --output json > /dev/null
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }

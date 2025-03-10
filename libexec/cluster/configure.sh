@@ -119,45 +119,33 @@ _main() {
         _fail "cluster name required (use --cluster)"
     fi
     _ensure_system
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    _PROVIDER="$([ -f "$_CONFIG_FILE" ] && (yaml2json < "$_CONFIG_FILE" | jq -r '.provider') || true)"
-    if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
-        _fail ".provider not found in config.yaml"
-    fi
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
-    export CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$CLUSTER_DIR" ]; then
-        _fail "cluster state directory not found at $CLUSTER_DIR"
-    fi
-    if [ ! -d "$CLUSTER_DIR/pfsense" ] || [ ! -d "$CLUSTER_DIR/master" ]; then
-        _fail "pfsense and master nodes must be created before configuring the cluster"
-    fi
-    if [ -n "$_KUBECONFIG" ]; then
-        if [ ! -f "$_KUBECONFIG" ]; then
-            _fail "kubeconfig not found"
-        fi
-    else
-        if [ ! -f "$CLUSTER_DIR/kube.yaml" ]; then
-            _fail "kubeconfig not found"
-        fi
-        _KUBECONFIG="$CLUSTER_DIR/kube.yaml"
-    fi
-    _CONFIG_JSON=$(yaml2json < "$_CONFIG_FILE")
-    _ENTRYPOINT=$(echo "$_CONFIG_JSON" | jq -r '.network.entrypoint // ""')
-    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
-        _fail ".network.entrypoint not found in config.yaml"
-    fi
-    _ADDONS_DIR="$CLUSTER_DIR/addons"
+    
+    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
+    _validate_cluster_dir "$_CLUSTER_DIR"
+    
+    _CONFIG_FILE="$(_get_cluster_config_file "$_TENANT" "$_CLUSTER")"
+    _validate_cluster_config "$_CONFIG_FILE"
+    
+    _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
+    _PROVIDER="$(_get_cluster_provider "$_CONFIG_JSON")"
+    _ENTRYPOINT="$(_get_cluster_entrypoint "$_CONFIG_JSON")"
+    
+    _validate_cluster_node "$_CLUSTER_DIR" "pfsense"
+    _validate_cluster_node "$_CLUSTER_DIR" "master"
+    
+    _KUBECONFIG="$(_get_cluster_kubeconfig "$_CLUSTER_DIR" "$_KUBECONFIG")"
+    _ADDONS_DIR="$(_get_cluster_addons_dir "$_CLUSTER_DIR")"
+    
     mkdir -p "$_ADDONS_DIR"
     rm -rf "$_ADDONS_DIR/terraform"
     cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"
     echo "$_CONFIG_JSON" | jq -e '.addons // {}' > $_ADDONS_DIR/terraform.tfvars.json
+    
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_entrypoint="$_ENTRYPOINT"
     export TF_VAR_kubeconfig="$_KUBECONFIG"
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
+    
     cd "$_ADDONS_DIR/terraform"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
         [ ! -f "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" ] || \

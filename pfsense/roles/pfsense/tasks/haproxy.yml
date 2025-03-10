@@ -131,7 +131,7 @@
     );
     $config['installedpackages']['haproxy']['localstatsport'] = $stats_port;
     $config['installedpackages']['haproxy']['enable'] = '';
-    write_config();
+    write_config(sprintf('Updated haproxy system settings from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
     haproxy_configure();
     echo "CHANGED";
     EOF
@@ -464,7 +464,7 @@
             $target_info = parse_backend_target($target);
             $server = array(
                 'status' => 'active',
-                'name' => "{$backend_name}_srv_{$idx}",
+                'name' => "{$backend_name}_{$idx}",
                 'descr' => $target,
                 'address' => $target_info['host'],
                 'port' => $target_info['port'],
@@ -605,7 +605,7 @@
     }
     $config['installedpackages']['haproxy']['ha_backends'] = array('item' => array_values($merged_frontends));
     $config['installedpackages']['haproxy']['ha_pools'] = array('item' => array_values($merged_backends));
-    if (write_config()) {
+    if (write_config(sprintf('Updated haproxy frontend and backend configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
         haproxy_configure();
         echo "CHANGED";
         exit(0);
@@ -692,7 +692,7 @@
     if (!$primary) {
         if ($haproxy_sync_enabled) {
             $config['installedpackages']['haproxy']['enablesync'] = 'off';
-            if (write_config()) {
+            if (write_config(sprintf('Disabled haproxy sync configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
                 haproxy_configure();
                 echo "CHANGED";
                 exit(0);
@@ -712,13 +712,11 @@
         $config['installedpackages']['haproxy'] = array();
     }
     $config['installedpackages']['haproxy']['enablesync'] = $ha_sync_enabled ? 'on' : 'off';
-    if (write_config()) {
+    if (write_config(sprintf('Updated haproxy sync configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
         haproxy_configure();
         echo "CHANGED";
         exit(0);
     }
-    echo "UNCHANGED";
-    exit(0);
     EOF
     php -f /tmp/configure_sync.php || echo "UNCHANGED"
     rm -f /tmp/configure_sync.php
