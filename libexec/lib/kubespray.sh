@@ -1,8 +1,12 @@
 #!/bin/sh
 
 _get_kubespray_dir() {
-    _CLUSTER_DIR="$1"
-    echo "$_CLUSTER_DIR/kubespray"
+    if [ -n "$_KUBESPRAY_DIR" ]; then
+        echo "$_KUBESPRAY_DIR"
+        return 0
+    fi
+    _KUBESPRAY_DIR="$(_get_cluster_dir)/kubespray"
+    echo "$_KUBESPRAY_DIR"
 }
 
 _get_kubespray_venv_dir() {
@@ -18,27 +22,6 @@ _get_kubespray_inventory_dir() {
 _get_kubespray_inventory_file() {
     _INVENTORY_DIR="$1"
     echo "$_INVENTORY_DIR/inventory.ini"
-}
-
-_validate_kubespray_dir() {
-    _KUBESPRAY_DIR="$1"
-    if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        _fail "kubespray directory not found at $_KUBESPRAY_DIR"
-    fi
-}
-
-_validate_kubespray_venv() {
-    _VENV_DIR="$1"
-    if [ ! -d "$_VENV_DIR" ]; then
-        _fail "kubespray virtual environment not found"
-    fi
-}
-
-_validate_kubespray_inventory() {
-    _INVENTORY_FILE="$1"
-    if [ ! -f "$_INVENTORY_FILE" ]; then
-        _fail "inventory file not found at $_INVENTORY_FILE"
-    fi
 }
 
 _setup_kubespray() {

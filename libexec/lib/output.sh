@@ -1,19 +1,5 @@
 #!/bin/sh
 
-_get_pfsense_output_json() {
-    if [ -n "$_PFSENSE_OUTPUT_JSON" ]; then
-        echo "$_PFSENSE_OUTPUT_JSON"
-        return 0
-    fi
-    _CLUSTER_DIR="$(_get_cluster_dir)"
-    if [ -f "$_CLUSTER_DIR/pfsense/output.json" ]; then
-        _PFSENSE_OUTPUT_JSON="$(cat "$_CLUSTER_DIR/pfsense/output.json")"
-    else
-        _fail "pfsense output.json not found"
-    fi
-    echo "$_PFSENSE_OUTPUT_JSON"
-}
-
 _get_master_output_json() {
     if [ -n "$_MASTER_OUTPUT_JSON" ]; then
         echo "$_MASTER_OUTPUT_JSON"
@@ -40,11 +26,6 @@ _get_worker_output_json() {
         _fail "worker output.json not found"
     fi
     echo "$_WORKER_OUTPUT_JSON"
-}
-
-_get_pfsense_node_count() {
-    _PFSENSE_OUTPUT_JSON="$(_get_pfsense_output_json)"
-    echo "$_PFSENSE_OUTPUT_JSON" | jq -r '.node_ips.value | length'
 }
 
 # _get_node_output_json() {

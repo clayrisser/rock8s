@@ -90,19 +90,13 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
     fi
-    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$_CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
-    fi
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
-    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_TENANT="$_TENANT"
+    _CLUSTER_DIR="$(_get_cluster_dir)"
+    _KUBESPRAY_DIR="$(_get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
         _fail "kubespray directory not found"
     fi
-    _ensure_system
     _VENV_DIR="$_KUBESPRAY_DIR/venv"
     if [ ! -d "$_VENV_DIR" ]; then
         _fail "kubespray virtual environment not found"

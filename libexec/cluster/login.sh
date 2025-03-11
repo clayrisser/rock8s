@@ -118,17 +118,14 @@ _main() {
     fi
     
     _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    _validate_cluster_dir "$_CLUSTER_DIR"
     
     _CONFIG_FILE="$(_get_cluster_config_file "$_TENANT" "$_CLUSTER")"
-    _validate_cluster_config "$_CONFIG_FILE"
     
     _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
     _ENTRYPOINT="$(_get_cluster_entrypoint "$_CONFIG_JSON")"
     
     # Get node information
     _MASTER_OUTPUT="$(_get_node_output_file "$_CLUSTER_DIR" "master")"
-    _validate_node_output "$_MASTER_OUTPUT" "master"
     _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "$_MASTER_OUTPUT")"
     _MASTER_IPV4="$(_get_node_master_ipv4 "$_MASTER_OUTPUT")"
     

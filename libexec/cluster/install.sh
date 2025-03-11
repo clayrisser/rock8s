@@ -100,7 +100,6 @@ _main() {
     fi
     
     _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    _validate_cluster_dir "$_CLUSTER_DIR"
     
     # Get node information
     _MASTER_NODES="$(_get_node_private_ips "master")"

@@ -105,19 +105,15 @@ _main() {
     fi
     
     _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    _validate_cluster_dir "$_CLUSTER_DIR"
     
     # Setup Kubespray
     _KUBESPRAY_DIR="$(_get_kubespray_dir "$_CLUSTER_DIR")"
-    _validate_kubespray_dir "$_KUBESPRAY_DIR"
     
     _VENV_DIR="$(_get_kubespray_venv_dir "$_KUBESPRAY_DIR")"
-    _validate_kubespray_venv "$_VENV_DIR"
     . "$_VENV_DIR/bin/activate"
     
     # Setup inventory
     _INVENTORY_DIR="$(_get_kubespray_inventory_dir "$_CLUSTER_DIR")"
-    _validate_kubespray_inventory "$_INVENTORY_DIR"
     
     # Get node information
     _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "master")"

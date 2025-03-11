@@ -90,14 +90,9 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
     fi
-    _CLUSTER_DIR="$ROCK8S_STATE_HOME/tenants/$_TENANT/clusters/$_CLUSTER"
-    if [ ! -d "$_CLUSTER_DIR" ]; then
-        _fail "cluster $_CLUSTER not found"
-    fi
-    _CONFIG_FILE="$ROCK8S_CONFIG_HOME/tenants/$_TENANT/clusters/$_CLUSTER/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
-        _fail "cluster configuration file not found at $_CONFIG_FILE"
-    fi
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_TENANT="$_TENANT"
+    _CLUSTER_DIR="$(_get_cluster_dir)"
     _MASTER_OUTPUT="$_CLUSTER_DIR/master/output.json"
     if [ ! -f "$_MASTER_OUTPUT" ]; then
         _fail "master output.json not found"
@@ -106,36 +101,14 @@ _main() {
     if [ ! -f "$_WORKER_OUTPUT" ]; then
         _fail "worker output.json not found"
     fi
-    _NETWORK_SUBNET="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.subnet')"
-    if [ -z "$_NETWORK_SUBNET" ] || [ "$_NETWORK_SUBNET" = "null" ]; then
-        _fail ".network.lan.subnet not found in config.yaml"
-    fi
-    _ENTRYPOINT="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.entrypoint')"
-    if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
-        _fail ".network.entrypoint not found in config.yaml"
-    fi
     _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
-    _MASTER_IPV4S="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _MASTER_EXTERNAL_IPV4S="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
-    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
-    if [ -n "$_ENTRYPOINT_IPV4" ]; then
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
-    fi
-    for _IPV4 in $_MASTER_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
-    for _IPV4 in $_MASTER_EXTERNAL_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
     _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
     _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
     _WORKER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_WORKER_OUTPUT")"
-    _KUBESPRAY_DIR="$_CLUSTER_DIR/kubespray"
+    _KUBESPRAY_DIR="$(_get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
         _fail "kubespray directory not found"
     fi
-    _ensure_system
     _VENV_DIR="$_KUBESPRAY_DIR/venv"
     if [ ! -d "$_VENV_DIR" ]; then
         python3 -m venv "$_VENV_DIR"
@@ -149,28 +122,13 @@ _main() {
     rm -rf "$_CLUSTER_DIR/inventory"
     cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
     cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/vars.yml"
-    _MTU="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.mtu')"
-    if [ -z "$_MTU" ] || [ "$_MTU" = "null" ]; then
-        _MTU="1500"
-    fi
-    _DUELSTACK="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.dualstack')"
-    if [ "$_DUELSTACK" = "false" ]; then
-        _DUELSTACK="false"
-    else
-        _DUELSTACK="true"
-    fi
-    _METALLB="$(yaml2json < "$_CONFIG_FILE" | jq -r '.network.lan.metallb')"
-    if [ -z "$_METALLB" ] || [ "$_METALLB" = "null" ]; then
-        _METALLB="$(_calculate_metallb "$_NETWORK_SUBNET")"
-    fi
     cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
     cat >> "$_CLUSTER_DIR/inventory/vars.yml" <<EOF
-
-enable_dual_stack_networks: $_DUELSTACK
-supplementary_addresses_in_ssl_keys: [$_SUPPLEMENTARY_ADDRESSES]
-calico_mtu: $_MTU
-calico_veth_mtu: $(($_MTU - 50))
-metallb: "$_METALLB"
+enable_dual_stack_networks: $(_get_network_dualstack)
+supplementary_addresses_in_ssl_keys: [$(_get_supplementary_addresses)]
+calico_mtu: $(_get_network_mtu)
+calico_veth_mtu: $((_get_network_mtu - 50))
+metallb: "$(_get_network_metallb)"
 EOF
     cat > "$_CLUSTER_DIR/inventory/inventory.ini" <<EOF
 [kube_control_plane]

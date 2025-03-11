@@ -153,7 +153,6 @@ _main() {
         $([ "$_YES" = "1" ] && echo "--yes") \
         $([ "$NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         pfsense
-    _PFSENSE_OUTPUT_JSON="$_CLUSTER_DIR/pfsense/output.json"
     mkdir -p "$_PFSENSE_DIR"
     _PFSENSE_SHARED_WAN_IPV4="$(_get_pfsense_shared_wan_ipv4)"
     if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
@@ -209,21 +208,22 @@ all:
     ansible_user: admin
   hosts:
     pfsense1:
-      ansible_host: $_PFSENSE_PRIMARY_LAN_IPV4
+      ansible_host: $(_get_pfsense_primary_hostname)
       primary: true
 EOF
     if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_LAN_IPV4" != "null" ]; then
         cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
     pfsense2:
-      ansible_host: $_PFSENSE_SECONDARY_LAN_IPV4
+      ansible_host: $(_get_pfsense_secondary_hostname)
       primary: false
 EOF
     fi
-    if [ -n "$_SSH_PRIVATE_KEY" ] && [ "$_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
-        echo export ANSIBLE_PRIVATE_KEY_FILE="$_SSH_PRIVATE_KEY"
+    _PFSENSE_SSH_PRIVATE_KEY="$(_get_pfsense_ssh_private_key)"
+    if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_PFSENSE_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
+        export ANSIBLE_PRIVATE_KEY_FILE="$_PFSENSE_SSH_PRIVATE_KEY"
     fi
     cd "$_PFSENSE_DIR/ansible"
-    echo ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+    ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
         PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
         ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
         -e "@$_PFSENSE_DIR/vars.yml" \
