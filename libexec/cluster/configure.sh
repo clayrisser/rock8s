@@ -121,17 +121,12 @@ _main() {
     _ensure_system
     
     _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    _validate_cluster_dir "$_CLUSTER_DIR"
     
     _CONFIG_FILE="$(_get_cluster_config_file "$_TENANT" "$_CLUSTER")"
-    _validate_cluster_config "$_CONFIG_FILE"
     
     _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
     _PROVIDER="$(_get_cluster_provider "$_CONFIG_JSON")"
     _ENTRYPOINT="$(_get_cluster_entrypoint "$_CONFIG_JSON")"
-    
-    _validate_cluster_node "$_CLUSTER_DIR" "pfsense"
-    _validate_cluster_node "$_CLUSTER_DIR" "master"
     
     _KUBECONFIG="$(_get_cluster_kubeconfig "$_CLUSTER_DIR" "$_KUBECONFIG")"
     _ADDONS_DIR="$(_get_cluster_addons_dir "$_CLUSTER_DIR")"

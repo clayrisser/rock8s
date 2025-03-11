@@ -174,169 +174,59 @@ _calculate_metallb() {
     echo "$_METALLB_RANGE"
 }
 
-_get_lan_ipv4_subnet() {
-    if [ -n "$_LAN_IPV4_SUBNET" ]; then
-        echo "$_LAN_IPV4_SUBNET"
+_get_network_mtu() {
+    if [ -n "$_NETWORK_MTU" ]; then
+        echo "$_NETWORK_MTU"
         return 0
     fi
-    _LAN_IPV4_SUBNET="$(_get_config_json | jq -r '.network.lan.ipv4.subnet // ""')"
-    if [ -z "$_LAN_IPV4_SUBNET" ] || [ "$_LAN_IPV4_SUBNET" = "null" ]; then
-        _fail ".network.lan.ipv4.subnet not found in config.yaml"
-    fi
-    echo "$_LAN_IPV4_SUBNET"
+    _NETWORK_MTU="$(_get_config_json | jq -r '.network.lan.mtu // "1500"')"
+    echo "$_NETWORK_MTU"
 }
 
-_get_lan_ipv6_subnet() {
-    if [ -n "$_LAN_IPV6_SUBNET" ]; then
-        echo "$_LAN_IPV6_SUBNET"
+_get_network_dualstack() {
+    if [ -n "$_NETWORK_DUALSTACK" ]; then
+        echo "$_NETWORK_DUALSTACK"
         return 0
     fi
-    _LAN_IPV6_SUBNET="$(_get_config_json | jq -r '.network.lan.ipv6.subnet // ""')"
-    if [ -z "$_LAN_IPV6_SUBNET" ] || [ "$_LAN_IPV6_SUBNET" = "null" ]; then
-        _LAN_IPV4_NETWORK="$(_get_lan_ipv4_subnet | cut -d'/' -f1)"
-        _LAST_NONZERO_OCTET=""
-        _OCTET_COUNT=1
-        for _OCTET in $(echo "$_LAN_IPV4_NETWORK" | tr '.' ' '); do
-            if [ "$_OCTET" != "0" ]; then
-                _LAST_NONZERO_OCTET="$_OCTET"
-                _LAST_NONZERO_POSITION="$_OCTET_COUNT"
-            fi
-            _OCTET_COUNT=$((_OCTET_COUNT + 1))
-        done
-        if [ "$_LAST_NONZERO_OCTET" -gt 99 ]; then
-            _PREFIX="$(printf '%02x' "$_LAST_NONZERO_OCTET")"
-        else
-            _PREFIX="$_LAST_NONZERO_OCTET"
-        fi
-        _LAN_IPV6_SUBNET="fd${_PREFIX}::/64"
+    _NETWORK_DUALSTACK="$(_get_config_json | jq -r '.network.lan.dualstack')"
+    if [ "$_NETWORK_DUALSTACK" = "false" ]; then
+        echo "false"
+    else
+        echo "true"
     fi
-    echo "$_LAN_IPV6_SUBNET"
 }
 
-_get_pfsense_primary_hostname() {
-    if [ -n "$_PFSENSE_PRIMARY_HOSTNAME" ]; then
-        echo "$_PFSENSE_PRIMARY_HOSTNAME"
+_get_network_metallb() {
+    if [ -n "$_NETWORK_METALLB" ]; then
+        echo "$_NETWORK_METALLB"
         return 0
     fi
-    _PFSENSE_PRIMARY_HOSTNAME="$(_get_config_json | jq -r '.pfsense[0].hostnames[0] // ""')"
-    if [ -z "$_PFSENSE_PRIMARY_HOSTNAME" ] || [ "$_PFSENSE_PRIMARY_HOSTNAME" = "null" ]; then
-        _fail ".pfsense[0].hostnames[0] not found in config.yaml"
+    _NETWORK_METALLB="$(_get_config_json | jq -r '.network.lan.metallb')"
+    if [ -z "$_NETWORK_METALLB" ] || [ "$_NETWORK_METALLB" = "null" ]; then
+        _NETWORK_METALLB="$(_calculate_metallb "$(_get_lan_ipv4_subnet)")"
     fi
-    echo "$_PFSENSE_PRIMARY_HOSTNAME"
+    echo "$_NETWORK_METALLB"
 }
 
-_get_pfsense_secondary_hostname() {
-    if [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ]; then
-        echo "$_PFSENSE_SECONDARY_HOSTNAME"
+_get_supplementary_addresses() {
+    if [ -n "$_SUPPLEMENTARY_ADDRESSES" ]; then
+        echo "$_SUPPLEMENTARY_ADDRESSES"
         return 0
     fi
-    _PFSENSE_SECONDARY_HOSTNAME="$(_get_config_json | jq -r '.pfsense[0].hostnames[1] // ""')"
-    echo "$_PFSENSE_SECONDARY_HOSTNAME"
-}
-
-_get_pfsense_shared_hostname() {
-    if [ -n "$_PFSENSE_SHARED_HOSTNAME" ]; then
-        echo "$_PFSENSE_SHARED_HOSTNAME"
-        return 0
+    _ENTRYPOINT="$(_get_entrypoint)"
+    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
+    _MASTER_OUTPUT="$(_get_cluster_dir)/master/output.json"
+    _MASTER_IPV4S="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _MASTER_EXTERNAL_IPV4S="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
+    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
+    if [ -n "$_ENTRYPOINT_IPV4" ]; then
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
     fi
-    _PFSENSE_SHARED_HOSTNAME="$(_get_config_json | jq -r '.pfsense[0].hostnames[2] // ""')"
-    echo "$_PFSENSE_SHARED_HOSTNAME"
-}
-
-_get_pfsense_shared_wan_ipv4() {
-    if [ -n "$_PFSENSE_SHARED_WAN_IPV4" ]; then
-        echo "$_PFSENSE_SHARED_WAN_IPV4"
-        return 0
-    fi
-    _PFSENSE_SHARED_WAN_IPV4="$(_resolve_hostname "$(_get_pfsense_shared_hostname)")"
-    echo "$_PFSENSE_SHARED_WAN_IPV4"
-}
-
-_get_pfsense_primary_lan_ipv4() {
-    if [ -n "$_PFSENSE_PRIMARY_LAN_IPV4" ]; then
-        echo "$_PFSENSE_PRIMARY_LAN_IPV4"
-        return 0
-    fi
-    _LAN_IPV4_NETWORK="$(_get_lan_ipv4_subnet | cut -d'/' -f1)"
-    _PFSENSE_PRIMARY_LAN_IPV4="$(_calculate_next_ipv4 "$_LAN_IPV4_NETWORK" 2)"
-    echo "$_PFSENSE_PRIMARY_LAN_IPV4"
-}
-
-_get_pfsense_secondary_lan_ipv4() {
-    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ]; then
-        echo "$_PFSENSE_SECONDARY_LAN_IPV4"
-        return 0
-    fi
-    _LAN_IPV4_NETWORK="$(_get_lan_ipv4_subnet | cut -d'/' -f1)"
-    _PFSENSE_SECONDARY_LAN_IPV4="$(_calculate_next_ipv4 "$_LAN_IPV4_NETWORK" 3)"
-    echo "$_PFSENSE_SECONDARY_LAN_IPV4"
-}
-
-_get_pfsense_shared_lan_ipv4() {
-    if [ -n "$_PFSENSE_SHARED_LAN_IPV4" ]; then
-        echo "$_PFSENSE_SHARED_LAN_IPV4"
-        return 0
-    fi
-    _PFSENSE_SHARED_LAN_IPV4="$(_calculate_last_ipv4 "$(_get_lan_ipv4_subnet)")"
-    echo "$_PFSENSE_SHARED_LAN_IPV4"
-}
-
-_get_pfsense_primary_lan_ipv6() {
-    if [ -n "$_PFSENSE_PRIMARY_LAN_IPV6" ]; then
-        echo "$_PFSENSE_PRIMARY_LAN_IPV6"
-        return 0
-    fi
-    _LAN_IPV6_PREFIX="$(_get_lan_ipv6_subnet | cut -d'/' -f1)"
-    _PFSENSE_PRIMARY_LAN_IPV6="${_LAN_IPV6_PREFIX}2"
-    echo "$_PFSENSE_PRIMARY_LAN_IPV6"
-}
-
-_get_pfsense_secondary_lan_ipv6() {
-    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV6" ]; then
-        echo "$_PFSENSE_SECONDARY_LAN_IPV6"
-        return 0
-    fi
-    _LAN_IPV6_PREFIX="$(_get_lan_ipv6_subnet | cut -d'/' -f1)"
-    _PFSENSE_SECONDARY_LAN_IPV6="${_LAN_IPV6_PREFIX}3"
-    echo "$_PFSENSE_SECONDARY_LAN_IPV6"
-}
-
-_get_lan_ipv4_dhcp() {
-    if [ -n "$_LAN_IPV4_DHCP" ]; then
-        echo "$_LAN_IPV4_DHCP"
-        return 0
-    fi
-    _LAN_IPV4_DHCP="$(_get_config_json | jq -r '.network.lan.ipv4.dhcp // ""')"
-    if [ "$_LAN_IPV4_DHCP" = "" ] || [ "$_LAN_IPV4_DHCP" = "null" ]; then
-        if [ "$(_get_provider)" = "hetzner" ]; then
-            _LAN_IPV4_DHCP="false"
-        else
-            _LAN_IPV4_DHCP="true"
-        fi
-    fi
-    echo "$_LAN_IPV4_DHCP"
-}
-
-_get_dns_servers() {
-    if [ -n "$_DNS_SERVERS" ]; then
-        echo "$_DNS_SERVERS"
-        return 0
-    fi
-    _DNS_SERVERS="$(_get_config_json | jq -r '.network.dns // ""')"
-    if [ "$_DNS_SERVERS" = "" ] || [ "$_DNS_SERVERS" = "null" ]; then
-        _DNS_SERVERS="1.1.1.1 8.8.8.8"
-    fi
-    echo "$_DNS_SERVERS"
-}
-
-_get_lan_interface() {
-    if [ -n "$_LAN_INTERFACE" ]; then
-        echo "$_LAN_INTERFACE"
-        return 0
-    fi
-    _LAN_INTERFACE="$(_get_config_json | jq -r '.network.lan.interface // ""')"
-    if [ "$_LAN_INTERFACE" = "" ] || [ "$_LAN_INTERFACE" = "null" ]; then
-        _LAN_INTERFACE="vtnet1"
-    fi
-    echo "$_LAN_INTERFACE"
+    for _IPV4 in $_MASTER_IPV4S; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
+    done
+    for _IPV4 in $_MASTER_EXTERNAL_IPV4S; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
+    done
+    echo "$_SUPPLEMENTARY_ADDRESSES"
 }
