@@ -1,8 +1,4 @@
 ---
-- name: Set ha_sync_enabled variable
-  set_fact:
-    ha_sync_enabled: "{{ ansible_play_hosts | length > 1 }}"
-
 - name: Check haproxy system settings
   ansible.builtin.shell: |
     cat > /tmp/check_system.php << 'EOF'
@@ -129,20 +125,16 @@
     require_once("haproxy/haproxy.inc");
     $config = parse_config(true);
     $primary = {{ primary | bool | lower }};
-    $ha_sync_enabled = {{ ha_sync_enabled | bool | lower }};
-    
+    $ha_sync_enabled = {{ ansible_play_hosts | length > 1 }};
     if (!isset($config["installedpackages"])) {
         $config["installedpackages"] = array();
     }
     if (!isset($config["installedpackages"]["haproxy"])) {
         $config["installedpackages"]["haproxy"] = array();
     }
-    
     $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) && 
-                   $config['installedpackages']['haproxy']['enablesync'] === '';
-    
+        $config['installedpackages']['haproxy']['enablesync'] === '';
     $desired_sync = $primary && $ha_sync_enabled;
-    
     if ($current_sync !== $desired_sync) {
         echo "CHANGED:sync_mismatch";
     } else {
@@ -163,20 +155,16 @@
     require_once("haproxy/haproxy.inc");
     $config = parse_config(true);
     $primary = {{ primary | bool | lower }};
-    $ha_sync_enabled = {{ ha_sync_enabled | bool | lower }};
-    
+    $ha_sync_enabled = {{ ansible_play_hosts | length > 1 }};
     if (!isset($config["installedpackages"])) {
         $config["installedpackages"] = array();
     }
     if (!isset($config["installedpackages"]["haproxy"])) {
         $config["installedpackages"]["haproxy"] = array();
     }
-    
     $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) && 
-                   $config['installedpackages']['haproxy']['enablesync'] === '';
-    
+        $config['installedpackages']['haproxy']['enablesync'] === '';
     $desired_sync = $primary && $ha_sync_enabled;
-    
     if ($current_sync !== $desired_sync) {
         if ($desired_sync) {
             $config['installedpackages']['haproxy']['enablesync'] = '';
