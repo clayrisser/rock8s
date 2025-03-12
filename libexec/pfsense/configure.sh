@@ -176,12 +176,21 @@ _main() {
     _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
     _SYNC_INTERFACE="$(_get_sync_interface)"
     _SYNC_IPV4_SUBNET="$(_get_sync_ipv4_subnet)"
+    _PFSENSE_PRIMARY="$(_get_pfsense_primary_hostname)"
+    _PFSENSE_SECONDARY="$(_get_pfsense_secondary_hostname)"
+    if ! timeout 5s ssh -i "$_PFSENSE_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no admin@$_PFSENSE_PRIMARY 'true' 2>/dev/null; then
+        _PFSENSE_PRIMARY="$(_get_pfsense_primary_lan_ipv4)"
+        if [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ] && [ "$_PFSENSE_SECONDARY_HOSTNAME" != "null" ]; then
+            _PFSENSE_SECONDARY="$(_get_pfsense_secondary_lan_ipv4)"
+        fi
+    fi
     _CONFIG="$(cat <<EOF | yaml2json
 pfsense:
   provider: $_PROVIDER
   password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
   system:
     dns: $(_get_dns_servers)
+  althostnames: $(_get_pfsense_althostnames)
   network:
     interfaces:
       lan:
@@ -205,21 +214,19 @@ pfsense:
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
-    _PFSENSE_SECONDARY_HOSTNAME=$(_get_pfsense_secondary_hostname)
-    _PFSENSE_SECONDARY_LAN_IPV4=$(_get_pfsense_secondary_lan_ipv4)
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   vars:
     ansible_user: admin
   hosts:
     pfsense1:
-      ansible_host: $(_get_pfsense_primary_hostname)
+      ansible_host: $_PFSENSE_PRIMARY
       primary: true
 EOF
-    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_LAN_IPV4" != "null" ] && [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ] && [ "$_PFSENSE_SECONDARY_HOSTNAME" != "null" ]; then
+    if [ -n "$_PFSENSE_SECONDARY" ] && [ "$_PFSENSE_SECONDARY" != "null" ]; then
         cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
     pfsense2:
-      ansible_host: $_PFSENSE_SECONDARY_HOSTNAME
+      ansible_host: $_PFSENSE_SECONDARY
       primary: false
 EOF
     fi

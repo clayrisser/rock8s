@@ -76,6 +76,24 @@ _get_pfsense_shared_wan_ipv4() {
     echo "$_PFSENSE_SHARED_WAN_IPV4"
 }
 
+_get_pfsense_primary_wan_ipv4() {
+    if [ -n "$_PFSENSE_PRIMARY_WAN_IPV4" ]; then
+        echo "$_PFSENSE_PRIMARY_WAN_IPV4"
+        return
+    fi
+    _PFSENSE_PRIMARY_WAN_IPV4="$(_resolve_hostname "$(_get_pfsense_primary_hostname)")"
+    echo "$_PFSENSE_PRIMARY_WAN_IPV4"
+}
+
+_get_pfsense_secondary_wan_ipv4() {
+    if [ -n "$_PFSENSE_SECONDARY_WAN_IPV4" ]; then
+        echo "$_PFSENSE_SECONDARY_WAN_IPV4"
+        return
+    fi
+    _PFSENSE_SECONDARY_WAN_IPV4="$(_resolve_hostname "$(_get_pfsense_secondary_hostname)")"
+    echo "$_PFSENSE_SECONDARY_WAN_IPV4"
+}
+
 _get_pfsense_primary_lan_ipv4() {
     if [ -n "$_PFSENSE_PRIMARY_LAN_IPV4" ]; then
         echo "$_PFSENSE_PRIMARY_LAN_IPV4"
@@ -237,4 +255,32 @@ _get_haproxy_backend() {
         fi
     done
     echo "$_HAPROXY_BACKEND"
+}
+
+_get_pfsense_althostnames() {
+    if [ -n "$_PFSENSE_ALTHOSTNAMES" ]; then
+        echo "$_PFSENSE_ALTHOSTNAMES"
+        return
+    fi
+    for _HOSTNAME in \
+        "$(_get_pfsense_primary_hostname)" \
+        "$(_get_pfsense_primary_lan_ipv4)" \
+        "$(_get_pfsense_primary_lan_ipv6)" \
+        "$(_get_pfsense_primary_wan_ipv4)" \
+        "$(_get_pfsense_secondary_hostname)" \
+        "$(_get_pfsense_secondary_lan_ipv4)" \
+        "$(_get_pfsense_secondary_lan_ipv6)" \
+        "$(_get_pfsense_secondary_wan_ipv4)" \
+        "$(_get_pfsense_shared_hostname)" \
+        "$(_get_pfsense_shared_lan_ipv4)" \
+        "$(_get_pfsense_shared_wan_ipv4)"; do
+        if [ -n "$_HOSTNAME" ] && [ "$_HOSTNAME" != "null" ]; then
+            if [ -n "$_PFSENSE_ALTHOSTNAMES" ]; then
+                _PFSENSE_ALTHOSTNAMES="$_PFSENSE_ALTHOSTNAMES $_HOSTNAME"
+            else
+                _PFSENSE_ALTHOSTNAMES="$_HOSTNAME"
+            fi
+        fi
+    done
+    echo "$_PFSENSE_ALTHOSTNAMES"
 }

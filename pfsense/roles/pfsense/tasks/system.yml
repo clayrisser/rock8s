@@ -18,8 +18,10 @@
     $current = array(
       'althostnames' => config_get_path('system/webgui/althostnames', '')
     );
+    $althostnames = array_unique(array_filter(array_map('trim', explode(' ',
+      "{{ ansible_host }} {{ dns_lookup.stdout | default('') }} {{ pfsense.althostnames | default('') }}"))));
     $desired = array(
-      'althostnames' => "{{ ansible_host }} {{ dns_lookup.stdout | default('') }}"
+      'althostnames' => implode(' ', $althostnames)
     );
     echo json_encode(array(
       'changed' => $current != $desired,
@@ -43,7 +45,9 @@
     if (!is_array($config)) {
       $config = parse_config();
     }
-    config_set_path('system/webgui/althostnames', "{{ ansible_host }} {{ dns_lookup.stdout | default('') }}");
+    $althostnames = array_unique(array_filter(array_map('trim', explode(' ',
+      "{{ ansible_host }} {{ dns_lookup.stdout | default('') }} {{ pfsense.althostnames | default('') }}"))));
+    config_set_path('system/webgui/althostnames', implode(' ', $althostnames));
     write_config(sprintf('Updated system advanced configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
     EOF
     {% if system_advanced_check is changed %}
