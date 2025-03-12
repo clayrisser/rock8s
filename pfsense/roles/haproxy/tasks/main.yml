@@ -31,24 +31,24 @@
 - name: Configure haproxy
   include_tasks: configuration.yml
 
-# - name: Restart haproxy service
-#   ansible.builtin.shell: |
-#     cat > /tmp/restart_haproxy.php << 'EOF'
-#     <?php
-#     require_once("config.inc");
-#     require_once("functions.inc");
-#     require_once("haproxy/haproxy.inc");
-#     require_once("service-utils.inc");
-#     $savemsg = array();
-#     $result = haproxy_check_and_run($savemsg, true);
-#     if (!$result) {
-#         fwrite(STDERR, $savemsg);
-#         exit(1);
-#     }
-#     unlink_if_exists("/tmp/config.cache");
-#     unlink_if_exists($d_haproxyconfdirty_path);
-#     EOF
-#     php -f /tmp/restart_haproxy.php 2>&1
-#     rm -f /tmp/restart_haproxy.php
-#   register: haproxy_restart
-#   when: haproxy_check.changed or haproxy_config.changed or haproxy_system_check.changed or haproxy_system_config.changed or (haproxy_sync_check.stdout_lines[-1].startswith("CHANGED") and haproxy_sync_config.changed)
+- name: Restart haproxy service
+  ansible.builtin.shell: |
+    cat > /tmp/restart_haproxy.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    require_once("service-utils.inc");
+    $savemsg = array();
+    $result = haproxy_check_and_run($savemsg, true);
+    if (!$result) {
+        fwrite(STDERR, $savemsg);
+        exit(1);
+    }
+    unlink_if_exists("/tmp/config.cache");
+    unlink_if_exists($d_haproxyconfdirty_path);
+    EOF
+    php -f /tmp/restart_haproxy.php 2>&1
+    rm -f /tmp/restart_haproxy.php
+  register: haproxy_restart
+  when: haproxy_check.changed or haproxy_config.changed or haproxy_system_check.changed or haproxy_system_config.changed or (haproxy_sync_check.stdout_lines[-1].startswith("CHANGED") and haproxy_sync_config.changed)

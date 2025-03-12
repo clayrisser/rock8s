@@ -28,11 +28,14 @@
             }
         }
     }
+    $needed_ips = array_unique($needed_ips);
     $existing_vips = array();
+    $existing_vip_details = array();
     if (isset($config['virtualip']['vip'])) {
         foreach ($config['virtualip']['vip'] as $vip) {
             if ($vip['interface'] === 'wan') {
                 $existing_vips[] = $vip['subnet'];
+                $existing_vip_details[] = $vip;
             }
         }
     }
@@ -40,6 +43,7 @@
     $result = array(
         'changed' => !empty($ips_to_add),
         'ips_to_add' => $ips_to_add,
+        'existing_vip_details' => $existing_vip_details,
         'debug' => array(
             'wan_ip' => $wan_ip,
             'needed_ips' => $needed_ips,
@@ -90,19 +94,45 @@
     if (!isset($config['virtualip']['vip']) || !is_array($config['virtualip']['vip'])) {
         $config['virtualip']['vip'] = array();
     }
+    $max_vhid = 0;
+    foreach ($result['existing_vip_details'] as $vip) {
+        if (isset($vip['vhid']) && $vip['vhid'] > $max_vhid) {
+            $max_vhid = $vip['vhid'];
+        }
+    }
+    $next_vhid = $max_vhid + 1;
+    {% if ansible_play_hosts | length > 1 %}
+    $random_password = bin2hex(random_bytes(8));
+    foreach ($result['ips_to_add'] as $ip) {
+        $new_vip = array(
+            'mode' => 'carp',
+            'interface' => 'wan',
+            'subnet' => $ip,
+            'subnet_bits' => '32',
+            'vhid' => $next_vhid,
+            'advskew' => '{{ 0 if primary else 100 }}',
+            'password' => $random_password,
+            'uniqid' => uniqid(),
+            'descr' => $ip
+        );
+        $config['virtualip']['vip'][] = $new_vip;
+        $next_vhid++;
+    }
+    {% else %}
     foreach ($result['ips_to_add'] as $ip) {
         $new_vip = array(
             'mode' => 'ipalias',
             'interface' => 'wan',
             'uniqid' => uniqid(),
-            'descr' => '',
+            'descr' => $ip,
             'type' => 'single',
             'subnet_bits' => '32',
             'subnet' => $ip
         );
         $config['virtualip']['vip'][] = $new_vip;
     }
-    if ($changed && write_config(sprintf('Added virtual ips from ansible (%s@%s)', 'admin', 'pfsense1'))) {
+    {% endif %}
+    if (write_config(sprintf('Added virtual ips from ansible (%s@%s)', 'admin', 'pfsense1'))) {
         interface_configure('wan');
         echo "CHANGED";
         exit(0);
