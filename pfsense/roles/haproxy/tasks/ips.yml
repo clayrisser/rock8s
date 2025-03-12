@@ -1,0 +1,115 @@
+---
+- name: Check virtual ips
+  ansible.builtin.shell: |
+    cat > /tmp/check_virtual_ips.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("interfaces.inc");
+    $config = parse_config(true);
+    $rules = {{ parsed_rules | to_json }};
+    $wan_ip = get_interface_ip("wan");
+    $needed_ips = array();
+    foreach ($rules as $rule) {
+        $parts = explode('->', trim($rule), 2);
+        $frontend = trim($parts[0]);
+        $frontend_parts = explode(':', $frontend);
+        if (count($frontend_parts) <= 1 || strpos($frontend, 'wan:') === 0) {
+            continue;
+        }
+        if (count($frontend_parts) >= 2) {
+            $last_part = end($frontend_parts);
+            if (is_numeric($last_part)) {
+                array_pop($frontend_parts);
+            }
+            $host = end($frontend_parts);
+            if (is_ipaddr($host) && $host !== $wan_ip) {
+                $needed_ips[] = $host;
+            }
+        }
+    }
+    $existing_vips = array();
+    if (isset($config['virtualip']['vip'])) {
+        foreach ($config['virtualip']['vip'] as $vip) {
+            if ($vip['interface'] === 'wan') {
+                $existing_vips[] = $vip['subnet'];
+            }
+        }
+    }
+    $ips_to_add = array_values(array_diff($needed_ips, $existing_vips));
+    $result = array(
+        'changed' => !empty($ips_to_add),
+        'ips_to_add' => $ips_to_add,
+        'debug' => array(
+            'wan_ip' => $wan_ip,
+            'needed_ips' => $needed_ips,
+            'existing_vips' => $existing_vips
+        )
+    );
+    file_put_contents('/tmp/check_result.json', json_encode($result));
+    echo json_encode($result);
+    EOF
+    php -f /tmp/check_virtual_ips.php
+    rm -f /tmp/check_virtual_ips.php
+  register: check_result
+  changed_when: (check_result.stdout | from_json).changed
+
+- name: Configure virtual ips
+  shell: |
+    cat > /tmp/configure_virtual_ips.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("interfaces.inc");
+    require_once("/etc/inc/interfaces.inc");
+    require_once("/etc/inc/services.inc");
+    $json_str = file_get_contents('/tmp/check_result.json');
+    if ($json_str === false) {
+        exit(1);
+    }
+    $result = json_decode($json_str, true);
+    if ($result === null) {
+        exit(1);
+    }
+    if (!isset($result['changed']) || !isset($result['ips_to_add'])) {
+        exit(1);
+    }
+    if (!$result['changed']) {
+        echo "UNCHANGED";
+        exit(0);
+    }
+    global $config;
+    $config = parse_config(true);
+    if (!is_array($config)) {
+        exit(1);
+    }
+    if (!isset($config['virtualip']) || !is_array($config['virtualip'])) {
+        $config['virtualip'] = array();
+    }
+    if (!isset($config['virtualip']['vip']) || !is_array($config['virtualip']['vip'])) {
+        $config['virtualip']['vip'] = array();
+    }
+    foreach ($result['ips_to_add'] as $ip) {
+        $new_vip = array(
+            'mode' => 'ipalias',
+            'interface' => 'wan',
+            'uniqid' => uniqid(),
+            'descr' => '',
+            'type' => 'single',
+            'subnet_bits' => '32',
+            'subnet' => $ip
+        );
+        $config['virtualip']['vip'][] = $new_vip;
+    }
+    if (write_config(sprintf('Added virtual ips from ansible (%s@%s)', 'admin', 'pfsense1'))) {
+        interface_configure('wan');
+        echo "CHANGED";
+        exit(0);
+    }
+    exit(1);
+    EOF
+    php -f /tmp/configure_virtual_ips.php
+    rm -f /tmp/configure_virtual_ips.php /tmp/check_result.json
+  register: configure_result
+  when: (check_result.stdout | from_json).changed
+  changed_when: configure_result.stdout == "CHANGED"

@@ -1,0 +1,118 @@
+---
+- name: Check haproxy system settings
+  ansible.builtin.shell: |
+    cat > /tmp/check_system.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    function array_compare($a1, $a2) {
+        if (count($a1) !== count($a2)) {
+            return false;
+        }
+        foreach ($a1 as $key => $value) {
+            if (!array_key_exists($key, $a2)) {
+                return false;
+            }
+            if (is_array($value)) {
+                if (!is_array($a2[$key])) {
+                    return false;
+                }
+                if (!array_compare($value, $a2[$key])) {
+                    return false;
+                }
+            } else if ($value !== $a2[$key]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    $config = parse_config(true);
+    if (!isset($config["installedpackages"])) {
+        $config["installedpackages"] = array();
+    }
+    if (!isset($config["installedpackages"]["haproxy"])) {
+        $config["installedpackages"]["haproxy"] = array();
+    }
+    $maxconn = "10000";
+    $stats_port = "2200";
+    $desired_global = array(
+        "maxconn" => $maxconn,
+        "enabled" => "",
+        "section" => "global"
+    );
+    $desired_stats = array(
+        'stats_port' => $stats_port,
+        'stats_enabled' => 'yes',
+        'stats_bind' => '127.0.0.1:' . $stats_port,
+        'stats_uri' => '/haproxy?stats',
+        'stats_realm' => 'HAProxy Statistics'
+    );
+    $current_stats = array(
+        'stats_port' => isset($config['installedpackages']['haproxy']['stats']['stats_port']) ? $config['installedpackages']['haproxy']['stats']['stats_port'] : '',
+        'stats_enabled' => isset($config['installedpackages']['haproxy']['stats']['stats_enabled']) ? $config['installedpackages']['haproxy']['stats']['stats_enabled'] : '',
+        'stats_bind' => isset($config['installedpackages']['haproxy']['stats']['stats_bind']) ? $config['installedpackages']['haproxy']['stats']['stats_bind'] : '',
+        'stats_uri' => isset($config['installedpackages']['haproxy']['stats']['stats_uri']) ? $config['installedpackages']['haproxy']['stats']['stats_uri'] : '',
+        'stats_realm' => isset($config['installedpackages']['haproxy']['stats']['stats_realm']) ? $config['installedpackages']['haproxy']['stats']['stats_realm'] : ''
+    );
+    $haproxy_enabled = isset($config['installedpackages']['haproxy']['enable']) &&
+        $config['installedpackages']['haproxy']['enable'] === '';
+    if (!isset($config["installedpackages"]["haproxy"]["global"]) ||
+        !array_compare($config["installedpackages"]["haproxy"]["global"], $desired_global) ||
+        !isset($config["installedpackages"]["haproxy"]["maxconn"]) ||
+        $config["installedpackages"]["haproxy"]["maxconn"] !== $maxconn ||
+        !array_compare($current_stats, $desired_stats) ||
+        $config['installedpackages']['haproxy']['localstatsport'] !== $stats_port ||
+        !$haproxy_enabled) {
+        echo "CHANGED";
+    } else {
+        echo "UNCHANGED";
+    }
+    EOF
+    php -f /tmp/check_system.php
+    rm -f /tmp/check_system.php
+  register: haproxy_system_check
+  changed_when: haproxy_system_check.stdout == "CHANGED"
+
+- name: Configure haproxy system settings
+  ansible.builtin.shell: |
+    cat > /tmp/configure_system.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    $config = parse_config(true);
+    if (!isset($config["installedpackages"])) {
+        $config["installedpackages"] = array();
+    }
+    if (!isset($config["installedpackages"]["haproxy"])) {
+        $config["installedpackages"]["haproxy"] = array();
+    }
+    $maxconn = "10000";
+    $required_maxfiles = intval($maxconn) * 2 + 31;
+    $stats_port = "2200";
+    $config["installedpackages"]["haproxy"]["global"] = array(
+        "maxconn" => $maxconn,
+        "enabled" => "",
+        "section" => "global"
+    );
+    $config["installedpackages"]["haproxy"]["maxconn"] = $maxconn;
+    $config['installedpackages']['haproxy']['stats'] = array(
+        'stats_port' => $stats_port,
+        'stats_enabled' => 'yes',
+        'stats_bind' => '127.0.0.1:' . $stats_port,
+        'stats_uri' => '/haproxy?stats',
+        'stats_realm' => 'HAProxy Statistics'
+    );
+    $config['installedpackages']['haproxy']['localstatsport'] = $stats_port;
+    $config['installedpackages']['haproxy']['enable'] = '';
+    write_config(sprintf('Updated haproxy system settings from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
+    haproxy_configure();
+    echo "CHANGED";
+    EOF
+    php -f /tmp/configure_system.php || echo "UNCHANGED"
+    rm -f /tmp/configure_system.php
+  register: haproxy_system_config
+  changed_when: haproxy_system_config.stdout == "CHANGED"
+  when: haproxy_system_check.stdout == "CHANGED"
+

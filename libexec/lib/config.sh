@@ -125,3 +125,12 @@ _get_entrypoint() {
     fi
     echo "$_ENTRYPOINT"
 }
+
+_get_entrypoint_ip() {
+    if [ -n "$_ENTRYPOINT_IP" ]; then
+        echo "$_ENTRYPOINT_IP"
+        return
+    fi
+    _ENTRYPOINT_IP="$(_resolve_hostname "$(_get_entrypoint)")"
+    echo "$_ENTRYPOINT_IP"
+}
