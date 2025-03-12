@@ -10,6 +10,13 @@ resource "hcloud_network" "lan" {
   delete_protection = true
 }
 
+resource "hcloud_network" "sync" {
+  count             = var.purpose == "pfsense" && local.network.sync != null ? 1 : 0
+  name              = local.network.sync.name
+  ip_range          = local.network.sync.subnet
+  delete_protection = true
+}
+
 data "hcloud_network" "lan" {
   count = var.purpose != "pfsense" ? 1 : 0
   name  = local.network.lan.name

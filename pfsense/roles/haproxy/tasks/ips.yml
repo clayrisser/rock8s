@@ -6,25 +6,68 @@
     require_once("config.inc");
     require_once("functions.inc");
     require_once("interfaces.inc");
+    require_once("/etc/inc/interfaces.inc");
     $config = parse_config(true);
     $rules = {{ parsed_rules | to_json }};
-    $wan_ip = get_interface_ip("wan");
+    $lan_ips = array();
+    {% if pfsense.network.interfaces.lan.ips is defined %}
+    $lan_ips = {{ pfsense.network.interfaces.lan.ips | to_json }};
+    {% endif %}
+    $interfaces = array();
+    $if_list = get_configured_interface_list();
+    foreach ($if_list as $if_name) {
+        $interfaces[$if_name] = array(
+            'rules' => array(),
+            'ips' => array()
+        );
+        $real_if = get_real_interface($if_name);
+        $if_addresses = get_interface_addresses($real_if);
+        if (!empty($if_addresses)) {
+            foreach ($if_addresses as $if_addr) {
+                if (isset($if_addr['ipaddr'])) {
+                    $ip_addr = trim($if_addr['ipaddr']);
+                    if (is_ipaddr($ip_addr)) {
+                        $interfaces[$if_name]['ips'][] = $ip_addr;
+                    }
+                }
+            }
+        }
+    }
     $needed_ips = array();
+    $interface_map = array(); // Track which interface each IP belongs to
+    $subnet_bits = array(); // Track subnet bits for each IP
+    foreach ($lan_ips as $lan_ip) {
+        $parts = explode('/', $lan_ip);
+        $ip = trim($parts[0]);
+        $prefix = isset($parts[1]) ? trim($parts[1]) : '32';
+        if (is_ipaddr($ip)) {
+            $needed_ips[] = $ip;
+            $interface_map[$ip] = 'lan';
+            $subnet_bits[$ip] = $prefix;
+        }
+    }
+
+    // Add IPs from HAProxy rules
     foreach ($rules as $rule) {
         $parts = explode('->', trim($rule), 2);
         $frontend = trim($parts[0]);
         $frontend_parts = explode(':', $frontend);
-        if (count($frontend_parts) <= 1 || strpos($frontend, 'wan:') === 0) {
-            continue;
-        }
         if (count($frontend_parts) >= 2) {
             $last_part = end($frontend_parts);
             if (is_numeric($last_part)) {
                 array_pop($frontend_parts);
             }
             $host = end($frontend_parts);
-            if (is_ipaddr($host) && $host !== $wan_ip) {
+            if (is_ipaddr($host)) {
                 $needed_ips[] = $host;
+                // If the rule starts with an interface name, map the IP to that interface
+                $interface = strtolower($frontend_parts[0]);
+                if (in_array($interface, array_keys($interfaces))) {
+                    $interface_map[$host] = $interface;
+                } else {
+                    $interface_map[$host] = 'wan'; // Default to WAN if no interface specified
+                }
+                $subnet_bits[$host] = '32'; // HAProxy rules always use /32
             }
         }
     }
@@ -33,21 +76,22 @@
     $existing_vip_details = array();
     if (isset($config['virtualip']['vip'])) {
         foreach ($config['virtualip']['vip'] as $vip) {
-            if ($vip['interface'] === 'wan') {
-                $existing_vips[] = $vip['subnet'];
-                $existing_vip_details[] = $vip;
-            }
+            $existing_vips[] = $vip['subnet'];
+            $existing_vip_details[] = $vip;
         }
     }
     $ips_to_add = array_values(array_diff($needed_ips, $existing_vips));
     $result = array(
         'changed' => !empty($ips_to_add),
         'ips_to_add' => $ips_to_add,
+        'interface_map' => $interface_map,
+        'subnet_bits' => $subnet_bits,
         'existing_vip_details' => $existing_vip_details,
         'debug' => array(
-            'wan_ip' => $wan_ip,
+            'interfaces' => $interfaces,
             'needed_ips' => $needed_ips,
-            'existing_vips' => $existing_vips
+            'existing_vips' => $existing_vips,
+            'lan_ips' => $lan_ips
         )
     );
     file_put_contents('/tmp/check_result.json', json_encode($result));
@@ -76,7 +120,7 @@
     if ($result === null) {
         exit(1);
     }
-    if (!isset($result['changed']) || !isset($result['ips_to_add'])) {
+    if (!isset($result['changed']) || !isset($result['ips_to_add']) || !isset($result['interface_map']) || !isset($result['subnet_bits'])) {
         exit(1);
     }
     if (!$result['changed']) {
@@ -104,36 +148,44 @@
     {% if ansible_play_hosts | length > 1 %}
     $random_password = bin2hex(random_bytes(8));
     foreach ($result['ips_to_add'] as $ip) {
+        $interface = isset($result['interface_map'][$ip]) ? $result['interface_map'][$ip] : 'wan';
+        $subnet_bits = isset($result['subnet_bits'][$ip]) ? $result['subnet_bits'][$ip] : '32';
         $new_vip = array(
             'mode' => 'carp',
-            'interface' => 'wan',
+            'interface' => $interface,
             'subnet' => $ip,
-            'subnet_bits' => '32',
+            'subnet_bits' => $subnet_bits,
             'vhid' => $next_vhid,
             'advskew' => '{{ 0 if primary else 100 }}',
+            'advbase' => '1',
             'password' => $random_password,
             'uniqid' => uniqid(),
-            'descr' => $ip
+            'descr' => $ip,
+            'type' => 'single'
         );
         $config['virtualip']['vip'][] = $new_vip;
         $next_vhid++;
     }
     {% else %}
     foreach ($result['ips_to_add'] as $ip) {
+        $interface = isset($result['interface_map'][$ip]) ? $result['interface_map'][$ip] : 'wan';
+        $subnet_bits = isset($result['subnet_bits'][$ip]) ? $result['subnet_bits'][$ip] : '32';
         $new_vip = array(
             'mode' => 'ipalias',
-            'interface' => 'wan',
+            'interface' => $interface,
             'uniqid' => uniqid(),
             'descr' => $ip,
             'type' => 'single',
-            'subnet_bits' => '32',
+            'subnet_bits' => $subnet_bits,
             'subnet' => $ip
         );
         $config['virtualip']['vip'][] = $new_vip;
     }
     {% endif %}
-    if (write_config(sprintf('Added virtual ips from ansible (%s@%s)', 'admin', 'pfsense1'))) {
-        interface_configure('wan');
+    if (write_config(sprintf('Added virtual ips from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
+        foreach (array_unique(array_values($result['interface_map'])) as $interface) {
+            interface_configure($interface);
+        }
         echo "CHANGED";
         exit(0);
     }
