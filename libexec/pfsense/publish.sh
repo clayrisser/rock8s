@@ -120,25 +120,38 @@ _main() {
     export ROCK8S_CLUSTER="$_CLUSTER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _PFSENSE_DIR="$(_get_cluster_dir)/pfsense"
+    rm -rf "$_PFSENSE_DIR/ansible"
+    cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
+    if [ ! -f "$_PFSENSE_DIR/vars.yml" ] || [ ! -f "$_PFSENSE_DIR/collections/ansible_collections/pfsensible/core/FILES.json" ]; then
+        _fail "pfsense configure must be run first"
+    fi
     _LAN_INGRESS_IPV4="$(_get_lan_ingress_ipv4)"
+    _ENTRYPOINT_IP="$(_get_entrypoint_ip)"
     if [ -n "$_LAN_INGRESS_IPV4" ]; then
         _INGRESS_RULES="      - \"8080 -> check:${_LAN_INGRESS_IPV4}:80\"
-      - \"8443 -> check:${_LAN_INGRESS_IPV4}:443\""
+      - \"${_ENTRYPOINT_IP}:443 -> check:${_LAN_INGRESS_IPV4}:443\""
     else
         _HTTP_BACKEND="$(_get_haproxy_backend 80 $(_get_worker_private_ipv4s))"
         _HTTPS_BACKEND="$(_get_haproxy_backend 443 $(_get_worker_private_ipv4s))"
-        _INGRESS_RULES="      - \"8080 -> ${_HTTP_BACKEND}\"
-      - \"8443 -> ${_HTTPS_BACKEND}\""
+        _INGRESS_RULES="      - \"${_ENTRYPOINT_IP}:80 -> ${_HTTP_BACKEND}\"
+      - \"${_ENTRYPOINT_IP}:443 -> ${_HTTPS_BACKEND}\""
     fi
     _KUBE_BACKEND="$(_get_haproxy_backend 6443 $(_get_master_private_ipv4s))"
     cat > "$_PFSENSE_DIR/vars.publish.yml" <<EOF
 pfsense:
   provider: $(_get_provider)
+  network:
+    interfaces:
+      wan:
+        rules:
+          - allow tcp from any to ${_ENTRYPOINT_IP}
   haproxy:
     rules:
 ${_INGRESS_RULES}
-      - "6443 -> ${_KUBE_BACKEND}"
 EOF
+    if [ -n "$_ENTRYPOINT_IP" ]; then
+        echo "      - \"${_ENTRYPOINT_IP}:6443 -> ${_KUBE_BACKEND}\"" >> "$_PFSENSE_DIR/vars.publish.yml"
+    fi
     _PFSENSE_SSH_PRIVATE_KEY="$(_get_pfsense_ssh_private_key)"
     if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_PFSENSE_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
         export ANSIBLE_PRIVATE_KEY_FILE="$_PFSENSE_SSH_PRIVATE_KEY"
@@ -151,7 +164,7 @@ EOF
         -i "$_PFSENSE_DIR/hosts.yml" \
         -e "@$_PFSENSE_DIR/vars.publish.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/haproxy.yml" -v
+        "$_PFSENSE_DIR/ansible/playbooks/publish.yml" -v
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
 }
 

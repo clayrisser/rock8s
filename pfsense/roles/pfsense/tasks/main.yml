@@ -11,8 +11,6 @@
   import_tasks: interfaces.yml
 - name: Configure sync
   import_tasks: sync.yml
-- name: Configure firewall rules
-  import_tasks: firewall.yml
 - name: Configure routes
   import_tasks: routes.yml
 - name: Configure nat
