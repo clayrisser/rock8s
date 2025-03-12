@@ -10,13 +10,6 @@ resource "hcloud_network" "lan" {
   delete_protection = true
 }
 
-resource "hcloud_network" "sync" {
-  count             = var.purpose == "pfsense" && local.network.sync != null ? 1 : 0
-  name              = local.network.sync.name
-  ip_range          = local.network.sync.subnet
-  delete_protection = true
-}
-
 data "hcloud_network" "lan" {
   count = var.purpose != "pfsense" ? 1 : 0
   name  = local.network.lan.name
@@ -30,11 +23,31 @@ resource "hcloud_network_subnet" "lan" {
   ip_range     = local.network.lan.subnet
 }
 
+resource "hcloud_network" "sync" {
+  count             = var.purpose == "pfsense" && local.network.sync != null ? 1 : 0
+  name              = local.network.sync.name
+  ip_range          = local.network.sync.subnet
+  delete_protection = true
+}
+
+data "hcloud_network" "sync" {
+  count = var.purpose == "pfsense" && local.network.sync != null ? 1 : 0
+  name  = local.network.sync.name
+}
+
+resource "hcloud_network_subnet" "sync" {
+  count        = var.purpose == "pfsense" && local.network.sync != null ? 1 : 0
+  network_id   = hcloud_network.sync[0].id
+  type         = "server"
+  network_zone = local.network.sync.zone
+  ip_range     = local.network.sync.subnet
+}
+
 resource "hcloud_network_route" "default" {
   count       = var.purpose == "pfsense" ? 1 : 0
   network_id  = hcloud_network.lan[0].id
   destination = "0.0.0.0/0"
-  gateway     = local.pfsense_primary_ip
+  gateway     = local.pfsense_lan_primary_ip
   depends_on  = [hcloud_network_subnet.lan]
 }
 
@@ -58,7 +71,14 @@ resource "hcloud_server" "nodes" {
   )
   network {
     network_id = var.purpose == "pfsense" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
-    ip         = var.purpose == "pfsense" ? (count.index == 0 ? local.pfsense_primary_ip : local.pfsense_secondary_ip) : local.node_configs[count.index].ipv4
+    ip         = var.purpose == "pfsense" ? (count.index == 0 ? local.pfsense_lan_primary_ip : local.pfsense_lan_secondary_ip) : local.node_configs[count.index].ipv4
+  }
+  dynamic "network" {
+    for_each = var.purpose == "pfsense" && local.network.sync != null ? [1] : []
+    content {
+      network_id = hcloud_network.sync[0].id
+      ip         = count.index == 0 ? local.pfsense_sync_primary_ip : local.pfsense_sync_secondary_ip
+    }
   }
   lifecycle {
     ignore_changes = [
@@ -68,5 +88,5 @@ resource "hcloud_server" "nodes" {
       rescue
     ]
   }
-  depends_on = [hcloud_network_subnet.lan]
+  depends_on = [hcloud_network_subnet.lan, hcloud_network_subnet.sync]
 }

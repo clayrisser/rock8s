@@ -10,12 +10,14 @@
   ansible.builtin.assert:
     that:
       - |
+        (item.value.ipv4 is not defined and item.value.subnet is defined) or
         (item.value.ipv4 is string) or
         (item.value.ipv4.primary is string and item.value.ipv4.secondary is string)
       - |
-        ((item.value.ipv4 is string and item.value.ipv4 | regex_search('^[0-9.]+/[0-9]+$')) or
+        (item.value.ipv4 is not defined and item.value.subnet | regex_search('^[0-9.]+/[0-9]+$')) or
+        (item.value.ipv4 is string and item.value.ipv4 | regex_search('^[0-9.]+/[0-9]+$')) or
         (item.value.ipv4.primary | regex_search('^[0-9.]+/[0-9]+$') and
-         item.value.ipv4.secondary | regex_search('^[0-9.]+/[0-9]+$')))
+         item.value.ipv4.secondary | regex_search('^[0-9.]+/[0-9]+$'))
       - |
         not item.value.ipv6 is defined or
         (item.value.ipv6.primary | regex_search('^[0-9a-fA-F:]+/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$') and
@@ -67,8 +69,13 @@
     ));
     EOF
     interface="{{ item.key }}"
+    {% if item.value.ipv4 is defined %}
     ipv4="{{ primary | ternary(item.value.ipv4.primary | regex_replace('/.*$', ''), item.value.ipv4.secondary | regex_replace('/.*$', '')) }}"
     prefixlen="{{ primary | ternary(item.value.ipv4.primary | regex_replace('^.*/', ''), item.value.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    {% else %}
+    ipv4="{{ item.value.subnet | regex_replace('/.*$', '') }}"
+    prefixlen="{{ item.value.subnet | regex_replace('^.*/', '') }}"
+    {% endif %}
     {% if item.value.ipv6 is defined %}
     ipv6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('/.*$', ''), item.value.ipv6.secondary | regex_replace('/.*$', '')) }}"
     prefixlen6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('^.*/', ''), item.value.ipv6.secondary | regex_replace('^.*/', '')) }}"
@@ -128,8 +135,13 @@
     EOF
     {% if item.1 is changed %}
     interface="{{ item.0.key }}"
+    {% if item.0.value.ipv4 is defined %}
     ipv4="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('/.*$', ''), item.0.value.ipv4.secondary | regex_replace('/.*$', '')) }}"
     prefixlen="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('^.*/', ''), item.0.value.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    {% else %}
+    ipv4="{{ item.0.value.subnet | regex_replace('/.*$', '') }}"
+    prefixlen="{{ item.0.value.subnet | regex_replace('^.*/', '') }}"
+    {% endif %}
     {% if item.0.value.ipv6 is defined %}
     ipv6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('/.*$', ''), item.0.value.ipv6.secondary | regex_replace('/.*$', '')) }}"
     prefixlen6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('^.*/', ''), item.0.value.ipv6.secondary | regex_replace('^.*/', '')) }}"

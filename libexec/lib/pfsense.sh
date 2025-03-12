@@ -67,6 +67,54 @@ _get_pfsense_shared_hostname() {
     echo "$_PFSENSE_SHARED_HOSTNAME"
 }
 
+_get_sync_ipv4_subnet() {
+    if [ -n "$_SYNC_IPV4_SUBNET" ]; then
+        echo "$_SYNC_IPV4_SUBNET"
+        return
+    fi
+    _SYNC_IPV4_SUBNET="$(_get_config_json | jq -r '.network.sync.ipv4.subnet // ""')"
+    echo "$_SYNC_IPV4_SUBNET"
+}
+
+_get_lan_ipv4_subnet() {
+    if [ -n "$_LAN_IPV4_SUBNET" ]; then
+        echo "$_LAN_IPV4_SUBNET"
+        return
+    fi
+    _LAN_IPV4_SUBNET="$(_get_config_json | jq -r '.network.lan.ipv4.subnet // ""')"
+    if [ -z "$_LAN_IPV4_SUBNET" ] || [ "$_LAN_IPV4_SUBNET" = "null" ]; then
+        _fail ".network.lan.ipv4.subnet not found in config.yaml"
+    fi
+    echo "$_LAN_IPV4_SUBNET"
+}
+
+_get_lan_ipv6_subnet() {
+    if [ -n "$_LAN_IPV6_SUBNET" ]; then
+        echo "$_LAN_IPV6_SUBNET"
+        return
+    fi
+    _LAN_IPV6_SUBNET="$(_get_config_json | jq -r '.network.lan.ipv6.subnet // ""')"
+    if [ -z "$_LAN_IPV6_SUBNET" ] || [ "$_LAN_IPV6_SUBNET" = "null" ]; then
+        _LAN_IPV4_NETWORK="$(_get_lan_ipv4_subnet | cut -d'/' -f1)"
+        _LAST_NONZERO_OCTET=""
+        _OCTET_COUNT=1
+        for _OCTET in $(echo "$_LAN_IPV4_NETWORK" | tr '.' ' '); do
+            if [ "$_OCTET" != "0" ]; then
+                _LAST_NONZERO_OCTET="$_OCTET"
+                _LAST_NONZERO_POSITION="$_OCTET_COUNT"
+            fi
+            _OCTET_COUNT=$((_OCTET_COUNT + 1))
+        done
+        if [ "$_LAST_NONZERO_OCTET" -gt 99 ]; then
+            _PREFIX="$(printf '%02x' "$_LAST_NONZERO_OCTET")"
+        else
+            _PREFIX="$_LAST_NONZERO_OCTET"
+        fi
+        _LAN_IPV6_SUBNET="fd${_PREFIX}::/64"
+    fi
+    echo "$_LAN_IPV6_SUBNET"
+}
+
 _get_pfsense_shared_wan_ipv4() {
     if [ -n "$_PFSENSE_SHARED_WAN_IPV4" ]; then
         echo "$_PFSENSE_SHARED_WAN_IPV4"
@@ -114,6 +162,34 @@ _get_pfsense_secondary_lan_ipv4() {
     echo "$_PFSENSE_SECONDARY_LAN_IPV4"
 }
 
+_get_pfsense_primary_sync_ipv4() {
+    if [ -n "$_PFSENSE_PRIMARY_SYNC_IPV4" ]; then
+        echo "$_PFSENSE_PRIMARY_SYNC_IPV4"
+        return
+    fi
+    _SYNC_IPV4_SUBNET="$(_get_sync_ipv4_subnet)"
+    if [ -z "$_SYNC_IPV4_SUBNET" ] || [ "$_SYNC_IPV4_SUBNET" = "null" ]; then
+        return
+    fi
+    _SYNC_IPV4_NETWORK="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f1)"
+    _PFSENSE_PRIMARY_SYNC_IPV4="$(_calculate_next_ipv4 "$_SYNC_IPV4_NETWORK" 2)"
+    echo "$_PFSENSE_PRIMARY_SYNC_IPV4"
+}
+
+_get_pfsense_secondary_sync_ipv4() {
+    if [ -n "$_PFSENSE_SECONDARY_SYNC_IPV4" ]; then
+        echo "$_PFSENSE_SECONDARY_SYNC_IPV4"
+        return
+    fi
+    _SYNC_IPV4_SUBNET="$(_get_sync_ipv4_subnet)"
+    if [ -z "$_SYNC_IPV4_SUBNET" ] || [ "$_SYNC_IPV4_SUBNET" = "null" ]; then
+        return
+    fi
+    _SYNC_IPV4_NETWORK="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f1)"
+    _PFSENSE_SECONDARY_SYNC_IPV4="$(_calculate_next_ipv4 "$_SYNC_IPV4_NETWORK" 3)"
+    echo "$_PFSENSE_SECONDARY_SYNC_IPV4"
+}
+
 _get_pfsense_shared_lan_ipv4() {
     if [ -n "$_PFSENSE_SHARED_LAN_IPV4" ]; then
         echo "$_PFSENSE_SHARED_LAN_IPV4"
@@ -141,54 +217,6 @@ _get_pfsense_secondary_lan_ipv6() {
     _LAN_IPV6_PREFIX="$(_get_lan_ipv6_subnet | cut -d'/' -f1)"
     _PFSENSE_SECONDARY_LAN_IPV6="${_LAN_IPV6_PREFIX}3"
     echo "$_PFSENSE_SECONDARY_LAN_IPV6"
-}
-
-_get_sync_ipv4_subnet() {
-    if [ -n "$_SYNC_IPV4_SUBNET" ]; then
-        echo "$_SYNC_IPV4_SUBNET"
-        return
-    fi
-    _SYNC_IPV4_SUBNET="$(_get_config_json | jq -r '.network.sync.ipv4.subnet // ""')"
-    echo "$_SYNC_IPV4_SUBNET"
-}
-
-_get_lan_ipv4_subnet() {
-    if [ -n "$_LAN_IPV4_SUBNET" ]; then
-        echo "$_LAN_IPV4_SUBNET"
-        return
-    fi
-    _LAN_IPV4_SUBNET="$(_get_config_json | jq -r '.network.lan.ipv4.subnet // ""')"
-    if [ -z "$_LAN_IPV4_SUBNET" ] || [ "$_LAN_IPV4_SUBNET" = "null" ]; then
-        _fail ".network.lan.ipv4.subnet not found in config.yaml"
-    fi
-    echo "$_LAN_IPV4_SUBNET"
-}
-
-_get_lan_ipv6_subnet() {
-    if [ -n "$_LAN_IPV6_SUBNET" ]; then
-        echo "$_LAN_IPV6_SUBNET"
-        return
-    fi
-    _LAN_IPV6_SUBNET="$(_get_config_json | jq -r '.network.lan.ipv6.subnet // ""')"
-    if [ -z "$_LAN_IPV6_SUBNET" ] || [ "$_LAN_IPV6_SUBNET" = "null" ]; then
-        _LAN_IPV4_NETWORK="$(_get_lan_ipv4_subnet | cut -d'/' -f1)"
-        _LAST_NONZERO_OCTET=""
-        _OCTET_COUNT=1
-        for _OCTET in $(echo "$_LAN_IPV4_NETWORK" | tr '.' ' '); do
-            if [ "$_OCTET" != "0" ]; then
-                _LAST_NONZERO_OCTET="$_OCTET"
-                _LAST_NONZERO_POSITION="$_OCTET_COUNT"
-            fi
-            _OCTET_COUNT=$((_OCTET_COUNT + 1))
-        done
-        if [ "$_LAST_NONZERO_OCTET" -gt 99 ]; then
-            _PREFIX="$(printf '%02x' "$_LAST_NONZERO_OCTET")"
-        else
-            _PREFIX="$_LAST_NONZERO_OCTET"
-        fi
-        _LAN_IPV6_SUBNET="fd${_PREFIX}::/64"
-    fi
-    echo "$_LAN_IPV6_SUBNET"
 }
 
 _get_lan_ipv4_dhcp() {

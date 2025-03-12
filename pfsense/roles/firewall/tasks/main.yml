@@ -56,7 +56,7 @@
       Invalid rule format: {{ rule.1 }}
       Format: allow/deny [tcp|udp|icmp] from SOURCE to DEST [port PORT]
       SOURCE/DEST can be: self, any, interface, CIDR, or IP range
-  loop: "{{ pfsense.network.interfaces | dict2items | subelements('value.rules') }}"
+  loop: "{{ pfsense.network.interfaces | dict2items | subelements('value.rules', {'skip_missing': true}) }}"
   loop_control:
     loop_var: rule
     label: "{{ rule.1 }}"
@@ -66,27 +66,65 @@
 - name: Process rules with ports
   set_fact:
     processed_interfaces: |
-      {% set result = [] %}
+      {% set result = {} %}
       {% for iface in pfsense.network.interfaces | dict2items %}
-        {% set rules = [] %}
-        {% for rule in iface.value.rules | default([]) %}
-          {% if ' port ' in rule %}
-            {% set port = rule | regex_replace('^.*port\\s+([\\S]+).*$', '\\1') %}
-            {% if port in service_ports %}
-              {% set _ = rules.append({'rule': rule, 'port': service_ports[port] | string}) %}
-            {% elif ':' in port %}
-              {% set range = port.split(':') %}
-              {% set _ = rules.append({'rule': rule, 'port': range[0] ~ '-' ~ range[1]}) %}
-            {% elif port | regex_search('^\\d+$') %}
-              {% set _ = rules.append({'rule': rule, 'port': port}) %}
+        {% if iface.value.rules is defined and iface.value.rules %}
+          {% set rules = [] %}
+          {% for rule in iface.value.rules %}
+            {% if ' port ' in rule %}
+              {% set port = rule | regex_replace('^.*port\\s+([\\S]+).*$', '\\1') %}
+              {% if port in service_ports %}
+                {% set _ = rules.append({'rule': rule, 'port': service_ports[port] | string}) %}
+              {% elif ':' in port %}
+                {% set range = port.split(':') %}
+                {% set _ = rules.append({'rule': rule, 'port': range[0] ~ '-' ~ range[1]}) %}
+              {% elif port | regex_search('^\\d+$') %}
+                {% set _ = rules.append({'rule': rule, 'port': port}) %}
+              {% endif %}
+            {% else %}
+              {% set _ = rules.append({'rule': rule}) %}
             {% endif %}
-          {% else %}
-            {% set _ = rules.append({'rule': rule}) %}
-          {% endif %}
-        {% endfor %}
-        {% set _ = result.append({'key': iface.key, 'rules': rules}) %}
+          {% endfor %}
+          {% set _ = result.update({iface.key: {'rules': rules}}) %}
+        {% endif %}
       {% endfor %}
       {{ result | to_json }}
+  register: processed_rules
+
+- name: Check current firewall rules
+  ansible.builtin.shell: |
+    cat > /tmp/check_rules.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    global $config;
+    if (!is_array($config)) {
+        $config = parse_config();
+    }
+    function normalize_rule($rule) {
+        return array(
+            'name' => $rule['descr'],
+            'action' => $rule['type'],
+            'interface' => $rule['interface'],
+            'protocol' => isset($rule['protocol']) ? $rule['protocol'] : 'any',
+            'source' => isset($rule['source']) ? $rule['source'] : array('any' => ''),
+            'destination' => isset($rule['destination']) ? $rule['destination'] : array('any' => ''),
+            'destination_port' => isset($rule['destination']['port']) ? $rule['destination']['port'] : ''
+        );
+    }
+    $current_rules = array();
+    if (isset($config['filter']['rule'])) {
+        foreach ($config['filter']['rule'] as $rule) {
+            $current_rules[] = normalize_rule($rule);
+        }
+    }
+    echo json_encode($current_rules);
+    EOF
+    php -f /tmp/check_rules.php
+    rm -f /tmp/check_rules.php
+  register: current_rules
+  changed_when: false
 
 - name: Configure interface firewall rules
   pfsensible.core.pfsense_rule:
@@ -126,11 +164,13 @@
     destination_port: "{{ item.1.port | default(omit) }}"
     state: present
   with_subelements:
-    - "{{ processed_interfaces | from_json }}"
-    - rules
+    - "{{ processed_rules.ansible_facts.processed_interfaces | from_json | dict2items }}"
+    - value.rules
   loop_control:
     index_var: rule_idx
     label: "{{ item.1.rule }}"
   register: firewall_rules
   when:
     - pfsense.network.interfaces is defined
+    - processed_rules.ansible_facts.processed_interfaces | from_json | length > 0
+    - not (current_rules.stdout | from_json | selectattr('name', 'equalto', item.1.rule) | selectattr('interface', 'equalto', item.0.key) | list | length > 0)

@@ -1,9 +1,13 @@
-output "node_public_ips" {
-  value = local.node_public_ips
+output "node_public_ipv4s" {
+  value = local.node_public_ipv4s
 }
 
-output "node_private_ips" {
-  value = local.node_private_ips
+output "node_private_ipv4s" {
+  value = local.node_private_ipv4s
+}
+
+output "node_sync_ipv4s" {
+  value = local.node_sync_ipv4s
 }
 
 output "node_ssh_private_key" {

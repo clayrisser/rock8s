@@ -14,7 +14,7 @@ locals {
       subnet = var.network.lan.ipv4.subnet
       zone   = lookup(local.location_zones, var.location, "eu-central")
     }
-    sync = try(var.network.sync.ipv4.subnet, "") != "" ? {
+    sync = var.purpose == "pfsense" && try(var.network.sync.ipv4.subnet, "") != "" ? {
       name   = local.tenant == "" ? "${var.cluster_name}-sync" : "${local.tenant}-${var.cluster_name}-sync"
       subnet = var.network.sync.ipv4.subnet
       zone   = lookup(local.location_zones, var.location, "eu-central")
@@ -37,26 +37,57 @@ locals {
       }
     ]
   ])
-  node_public_ips = {
+  node_public_ipv4s = {
     for idx, server in hcloud_server.nodes :
     server.name => server.ipv4_address
   }
-  node_private_ips = {
+  node_private_ipv4s = {
     for idx, server in hcloud_server.nodes :
-    server.name => one(server.network).ip
+    server.name => coalesce(
+      try([for net in server.network : net.ip if net.network_id == (
+        var.purpose == "pfsense" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
+      )][0], null),
+      tolist(server.network)[0].ip
+    )
   }
-  network_parts = var.purpose == "pfsense" ? split("/", var.network.lan.ipv4.subnet) : []
-  network_base  = length(local.network_parts) > 0 ? split(".", local.network_parts[0]) : []
-  pfsense_primary_ip = var.purpose == "pfsense" && length(local.network_base) == 4 ? format("%s.%s.%s.2",
-    local.network_base[0], local.network_base[1],
-    local.network_base[2]
+  lan_network_parts = var.purpose == "pfsense" ? split("/", var.network.lan.ipv4.subnet) : []
+  lan_network_base  = length(local.lan_network_parts) > 0 ? split(".", local.lan_network_parts[0]) : []
+  pfsense_lan_primary_ip = var.purpose == "pfsense" && length(local.lan_network_base) == 4 ? format("%s.%s.%s.2",
+    local.lan_network_base[0], local.lan_network_base[1],
+    local.lan_network_base[2]
   ) : null
-  pfsense_secondary_ip = (
+  pfsense_lan_secondary_ip = (
     var.purpose == "pfsense" &&
-    length(local.network_base) == 4 &&
+    length(local.lan_network_base) == 4 &&
     length(local.node_configs) > 1
     ) ? format("%s.%s.%s.3",
-    local.network_base[0], local.network_base[1],
-    local.network_base[2]
+    local.lan_network_base[0], local.lan_network_base[1],
+    local.lan_network_base[2]
+  ) : null
+  node_sync_ipv4s = var.purpose == "pfsense" && local.network.sync != null ? {
+    for idx, server in hcloud_server.nodes :
+    server.name => coalesce(
+      try([for net in server.network : net.ip if net.network_id == hcloud_network.sync[0].id][0], null),
+      idx == 0 ? local.pfsense_sync_primary_ip : local.pfsense_sync_secondary_ip
+    )
+  } : {}
+  sync_network_parts = var.purpose == "pfsense" && local.network.sync != null ? split("/", local.network.sync.subnet) : []
+  sync_network_base  = length(local.sync_network_parts) > 0 ? split(".", local.sync_network_parts[0]) : []
+  pfsense_sync_primary_ip = (
+    var.purpose == "pfsense" &&
+    local.network.sync != null &&
+    length(local.sync_network_base) == 4
+    ) ? format("%s.%s.%s.2",
+    local.sync_network_base[0], local.sync_network_base[1],
+    local.sync_network_base[2]
+  ) : null
+  pfsense_sync_secondary_ip = (
+    var.purpose == "pfsense" &&
+    local.network.sync != null &&
+    length(local.sync_network_base) == 4 &&
+    length(local.node_configs) > 1
+    ) ? format("%s.%s.%s.3",
+    local.sync_network_base[0], local.sync_network_base[1],
+    local.sync_network_base[2]
   ) : null
 }
