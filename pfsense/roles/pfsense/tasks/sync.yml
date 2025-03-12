@@ -182,6 +182,7 @@
     source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
     destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
     state: present
+  when: ansible_play_hosts | length > 1
 
 - name: Configure carp firewall rule
   pfsensible.core.pfsense_rule:
@@ -192,6 +193,7 @@
     source: "any"
     destination: "any"
     state: present
+  when: ansible_play_hosts | length > 1
 
 - name: Configure xmlrpc sync firewall rule
   pfsensible.core.pfsense_rule:
@@ -203,3 +205,4 @@
     destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
     destination_port: "443"
     state: present
+  when: ansible_play_hosts | length > 1

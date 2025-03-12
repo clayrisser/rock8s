@@ -234,11 +234,6 @@ EOF
         -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/postinstall.yml" -b -v
-    "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
-        --output="$_FORMAT" \
-        --cluster="$_CLUSTER" \
-        --tenant="$_TENANT" \
-        --kubeconfig "$(_get_cluster_dir)/kube.yaml"
     sh "$ROCK8S_LIB_PATH/libexec/pfsense/publish.sh" \
         --output="$_FORMAT" \
         --cluster="$_CLUSTER" \
@@ -246,6 +241,11 @@ EOF
         $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
         $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--ssh-password=$_PFSENSE_SSH_PASSWORD")
+    "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        --kubeconfig "$(_get_cluster_dir)/kube.yaml"
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 

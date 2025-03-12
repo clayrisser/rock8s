@@ -10,7 +10,7 @@ NAME
        rock8s cluster upgrade - upgrade kubernetes cluster
 
 SYNOPSIS
-       rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]
+       rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [-y|--yes] [--non-interactive]
 
 DESCRIPTION
        upgrade an existing kubernetes cluster using kubespray
@@ -28,6 +28,21 @@ OPTIONS
 
        --cluster <cluster>
               name of the cluster to upgrade (required)
+
+       --update
+              update ansible collections
+
+       -y, --yes
+              skip confirmation prompt
+
+       --non-interactive
+              fail instead of prompting for missing values
+
+       --pfsense-password <password>
+              admin password
+
+       --pfsense-ssh-password
+              use password authentication for ssh instead of an ssh key
 EOF
 }
 
@@ -35,6 +50,11 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
+    _UPDATE=""
+    _YES=""
+    _NON_INTERACTIVE=""
+    _PFSENSE_PASSWORD=""
+    _PFSENSE_SSH_PASSWORD=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -77,6 +97,42 @@ _main() {
                         ;;
                 esac
                 ;;
+            --update)
+                _UPDATE="1"
+                shift
+                ;;
+            -y|--yes)
+                _YES="1"
+                shift
+                ;;
+            -n|--non-interactive)
+                _NON_INTERACTIVE="1"
+                shift
+                ;;
+            --pfsense-password|--pfsense-password=*)
+                case "$1" in
+                    *=*)
+                        _PFSENSE_PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PFSENSE_PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --pfsense-ssh-password|--pfsense-ssh-password=*)
+                case "$1" in
+                    *=*)
+                        _PFSENSE_SSH_PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PFSENSE_SSH_PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
             -*)
                 _help
                 exit 1
@@ -92,19 +148,23 @@ _main() {
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
-    _CLUSTER_DIR="$(_get_cluster_dir)"
-    _MASTER_OUTPUT="$_CLUSTER_DIR/master/output.json"
-    if [ ! -f "$_MASTER_OUTPUT" ]; then
-        _fail "master output.json not found"
-    fi
-    _WORKER_OUTPUT="$_CLUSTER_DIR/worker/output.json"
-    if [ ! -f "$_WORKER_OUTPUT" ]; then
-        _fail "worker output.json not found"
-    fi
-    _MASTER_NODES="$(jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
-    _WORKER_NODES="$(jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
-    _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
-    _WORKER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_WORKER_OUTPUT")"
+    export NON_INTERACTIVE="$_NON_INTERACTIVE"
+    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_UPDATE" = "1" ] && echo "--update") \
+        $([ "$_YES" = "1" ] && echo "--yes") \
+        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+        master
+    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_UPDATE" = "1" ] && echo "--update") \
+        $([ "$_YES" = "1" ] && echo "--yes") \
+        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+        worker
     _KUBESPRAY_DIR="$(_get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
         _fail "kubespray directory not found"
@@ -119,51 +179,73 @@ _main() {
     else
         pip install -r "$_KUBESPRAY_DIR/requirements.txt"
     fi
-    rm -rf "$_CLUSTER_DIR/inventory"
-    cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_CLUSTER_DIR/inventory"
-    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_CLUSTER_DIR/inventory/vars.yml"
+    _INVENTORY_DIR="$(_get_inventory_dir)"
+    if [ ! -d "$_INVENTORY_DIR" ]; then
+        cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_INVENTORY_DIR"
+    fi
+    cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_INVENTORY_DIR/vars.yml"
     cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
-    cat >> "$_CLUSTER_DIR/inventory/vars.yml" <<EOF
+    _MTU="$(_get_network_mtu)"
+    _LAN_METALLB="$(_get_lan_metallb)"
+    cat >> "$_INVENTORY_DIR/vars.yml" <<EOF
+metallb_enabled: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
+kube_proxy_strict_arp: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
 enable_dual_stack_networks: $(_get_network_dualstack)
 supplementary_addresses_in_ssl_keys: [$(_get_supplementary_addresses)]
-calico_mtu: $(_get_network_mtu)
-calico_veth_mtu: $((_get_network_mtu - 50))
-metallb: "$(_get_network_metallb)"
+calico_mtu: $_MTU
+calico_veth_mtu: $(($_MTU - 50))
+metallb: "$_LAN_METALLB"
 EOF
-    cat > "$_CLUSTER_DIR/inventory/inventory.ini" <<EOF
+    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(_get_master_ansible_private_hosts)"
+    _MASTER_SSH_PRIVATE_KEY="$(_get_master_ssh_private_key)"
+    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(_get_worker_ansible_private_hosts)"
+    _WORKER_SSH_PRIVATE_KEY="$(_get_worker_ssh_private_key)"
+    cat > "$_INVENTORY_DIR/inventory.ini" <<EOF
 [kube_control_plane]
-$(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
+$(echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS" | sed "s|\(.*\)|\1 ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY|g")
 
 [etcd]
-$(echo "$_MASTER_NODES") ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY
+$(echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS" | sed "s|\(.*\)|\1 ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY|g")
 
 [kube_node]
-$(echo "$_WORKER_NODES") ansible_ssh_private_key_file=$_WORKER_SSH_PRIVATE_KEY
+$(echo "$_WORKER_ANSIBLE_PRIVATE_HOSTS" | sed "s|\(.*\)|\1 ansible_ssh_private_key_file=$_WORKER_SSH_PRIVATE_KEY|g")
 
 [k8s-cluster:children]
 kube_node
 kube_control_plane
 
 [kube_control_plane:vars]
-node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
+node_labels={"topology.kubernetes.io/zone": "$ROCK8S_CLUSTER"}
 
 [kube_node:vars]
-node_labels={"topology.kubernetes.io/zone": "$_CLUSTER"}
+node_labels={"topology.kubernetes.io/zone": "$ROCK8S_CLUSTER"}
 EOF
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
+        -i "$_INVENTORY_DIR/inventory.ini" \
+        -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/upgrade-cluster.yml" -b -v
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
+        -i "$_INVENTORY_DIR/inventory.ini" \
+        -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/postinstall.yml" -b -v
+    sh "$ROCK8S_LIB_PATH/libexec/pfsense/publish.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+        $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
+        $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--ssh-password=$_PFSENSE_SSH_PASSWORD")
+    "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        --kubeconfig "$(_get_cluster_dir)/kube.yaml"
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 
