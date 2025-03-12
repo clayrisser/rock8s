@@ -37,6 +37,12 @@ OPTIONS
 
        --non-interactive
               fail instead of prompting for missing values
+
+       --pfsense-password <password>
+              admin password
+
+       --pfsense-ssh-password
+              use password authentication for ssh instead of an ssh key
 EOF
 }
 
@@ -47,6 +53,8 @@ _main() {
     _UPDATE=""
     _YES=""
     _NON_INTERACTIVE=""
+    _PFSENSE_PASSWORD=""
+    _PFSENSE_SSH_PASSWORD=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -100,6 +108,30 @@ _main() {
             -n|--non-interactive)
                 _NON_INTERACTIVE="1"
                 shift
+                ;;
+            --pfsense-password|--pfsense-password=*)
+                case "$1" in
+                    *=*)
+                        _PFSENSE_PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PFSENSE_PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --pfsense-ssh-password|--pfsense-ssh-password=*)
+                case "$1" in
+                    *=*)
+                        _PFSENSE_SSH_PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PFSENSE_SSH_PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             -*)
                 _help
@@ -207,6 +239,13 @@ EOF
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         --kubeconfig "$(_get_cluster_dir)/kube.yaml"
+    sh "$ROCK8S_LIB_PATH/libexec/pfsense/publish.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+        $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
+        $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--ssh-password=$_PFSENSE_SSH_PASSWORD")
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
 }
 

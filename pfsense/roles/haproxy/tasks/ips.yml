@@ -53,6 +53,7 @@
     rm -f /tmp/check_virtual_ips.php
   register: check_result
   changed_when: (check_result.stdout | from_json).changed
+  when: primary
 
 - name: Configure virtual ips
   shell: |
@@ -101,15 +102,16 @@
         );
         $config['virtualip']['vip'][] = $new_vip;
     }
-    if (write_config(sprintf('Added virtual ips from ansible (%s@%s)', 'admin', 'pfsense1'))) {
+    if ($changed && write_config(sprintf('Added virtual ips from ansible (%s@%s)', 'admin', 'pfsense1'))) {
         interface_configure('wan');
         echo "CHANGED";
         exit(0);
     }
-    exit(1);
+    echo "UNCHANGED";
+    exit(0);
     EOF
     php -f /tmp/configure_virtual_ips.php
     rm -f /tmp/configure_virtual_ips.php /tmp/check_result.json
   register: configure_result
-  when: (check_result.stdout | from_json).changed
+  when: primary and check_result is defined and check_result.stdout is defined and (check_result.stdout | from_json).changed
   changed_when: configure_result.stdout == "CHANGED"
