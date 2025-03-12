@@ -54,16 +54,7 @@ variable "location" {
 }
 
 variable "network" {
-  type = object({
-    lan = object({
-      ipv4 = object({
-        subnet = string
-      })
-      ipv6 = optional(object({
-        subnet = string
-      }))
-    })
-  })
+  type = any
 }
 
 variable "user_data" {

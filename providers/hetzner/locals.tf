@@ -14,6 +14,11 @@ locals {
       subnet = var.network.lan.ipv4.subnet
       zone   = lookup(local.location_zones, var.location, "eu-central")
     }
+    sync = try(var.network.sync.ipv4.subnet, "") != "" ? {
+      name   = local.tenant == "" ? "${var.cluster_name}-sync" : "${local.tenant}-${var.cluster_name}-sync"
+      subnet = var.network.sync.ipv4.subnet
+      zone   = lookup(local.location_zones, var.location, "eu-central")
+    } : null
   }
   node_configs = flatten([
     for group in var.nodes : [

@@ -174,6 +174,8 @@ _main() {
         -p "$_PFSENSE_DIR/collections"
     mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
     _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
+    _SYNC_INTERFACE="$(_get_sync_interface)"
+    _SYNC_IPV4_SUBNET="$(_get_sync_ipv4_subnet)"
     _CONFIG="$(cat <<EOF | yaml2json
 pfsense:
   provider: $_PROVIDER
@@ -193,7 +195,10 @@ pfsense:
           primary: $(_get_pfsense_primary_lan_ipv6)/64
           secondary: $(_get_pfsense_secondary_lan_ipv6)/64
         ips:
-          - $(_get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
+          - $(_get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_SYNC_INTERFACE" ] && [ -n "$_SYNC_IPV4_SUBNET" ] && echo "
+      sync:
+        subnet: $_SYNC_IPV4_SUBNET
+        interface: $_SYNC_INTERFACE")$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
       wan:
         ips:
           - \"$_PFSENSE_SHARED_WAN_IPV4\"")

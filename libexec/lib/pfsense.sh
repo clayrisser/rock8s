@@ -23,49 +23,18 @@ _get_pfsense_output_json() {
     echo "$_PFSENSE_OUTPUT_JSON"
 }
 
-_get_pfsense_ansible_private_hosts() {
-    if [ -n "$_PFSENSE_ANSIBLE_PRIVATE_HOSTS" ]; then
-        echo "$_PFSENSE_ANSIBLE_PRIVATE_HOSTS"
-        return
-    fi
-    _PFSENSE_ANSIBLE_PRIVATE_HOSTS="$(_get_pfsense_output_json | jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"')"
-    echo "$_PFSENSE_ANSIBLE_PRIVATE_HOSTS"
-}
-
 _get_pfsense_ssh_private_key() {
     if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ]; then
         echo "$_PFSENSE_SSH_PRIVATE_KEY"
         return
     fi
-    _PFSENSE_SSH_PRIVATE_KEY="$(_get_pfsense_output_json | jq -r '.node_ssh_private_key.value // ""')"
+    if [ "$(_get_config_json | jq -r '.pfsense[0].type // ""')" = "" ]; then
+        _PFSENSE_SSH_PRIVATE_KEY="$(_get_config_json | jq -r '.pfsense[0].ssh_private_key // ""')"
+    fi
+    if [ -z "$_PFSENSE_SSH_PRIVATE_KEY" ] || [ "$_PFSENSE_SSH_PRIVATE_KEY" = "null" ]; then
+        _PFSENSE_SSH_PRIVATE_KEY="$(_get_pfsense_output_json | jq -r '.node_ssh_private_key.value // ""')"
+    fi
     echo "$_PFSENSE_SSH_PRIVATE_KEY"
-}
-
-_get_pfsense_node_count() {
-    if [ -n "$_PFSENSE_NODE_COUNT" ]; then
-        echo "$_PFSENSE_NODE_COUNT"
-        return
-    fi
-    _PFSENSE_NODE_COUNT="$(_get_pfsense_output_json | jq -r '.node_private_ips.value | length')"
-    echo "$_PFSENSE_NODE_COUNT"
-}
-
-_get_pfsense_private_ipv4s() {
-    if [ -n "$_PFSENSE_PRIVATE_IPV4S" ]; then
-        echo "$_PFSENSE_PRIVATE_IPV4S"
-        return
-    fi
-    _PFSENSE_PRIVATE_IPV4S="$(_get_pfsense_output_json | jq -r '.node_private_ips.value | .[] | @text')"
-    echo "$_PFSENSE_PRIVATE_IPV4S"
-}
-
-_get_pfsense_public_ipv4s() {
-    if [ -n "$_PFSENSE_PUBLIC_IPV4S" ]; then
-        echo "$_PFSENSE_PUBLIC_IPV4S"
-        return
-    fi
-    _PFSENSE_PUBLIC_IPV4S="$(_get_pfsense_output_json | jq -r '.node_public_ips.value | .[] | @text')"
-    echo "$_PFSENSE_PUBLIC_IPV4S"
 }
 
 _get_pfsense_primary_hostname() {
@@ -156,6 +125,15 @@ _get_pfsense_secondary_lan_ipv6() {
     echo "$_PFSENSE_SECONDARY_LAN_IPV6"
 }
 
+_get_sync_ipv4_subnet() {
+    if [ -n "$_SYNC_IPV4_SUBNET" ]; then
+        echo "$_SYNC_IPV4_SUBNET"
+        return
+    fi
+    _SYNC_IPV4_SUBNET="$(_get_config_json | jq -r '.network.sync.ipv4.subnet // ""')"
+    echo "$_SYNC_IPV4_SUBNET"
+}
+
 _get_lan_ipv4_subnet() {
     if [ -n "$_LAN_IPV4_SUBNET" ]; then
         echo "$_LAN_IPV4_SUBNET"
@@ -233,6 +211,18 @@ _get_lan_interface() {
         _LAN_INTERFACE="vtnet1"
     fi
     echo "$_LAN_INTERFACE"
+}
+
+_get_sync_interface() {
+    if [ -n "$_SYNC_INTERFACE" ]; then
+        echo "$_SYNC_INTERFACE"
+        return
+    fi
+    _SYNC_INTERFACE="$(_get_config_json | jq -r '.network.sync.interface // ""')"
+    if [ "$_SYNC_INTERFACE" = "" ] || [ "$_SYNC_INTERFACE" = "null" ]; then
+        _SYNC_INTERFACE="vtnet2"
+    fi
+    echo "$_SYNC_INTERFACE"
 }
 
 _get_haproxy_backend() {
