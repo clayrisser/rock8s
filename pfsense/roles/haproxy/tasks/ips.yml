@@ -9,10 +9,12 @@
     require_once("/etc/inc/interfaces.inc");
     $config = parse_config(true);
     $rules = {{ parsed_rules | to_json }};
-    $lan_ips = array();
-    {% if pfsense.network.interfaces.lan.ips is defined %}
-    $lan_ips = {{ pfsense.network.interfaces.lan.ips | to_json }};
+    $interface_ips = array();
+    {% for interface_name, interface_data in pfsense.network.interfaces.items() %}
+    {% if interface_data.ips is defined %}
+    $interface_ips['{{ interface_name }}'] = {{ interface_data.ips | to_json }};
     {% endif %}
+    {% endfor %}
     $interfaces = array();
     $if_list = get_configured_interface_list();
     foreach ($if_list as $if_name) {
@@ -34,20 +36,20 @@
         }
     }
     $needed_ips = array();
-    $interface_map = array(); // Track which interface each IP belongs to
-    $subnet_bits = array(); // Track subnet bits for each IP
-    foreach ($lan_ips as $lan_ip) {
-        $parts = explode('/', $lan_ip);
-        $ip = trim($parts[0]);
-        $prefix = isset($parts[1]) ? trim($parts[1]) : '32';
-        if (is_ipaddr($ip)) {
-            $needed_ips[] = $ip;
-            $interface_map[$ip] = 'lan';
-            $subnet_bits[$ip] = $prefix;
+    $interface_map = array();
+    $subnet_bits = array();
+    foreach ($interface_ips as $if_name => $ips) {
+        foreach ($ips as $ip) {
+            $parts = explode('/', $ip);
+            $ip = trim($parts[0]);
+            $prefix = isset($parts[1]) ? trim($parts[1]) : '32';
+            if (is_ipaddr($ip)) {
+                $needed_ips[] = $ip;
+                $interface_map[$ip] = $if_name;
+                $subnet_bits[$ip] = $prefix;
+            }
         }
     }
-
-    // Add IPs from HAProxy rules
     foreach ($rules as $rule) {
         $parts = explode('->', trim($rule), 2);
         $frontend = trim($parts[0]);
@@ -60,14 +62,13 @@
             $host = end($frontend_parts);
             if (is_ipaddr($host)) {
                 $needed_ips[] = $host;
-                // If the rule starts with an interface name, map the IP to that interface
                 $interface = strtolower($frontend_parts[0]);
                 if (in_array($interface, array_keys($interfaces))) {
                     $interface_map[$host] = $interface;
                 } else {
-                    $interface_map[$host] = 'wan'; // Default to WAN if no interface specified
+                    $interface_map[$host] = 'wan';
                 }
-                $subnet_bits[$host] = '32'; // HAProxy rules always use /32
+                $subnet_bits[$host] = '32';
             }
         }
     }
@@ -91,7 +92,7 @@
             'interfaces' => $interfaces,
             'needed_ips' => $needed_ips,
             'existing_vips' => $existing_vips,
-            'lan_ips' => $lan_ips
+            'interface_ips' => $interface_ips
         )
     );
     file_put_contents('/tmp/check_result.json', json_encode($result));
@@ -197,3 +198,20 @@
   register: configure_result
   when: primary and check_result is defined and check_result.stdout is defined and (check_result.stdout | from_json).changed
   changed_when: configure_result.stdout == "CHANGED"
+
+- name: Restart all interfaces
+  ansible.builtin.shell: |
+    cat > /tmp/restart_interfaces.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("interfaces.inc");
+    require_once("util.inc");
+    $interfaces = get_configured_interface_list();
+    foreach ($interfaces as $interface) {
+        interface_bring_down($interface);
+        interface_configure($interface);
+    }
+    EOF
+    php -f /tmp/restart_interfaces.php
+    rm -f /tmp/restart_interfaces.php
+  when: configure_result.changed
