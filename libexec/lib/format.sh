@@ -3,13 +3,13 @@
 _format_json_table() {
     _JSON="$1"
     _KEYS="$2"
-    [ -z "$_JSON" ] && return 0
+    [ -z "$_JSON" ] && return
     if [ "$_KEYS" = "-" ]; then
         _KEYS="$(printf "%s\n" "$_JSON" | jq -r 'to_entries | .[].key' | tr '\n' ' ')"
     fi
     _COUNT="$(printf "%s\n" "$_JSON" | jq -s 'length')"
     if [ "$_COUNT" -eq 0 ]; then
-        return 0
+        return
     elif [ "$_COUNT" -eq 1 ] && [ "$(printf "%s\n" "$_JSON" | jq -r 'type')" = "object" ]; then
         (
             echo "KEY VALUE"

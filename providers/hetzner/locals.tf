@@ -32,7 +32,7 @@ locals {
       }
     ]
   ])
-  node_ips = {
+  node_public_ips = {
     for idx, server in hcloud_server.nodes :
     server.name => server.ipv4_address
   }

@@ -1,5 +1,5 @@
-output "node_ips" {
-  value = local.node_ips
+output "node_public_ips" {
+  value = local.node_public_ips
 }
 
 output "node_private_ips" {

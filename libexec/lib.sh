@@ -9,9 +9,10 @@ NC='\033[0m'
 . "$ROCK8S_LIB_PATH/libexec/lib/utils.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/format.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/network.sh"
-. "$ROCK8S_LIB_PATH/libexec/lib/output.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/config.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/kubespray.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/pfsense.sh"
+. "$ROCK8S_LIB_PATH/libexec/lib/master.sh"
+. "$ROCK8S_LIB_PATH/libexec/lib/worker.sh"
 
 _ensure_system

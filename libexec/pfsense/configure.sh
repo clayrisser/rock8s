@@ -162,9 +162,6 @@ _main() {
             0 0 \
             3>&1 1>&2 2>&3)" || _fail "password required"
     fi
-    _PFSENSE_PRIMARY_LAN_IPV4="$(_get_pfsense_primary_lan_ipv4)"
-    _PFSENSE_SECONDARY_LAN_IPV4="$(_get_pfsense_secondary_lan_ipv4)"
-    _LAN_INTERFACE="$(_get_lan_interface)"
     _LAN_IPV4_SUBNET="$(_get_lan_ipv4_subnet)"
     _LAN_IPV4_PREFIX="$(echo "$_LAN_IPV4_SUBNET" | cut -d'/' -f2)"
     rm -rf "$_PFSENSE_DIR/ansible"
@@ -186,11 +183,11 @@ pfsense:
     interfaces:
       lan:
         subnet: ${_LAN_IPV4_SUBNET}
-        interface: ${_LAN_INTERFACE}
-        dhcp: ${_LAN_IPV4_DHCP}
+        interface: $(_get_lan_interface)
+        dhcp: $(_get_lan_ipv4_dhcp)
         ipv4:
-          primary: ${_PFSENSE_PRIMARY_LAN_IPV4}/${_LAN_IPV4_PREFIX}
-          secondary: ${_PFSENSE_SECONDARY_LAN_IPV4}/${_LAN_IPV4_PREFIX}
+          primary: $(_get_pfsense_primary_lan_ipv4)/${_LAN_IPV4_PREFIX}
+          secondary: $(_get_pfsense_secondary_lan_ipv4)/${_LAN_IPV4_PREFIX}
         ipv6:
           primary: $(_get_pfsense_primary_lan_ipv6)/64
           secondary: $(_get_pfsense_secondary_lan_ipv6)/64
@@ -224,11 +221,13 @@ EOF
     fi
     cd "$_PFSENSE_DIR/ansible"
     ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+        ANSIBLE_HOST_KEY_CHECKING=False \
         PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
-        ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
+        ansible-playbook \
+        -i "$_PFSENSE_DIR/hosts.yml" \
         -e "@$_PFSENSE_DIR/vars.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/configure.yml"
+        "$_PFSENSE_DIR/ansible/playbooks/configure.yml" -v
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
 }
 
