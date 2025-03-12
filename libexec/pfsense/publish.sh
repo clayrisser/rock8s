@@ -34,6 +34,9 @@ OPTIONS
 
        --ssh-password
               use password authentication for ssh instead of an ssh key
+
+       --non-interactive
+              fail instead of prompting for missing values
 EOF
 }
 
@@ -102,6 +105,10 @@ _main() {
                 _SSH_PASSWORD=1
                 shift
                 ;;
+            --non-interactive)
+                _NON_INTERACTIVE=1
+                shift
+                ;;
             -*)
                 _help
                 exit 1
@@ -120,6 +127,13 @@ _main() {
     export ROCK8S_CLUSTER="$_CLUSTER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _PFSENSE_DIR="$(_get_cluster_dir)/pfsense"
+    if [ "$_SSH_PASSWORD" = "1" ] && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+        _PASSWORD="$(whiptail --title "Enter admin password" \
+            --backtitle "Rock8s Configuration" \
+            --passwordbox " " \
+            0 0 \
+            3>&1 1>&2 2>&3)" || _fail "password required"
+    fi
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     if [ ! -f "$_PFSENSE_DIR/vars.yml" ] || [ ! -f "$_PFSENSE_DIR/collections/ansible_collections/pfsensible/core/FILES.json" ]; then

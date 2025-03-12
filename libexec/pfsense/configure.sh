@@ -155,7 +155,8 @@ _main() {
         pfsense
     mkdir -p "$_PFSENSE_DIR"
     _PFSENSE_SHARED_WAN_IPV4="$(_get_pfsense_shared_wan_ipv4)"
-    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_SECONDARY_HOSTNAME" ] && [ "$_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+    _PFSENSE_SECONDARY_HOSTNAME="$(_get_pfsense_secondary_hostname)"
+    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_PFSENSE_SECONDARY_HOSTNAME" ] && [ "$_PFSENSE_SECONDARY_HOSTNAME" != "null" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
         _PASSWORD="$(whiptail --title "Enter admin password" \
             --backtitle "Rock8s Configuration" \
             --passwordbox " " \
@@ -199,6 +200,8 @@ pfsense:
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
+    _PFSENSE_SECONDARY_HOSTNAME=$(_get_pfsense_secondary_hostname)
+    _PFSENSE_SECONDARY_LAN_IPV4=$(_get_pfsense_secondary_lan_ipv4)
     cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
 all:
   vars:
@@ -208,10 +211,10 @@ all:
       ansible_host: $(_get_pfsense_primary_hostname)
       primary: true
 EOF
-    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_LAN_IPV4" != "null" ]; then
+    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_LAN_IPV4" != "null" ] && [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ] && [ "$_PFSENSE_SECONDARY_HOSTNAME" != "null" ]; then
         cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
     pfsense2:
-      ansible_host: $(_get_pfsense_secondary_hostname)
+      ansible_host: $_PFSENSE_SECONDARY_HOSTNAME
       primary: false
 EOF
     fi

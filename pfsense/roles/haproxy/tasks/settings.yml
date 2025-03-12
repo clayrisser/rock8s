@@ -1,4 +1,8 @@
 ---
+- name: Set ha_sync_enabled variable
+  set_fact:
+    ha_sync_enabled: "{{ ansible_play_hosts | length > 1 }}"
+
 - name: Check haproxy system settings
   ansible.builtin.shell: |
     cat > /tmp/check_system.php << 'EOF'
@@ -116,3 +120,77 @@
   changed_when: haproxy_system_config.stdout == "CHANGED"
   when: haproxy_system_check.stdout == "CHANGED"
 
+- name: Check haproxy sync settings
+  ansible.builtin.shell: |
+    cat > /tmp/check_sync.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    $config = parse_config(true);
+    $primary = {{ primary | bool | lower }};
+    $ha_sync_enabled = {{ ha_sync_enabled | bool | lower }};
+    
+    if (!isset($config["installedpackages"])) {
+        $config["installedpackages"] = array();
+    }
+    if (!isset($config["installedpackages"]["haproxy"])) {
+        $config["installedpackages"]["haproxy"] = array();
+    }
+    
+    $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) && 
+                   $config['installedpackages']['haproxy']['enablesync'] === '';
+    
+    $desired_sync = $primary && $ha_sync_enabled;
+    
+    if ($current_sync !== $desired_sync) {
+        echo "CHANGED:sync_mismatch";
+    } else {
+        echo "UNCHANGED";
+    }
+    EOF
+    php -f /tmp/check_sync.php
+    rm -f /tmp/check_sync.php
+  register: haproxy_sync_check
+  changed_when: haproxy_sync_check.stdout == "CHANGED:sync_mismatch"
+
+- name: Configure haproxy sync settings
+  ansible.builtin.shell: |
+    cat > /tmp/configure_sync.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    $config = parse_config(true);
+    $primary = {{ primary | bool | lower }};
+    $ha_sync_enabled = {{ ha_sync_enabled | bool | lower }};
+    
+    if (!isset($config["installedpackages"])) {
+        $config["installedpackages"] = array();
+    }
+    if (!isset($config["installedpackages"]["haproxy"])) {
+        $config["installedpackages"]["haproxy"] = array();
+    }
+    
+    $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) && 
+                   $config['installedpackages']['haproxy']['enablesync'] === '';
+    
+    $desired_sync = $primary && $ha_sync_enabled;
+    
+    if ($current_sync !== $desired_sync) {
+        if ($desired_sync) {
+            $config['installedpackages']['haproxy']['enablesync'] = '';
+        } else {
+            unset($config['installedpackages']['haproxy']['enablesync']);
+        }
+        write_config(sprintf('Updated haproxy sync settings from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'));
+        echo "CHANGED";
+    } else {
+        echo "UNCHANGED";
+    }
+    EOF
+    php -f /tmp/configure_sync.php
+    rm -f /tmp/configure_sync.php
+  register: haproxy_sync_config
+  when: haproxy_sync_check.stdout == "CHANGED:sync_mismatch"
+  changed_when: haproxy_sync_config.stdout == "CHANGED"
