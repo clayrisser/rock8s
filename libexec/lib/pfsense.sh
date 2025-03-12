@@ -312,3 +312,33 @@ _get_pfsense_althostnames() {
     done
     echo "$_PFSENSE_ALTHOSTNAMES"
 }
+
+_get_pfsense_private_ipv4s() {
+    if [ -n "$_PFSENSE_PRIVATE_IPV4S" ]; then
+        echo "$_PFSENSE_PRIVATE_IPV4S"
+        return
+    fi
+    _PFSENSE_PRIMARY_LAN_IPV4="$(_get_pfsense_primary_lan_ipv4)"
+    _PFSENSE_SECONDARY_LAN_IPV4="$(_get_pfsense_secondary_lan_ipv4)"
+    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_LAN_IPV4" != "null" ]; then
+        _PFSENSE_PRIVATE_IPV4S="$_PFSENSE_PRIMARY_LAN_IPV4 $_PFSENSE_SECONDARY_LAN_IPV4"
+    else
+        _PFSENSE_PRIVATE_IPV4S="$_PFSENSE_PRIMARY_LAN_IPV4"
+    fi
+    echo "$_PFSENSE_PRIVATE_IPV4S"
+}
+
+_get_pfsense_public_ipv4s() {
+    if [ -n "$_PFSENSE_PUBLIC_IPV4S" ]; then
+        echo "$_PFSENSE_PUBLIC_IPV4S"
+        return
+    fi
+    _PFSENSE_PRIMARY_WAN_IPV4="$(_get_pfsense_primary_wan_ipv4)"
+    _PFSENSE_SECONDARY_WAN_IPV4="$(_get_pfsense_secondary_wan_ipv4)"
+    if [ -n "$_PFSENSE_SECONDARY_WAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_WAN_IPV4" != "null" ]; then
+        _PFSENSE_PUBLIC_IPV4S="$_PFSENSE_PRIMARY_WAN_IPV4 $_PFSENSE_SECONDARY_WAN_IPV4"
+    else
+        _PFSENSE_PUBLIC_IPV4S="$_PFSENSE_PRIMARY_WAN_IPV4"
+    fi
+    echo "$_PFSENSE_PUBLIC_IPV4S"
+}

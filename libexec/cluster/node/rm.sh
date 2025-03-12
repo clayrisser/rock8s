@@ -10,7 +10,7 @@ NAME
        rock8s cluster node rm - remove node from cluster
 
 SYNOPSIS
-       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] <node>
+       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] <node>
 
 DESCRIPTION
        remove a node from an existing kubernetes cluster
@@ -32,6 +32,9 @@ OPTIONS
 
        --cluster <cluster>
               name of the cluster to remove node from (required)
+
+       -y, --yes
+              skip confirmation prompt
 EOF
 }
 
@@ -40,6 +43,7 @@ _main() {
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
     _NODE=""
+    _YES=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -82,6 +86,10 @@ _main() {
                         ;;
                 esac
                 ;;
+            -y|--yes)
+                _YES="1"
+                shift
+                ;;
             -*)
                 _help
                 exit 1
@@ -103,26 +111,23 @@ _main() {
     if [ -z "$_NODE" ]; then
         _fail "node name required"
     fi
-    
-    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    
-    # Setup Kubespray
-    _KUBESPRAY_DIR="$(_get_kubespray_dir "$_CLUSTER_DIR")"
-    
-    _VENV_DIR="$(_get_kubespray_venv_dir "$_KUBESPRAY_DIR")"
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_TENANT="$_TENANT"
+    _CLUSTER_DIR="$(_get_cluster_dir)"
+    _KUBESPRAY_DIR="$(_get_kubespray_dir)"
+    if [ ! -d "$_KUBESPRAY_DIR" ]; then
+        _fail "kubespray directory not found"
+    fi
+    _VENV_DIR="$_KUBESPRAY_DIR/venv"
+    if [ ! -d "$_VENV_DIR" ]; then
+        _fail "kubespray virtual environment not found"
+    fi
     . "$_VENV_DIR/bin/activate"
-    
-    # Setup inventory
-    _INVENTORY_DIR="$(_get_kubespray_inventory_dir "$_CLUSTER_DIR")"
-    
-    # Get node information
-    _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "master")"
-    
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_INVENTORY_DIR/inventory.ini" \
-        -e "@$_INVENTORY_DIR/vars.yml" \
+        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
+        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
         -e "node=$_NODE" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/remove-node.yml" -b -v

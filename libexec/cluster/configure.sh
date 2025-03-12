@@ -10,10 +10,12 @@ NAME
        rock8s cluster configure - configure a kubernetes cluster
 
 SYNOPSIS
-       rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] --cluster <cluster> [--kubeconfig <path>]
+       rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--non-interactive] --cluster <cluster> [--kubeconfig <path>] [--update] [--pfsense-password <password>] [--pfsense-ssh-password] [--skip-kubespray]
 
 DESCRIPTION
-       configure a kubernetes cluster with the necessary infrastructure
+       configure a kubernetes cluster with the necessary infrastructure using terraform.
+       if the cluster does not exist, it will be installed first.
+       if the cluster exists, it will be upgraded first.
 
 OPTIONS
        -h, --help
@@ -34,6 +36,21 @@ OPTIONS
 
        -y, --yes
               automatically approve operations without prompting
+
+       --non-interactive
+              fail instead of prompting for missing values
+
+       --update
+              update ansible collections
+
+       --pfsense-password <password>
+              admin password
+
+       --pfsense-ssh-password
+              use password authentication for ssh instead of an ssh key
+
+       --skip-kubespray
+              skip kubespray installation/upgrade steps
 EOF
 }
 
@@ -43,6 +60,11 @@ _main() {
     _YES=0
     _TENANT="$ROCK8S_TENANT"
     _KUBECONFIG=""
+    _NON_INTERACTIVE=""
+    _UPDATE=""
+    _PFSENSE_PASSWORD=""
+    _PFSENSE_SSH_PASSWORD=""
+    _SKIP_KUBESPRAY=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -66,7 +88,7 @@ _main() {
                 shift
                 ;;
             --non-interactive)
-                _YES=1
+                _NON_INTERACTIVE="1"
                 shift
                 ;;
             -t|--tenant|-t=*|--tenant=*)
@@ -105,6 +127,38 @@ _main() {
                         ;;
                 esac
                 ;;
+            --update)
+                _UPDATE="1"
+                shift
+                ;;
+            --pfsense-password|--pfsense-password=*)
+                case "$1" in
+                    *=*)
+                        _PFSENSE_PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PFSENSE_PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --pfsense-ssh-password|--pfsense-ssh-password=*)
+                case "$1" in
+                    *=*)
+                        _PFSENSE_SSH_PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PFSENSE_SSH_PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --skip-kubespray)
+                _SKIP_KUBESPRAY="1"
+                shift
+                ;;
             -*)
                 _help
                 exit 1
@@ -118,29 +172,42 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required (use --cluster)"
     fi
-    _ensure_system
-    
-    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    
-    _CONFIG_FILE="$(_get_cluster_config_file "$_TENANT" "$_CLUSTER")"
-    
-    _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
-    _PROVIDER="$(_get_cluster_provider "$_CONFIG_JSON")"
-    _ENTRYPOINT="$(_get_cluster_entrypoint "$_CONFIG_JSON")"
-    
-    _KUBECONFIG="$(_get_cluster_kubeconfig "$_CLUSTER_DIR" "$_KUBECONFIG")"
-    _ADDONS_DIR="$(_get_cluster_addons_dir "$_CLUSTER_DIR")"
-    
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_TENANT="$_TENANT"
+    export NON_INTERACTIVE="$_NON_INTERACTIVE"
+    _CLUSTER_DIR="$(_get_cluster_dir)"
+    _ADDONS_DIR="$_CLUSTER_DIR/addons"
+    if [ -z "$_SKIP_KUBESPRAY" ]; then
+        if [ ! -f "$_CLUSTER_DIR/kube.yaml" ]; then
+            sh "$ROCK8S_LIB_PATH/libexec/cluster/install.sh" \
+                --output="$_FORMAT" \
+                --cluster="$_CLUSTER" \
+                --tenant="$_TENANT" \
+                $([ "$_YES" = "1" ] && echo "--yes") \
+                $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+                $([ "$_UPDATE" = "1" ] && echo "--update") \
+                $([ -n "$_PFSENSE_PASSWORD" ] && echo "--pfsense-password=$_PFSENSE_PASSWORD") \
+                $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--pfsense-ssh-password=$_PFSENSE_SSH_PASSWORD")
+        else
+            sh "$ROCK8S_LIB_PATH/libexec/cluster/upgrade.sh" \
+                --output="$_FORMAT" \
+                --cluster="$_CLUSTER" \
+                --tenant="$_TENANT" \
+                $([ "$_YES" = "1" ] && echo "--yes") \
+                $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
+                $([ "$_UPDATE" = "1" ] && echo "--update") \
+                $([ -n "$_PFSENSE_PASSWORD" ] && echo "--pfsense-password=$_PFSENSE_PASSWORD") \
+                $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--pfsense-ssh-password=$_PFSENSE_SSH_PASSWORD")
+        fi
+    fi
     mkdir -p "$_ADDONS_DIR"
     rm -rf "$_ADDONS_DIR/terraform"
     cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"
-    echo "$_CONFIG_JSON" | jq -e '.addons // {}' > $_ADDONS_DIR/terraform.tfvars.json
-    
     export TF_VAR_cluster_name="$_CLUSTER"
-    export TF_VAR_entrypoint="$_ENTRYPOINT"
-    export TF_VAR_kubeconfig="$_KUBECONFIG"
+    export TF_VAR_entrypoint="$(_get_entrypoint)"
+    export TF_VAR_kubeconfig="$_CLUSTER_DIR/kube.yaml"
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
-    
+    _get_config_json | jq -r '.addons' > "$_ADDONS_DIR/terraform.tfvars.json"
     cd "$_ADDONS_DIR/terraform"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
         [ ! -f "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" ] || \
@@ -151,9 +218,9 @@ _main() {
         touch -m "$TF_DATA_DIR/terraform.tfstate"
     fi
     terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
-    echo terraform output -json > "$_ADDONS_DIR/output.json"
+    terraform output -json > "$_ADDONS_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$_PROVIDER" "$_TENANT" | \
+        "$_CLUSTER" "$(_get_cluster_provider)" "$_TENANT" | \
         _format_output "$_FORMAT"
 }
 

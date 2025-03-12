@@ -29,9 +29,17 @@ COMMANDS
        destroy
               destroy cluster nodes
 
+       ls
+              list nodes grouped by their purpose
+
+       ssh
+              ssh into a specific node
+
 SEE ALSO
        rock8s nodes apply --help
        rock8s nodes destroy --help
+       rock8s nodes ls --help
+       rock8s nodes ssh --help
 EOF
 }
 
@@ -71,7 +79,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            apply|destroy)
+            apply|destroy|ls|ssh)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

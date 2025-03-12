@@ -48,7 +48,7 @@ _format_output() {
     fi
     case "$_FORMAT" in
         json)
-            printf "%s\n" "$_INPUT"
+            printf "%s\n" "$_INPUT" | jq
             ;;
         yaml)
             printf "%s\n" "$_INPUT" | while read -r line; do
