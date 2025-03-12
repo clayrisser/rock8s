@@ -87,7 +87,7 @@ _calculate_last_ipv4() {
 _resolve_hostname() {
     _HOSTNAME="$1"
     if [ -z "$_HOSTNAME" ]; then
-        return 0
+        return
     fi
     if echo "$_HOSTNAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
         echo "$_HOSTNAME"
@@ -104,7 +104,6 @@ _resolve_hostname() {
             echo "$_IPV6"
             return
         fi
-        return 1
     fi
 }
 
@@ -177,7 +176,7 @@ _calculate_metallb() {
 _get_network_mtu() {
     if [ -n "$_NETWORK_MTU" ]; then
         echo "$_NETWORK_MTU"
-        return 0
+        return
     fi
     _NETWORK_MTU="$(_get_config_json | jq -r '.network.lan.mtu // "1500"')"
     echo "$_NETWORK_MTU"
@@ -186,7 +185,7 @@ _get_network_mtu() {
 _get_network_dualstack() {
     if [ -n "$_NETWORK_DUALSTACK" ]; then
         echo "$_NETWORK_DUALSTACK"
-        return 0
+        return
     fi
     _NETWORK_DUALSTACK="$(_get_config_json | jq -r '.network.lan.dualstack')"
     if [ "$_NETWORK_DUALSTACK" = "false" ]; then
@@ -196,37 +195,45 @@ _get_network_dualstack() {
     fi
 }
 
-_get_network_metallb() {
-    if [ -n "$_NETWORK_METALLB" ]; then
-        echo "$_NETWORK_METALLB"
-        return 0
+_get_lan_metallb() {
+    if [ -n "$_LAN_METALLB" ]; then
+        echo "$_LAN_METALLB"
+        return
     fi
-    _NETWORK_METALLB="$(_get_config_json | jq -r '.network.lan.metallb')"
-    if [ -z "$_NETWORK_METALLB" ] || [ "$_NETWORK_METALLB" = "null" ]; then
-        _NETWORK_METALLB="$(_calculate_metallb "$(_get_lan_ipv4_subnet)")"
+    if [ "$(_get_external_network)" = "1" ]; then
+        _LAN_METALLB=""
+    else
+        _LAN_METALLB="$(_get_config_json | jq -r '.network.lan.metallb')"
+        if [ -z "$_LAN_METALLB" ] || [ "$_LAN_METALLB" = "null" ]; then
+            _LAN_METALLB="$(_calculate_metallb "$(_get_lan_ipv4_subnet)")"
+        fi
     fi
-    echo "$_NETWORK_METALLB"
+    echo "$_LAN_METALLB"
 }
 
-_get_supplementary_addresses() {
-    if [ -n "$_SUPPLEMENTARY_ADDRESSES" ]; then
-        echo "$_SUPPLEMENTARY_ADDRESSES"
-        return 0
+_get_external_network() {
+    if [ -n "$_EXTERNAL_NETWORK" ]; then
+        echo "$_EXTERNAL_NETWORK"
+        return
     fi
-    _ENTRYPOINT="$(_get_entrypoint)"
-    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
-    _MASTER_OUTPUT="$(_get_cluster_dir)/master/output.json"
-    _MASTER_IPV4S="$(jq -r '.node_private_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _MASTER_EXTERNAL_IPV4S="$(jq -r '.node_ips.value | .[] | @text' "$_MASTER_OUTPUT")"
-    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
-    if [ -n "$_ENTRYPOINT_IPV4" ]; then
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
+    if [ "$(_get_provider)" = "hetzner" ]; then
+        _EXTERNAL_NETWORK="1"
+    else
+        _EXTERNAL_NETWORK="0"
     fi
-    for _IPV4 in $_MASTER_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
-    for _IPV4 in $_MASTER_EXTERNAL_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
-    echo "$_SUPPLEMENTARY_ADDRESSES"
+    echo "$_EXTERNAL_NETWORK"
+}
+
+_get_lan_ingress_ipv4() {
+    if [ -n "$_LAN_INGRESS_IPV4" ]; then
+        echo "$_LAN_INGRESS_IPV4"
+        return
+    fi
+    if [ "$(_get_external_network)" = "1" ]; then
+        _LAN_INGRESS_IPV4=""
+    else
+        _LAN_METALLB="$(_get_lan_metallb)"
+        _LAN_INGRESS_IPV4="$(echo "$_LAN_METALLB" | cut -d'-' -f1)"
+    fi
+    echo "$_LAN_INGRESS_IPV4"
 }

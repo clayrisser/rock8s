@@ -47,7 +47,7 @@ _fail() {
 
 _ensure_system() {
     if [ "$_ENSURED_SYSTEM" -eq 1 ]; then
-        return 0
+        return
     fi
     command -v terraform >/dev/null 2>&1 || {
         _fail "terraform is not installed"

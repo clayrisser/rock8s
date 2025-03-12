@@ -3,7 +3,7 @@
 _get_cluster_dir() {
     if [ -n "$_CLUSTER_DIR" ]; then
         echo "$_CLUSTER_DIR"
-        return 0
+        return
     fi
     if [ -z "$ROCK8S_CONFIG_HOME" ]; then
         _fail "ROCK8S_CONFIG_HOME not set"
@@ -21,7 +21,7 @@ _get_cluster_dir() {
 _get_config_dir() {
     if [ -n "$_CONFIG_DIR" ]; then
         echo "$_CONFIG_DIR"
-        return 0
+        return
     fi
     if [ -z "$ROCK8S_CONFIG_HOME" ]; then
         _fail "ROCK8S_CONFIG_HOME not set"
@@ -39,7 +39,7 @@ _get_config_dir() {
 _get_config_file() {
     if [ -n "$_CONFIG_FILE" ]; then
         echo "$_CONFIG_FILE"
-        return 0
+        return
     fi
     _CONFIG_FILE="$(_get_config_dir)/config.yaml"
     if [ ! -f "$_CONFIG_FILE" ]; then
@@ -92,7 +92,7 @@ _get_config_file() {
 _get_config_json() {
     if [ -n "$_CONFIG_JSON" ]; then
         echo "$_CONFIG_JSON"
-        return 0
+        return
     fi
     _CONFIG_FILE="$(_get_config_file)"
     _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
@@ -105,7 +105,7 @@ _get_config_json() {
 _get_provider() {
     if [ -n "$_PROVIDER" ]; then
         echo "$_PROVIDER"
-        return 0
+        return
     fi
     _PROVIDER="$(echo "$(_get_config_json)" | jq -r '.provider')"
     if [ -z "$_PROVIDER" ] || [ "$_PROVIDER" = "null" ]; then
@@ -117,9 +117,9 @@ _get_provider() {
 _get_entrypoint() {
     if [ -n "$_ENTRYPOINT" ]; then
         echo "$_ENTRYPOINT"
-        return 0
+        return
     fi
-    _ENTRYPOINT="$(cat "$(_get_config_json)" | jq -r '.network.entrypoint // ""')"
+    _ENTRYPOINT="$(_get_config_json | jq -r '.network.entrypoint // ""')"
     if [ -z "$_ENTRYPOINT" ] || [ "$_ENTRYPOINT" = "null" ]; then
         _fail ".network.entrypoint not found in config.yaml"
     fi

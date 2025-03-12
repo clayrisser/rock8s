@@ -3,5 +3,4 @@
   hosts: all
   gather_facts: False
   roles:
-    - pfsense
     - haproxy

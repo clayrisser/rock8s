@@ -22,6 +22,9 @@ COMMANDS
        destroy
               destroy pfSense firewall nodes
 
+       publish
+              publish HAProxy configuration
+
 OPTIONS
        -h, --help
               show this help message
@@ -39,6 +42,7 @@ OPTIONS
 SEE ALSO
        rock8s pfsense configure --help
        rock8s pfsense destroy --help
+       rock8s pfsense publish --help
 EOF
 }
 
@@ -89,7 +93,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            configure|destroy)
+            configure|destroy|publish)
                 _CMD="$1"
                 shift
                 break

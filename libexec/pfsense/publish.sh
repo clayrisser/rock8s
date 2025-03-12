@@ -119,67 +119,39 @@ _main() {
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
-    _CLUSTER_DIR="$(_get_cluster_dir)"
-    _PROVIDER="$(_get_provider)"
-    _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
-    _PFSENSE_PRIMARY_LAN_IPV4="$(_get_pfsense_primary_lan_ipv4)"
-    _PFSENSE_SECONDARY_LAN_IPV4="$(_get_pfsense_secondary_lan_ipv4)"
-    _MASTER_OUTPUT_JSON="$(_get_node_output_file "$_CLUSTER_DIR" "master")"
-    _MASTER_IPS="$(_get_node_master_ips "$_MASTER_OUTPUT_JSON")"
-    if [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
-        _PASSWORD="$(whiptail --title "Enter admin password" \
-            --backtitle "Rock8s Configuration" \
-            --passwordbox " " \
-            0 0 \
-            3>&1 1>&2 2>&3)" || _fail "password required"
+    _PFSENSE_DIR="$(_get_cluster_dir)/pfsense"
+    _LAN_INGRESS_IPV4="$(_get_lan_ingress_ipv4)"
+    if [ -n "$_LAN_INGRESS_IPV4" ]; then
+        _INGRESS_RULES="      - \"8080 -> check:${_LAN_INGRESS_IPV4}:80\"
+      - \"8443 -> check:${_LAN_INGRESS_IPV4}:443\""
+    else
+        _HTTP_BACKEND="$(_get_haproxy_backend 80 $(_get_worker_private_ipv4s))"
+        _HTTPS_BACKEND="$(_get_haproxy_backend 443 $(_get_worker_private_ipv4s))"
+        _INGRESS_RULES="      - \"8080 -> ${_HTTP_BACKEND}\"
+      - \"8443 -> ${_HTTPS_BACKEND}\""
     fi
-    rm -rf "$_PFSENSE_DIR/ansible"
-    cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
-    cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
-all:
-  vars:
-    ansible_user: admin
-  hosts:
-    pfsense1:
-      ansible_host: $_PFSENSE_PRIMARY_LAN_IPV4
-      primary: true
-EOF
-    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ] && [ "$_PFSENSE_SECONDARY_LAN_IPV4" != "null" ]; then
-        cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
-    pfsense2:
-      ansible_host: $_PFSENSE_SECONDARY_LAN_IPV4
-      primary: false
-EOF
-    fi
-    cat > "$_PFSENSE_DIR/vars.yml" <<EOF
+    _KUBE_BACKEND="$(_get_haproxy_backend 6443 $(_get_master_private_ipv4s))"
+    cat > "$_PFSENSE_DIR/vars.publish.yml" <<EOF
 pfsense:
-  provider: $_PROVIDER
-  password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
+  provider: $(_get_provider)
   haproxy:
-    enabled: true
-    frontends:
-      - name: k8s_api
-        bind: "*:6443"
-        mode: tcp
-        backends:
-          - name: k8s_api_backend
-            mode: tcp
-            balance: roundrobin
-            servers: $_MASTER_IPS
-    backends:
-      - name: k8s_api_backend
-        mode: tcp
-        balance: roundrobin
-        servers: $_MASTER_IPS
+    rules:
+${_INGRESS_RULES}
+      - "6443 -> ${_KUBE_BACKEND}"
 EOF
+    _PFSENSE_SSH_PRIVATE_KEY="$(_get_pfsense_ssh_private_key)"
+    if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_PFSENSE_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
+        export ANSIBLE_PRIVATE_KEY_FILE="$_PFSENSE_SSH_PRIVATE_KEY"
+    fi
     cd "$_PFSENSE_DIR/ansible"
-    echo ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+    ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+        ANSIBLE_HOST_KEY_CHECKING=False \
         PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
-        ansible-playbook -v -i "$_PFSENSE_DIR/hosts.yml" \
-        -e "@$_PFSENSE_DIR/vars.yml" \
+        ansible-playbook \
+        -i "$_PFSENSE_DIR/hosts.yml" \
+        -e "@$_PFSENSE_DIR/vars.publish.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/haproxy.yml"
-    
+        "$_PFSENSE_DIR/ansible/playbooks/haproxy.yml" -v
     printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
 }
 

@@ -12,7 +12,7 @@ _handle_whiptail_exit() {
             return 1
             ;;
     esac
-    return 0
+    return
 }
 
 prompt_text() {
@@ -27,15 +27,15 @@ prompt_text() {
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
         if [ -n "$_ENV_VALUE" ]; then
             echo "$_ENV_VALUE"
-            return 0
+            return
         elif [ -n "$_DEFAULT" ]; then
             echo "$_DEFAULT"
-            return 0
+            return
         elif [ "$_REQUIRED" = "1" ]; then
             _fail "missing required value: $_PROMPT"
         else
             echo ""
-            return 0
+            return
         fi
     fi
     _EFFECTIVE_DEFAULT="${_ENV_VALUE:-$_DEFAULT}"
@@ -77,12 +77,12 @@ prompt_password() {
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
         if [ -n "$_ENV_VALUE" ]; then
             echo "$_ENV_VALUE"
-            return 0
+            return
         elif [ "$_REQUIRED" = "1" ]; then
             _fail "missing required password: $_PROMPT"
         else
             echo ""
-            return 0
+            return
         fi
     fi
     _TITLE="Password Required"
@@ -125,10 +125,10 @@ prompt_boolean() {
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
         if [ -n "$_ENV_VALUE" ]; then
             echo "$_ENV_VALUE"
-            return 0
+            return
         elif [ -n "$_DEFAULT" ]; then
             echo "$_DEFAULT"
-            return 0
+            return
         else
             _fail "missing required boolean: $_PROMPT"
         fi
@@ -150,7 +150,7 @@ prompt_boolean() {
     else
         echo "0"
     fi
-    return 0
+    return
 }
 
 prompt_select() {
@@ -168,10 +168,10 @@ prompt_select() {
                 _fail "invalid value for $_PROMPT: $_ENV_VALUE"
             fi
             echo "$_ENV_VALUE"
-            return 0
+            return
         elif [ -n "$_DEFAULT" ]; then
             echo "$_DEFAULT"
-            return 0
+            return
         else
             _fail "missing required value: $_PROMPT"
         fi
@@ -208,10 +208,10 @@ prompt_multiselect() {
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
         if [ -n "$_ENV_VALUE" ]; then
             echo "$_ENV_VALUE"
-            return 0
+            return
         else
             echo ""
-            return 0
+            return
         fi
     fi
     _MENU_ITEMS=""
@@ -238,7 +238,7 @@ prompt_multiselect() {
     _EXIT_CODE=$?
     if ! _handle_whiptail_exit $_EXIT_CODE; then
         echo ""
-        return 0
+        return
     fi
     echo "$_ANSWER"
 }
@@ -249,7 +249,7 @@ validate_enum() {
     _OPTIONS="$*"
     for _OPTION in $_OPTIONS; do
         if [ "$_VALUE" = "$_OPTION" ]; then
-            return 0
+            return
         fi
     done
     return 1
@@ -268,7 +268,7 @@ get_config() {
     _DEFAULT_VALUE="$2"
     if [ -n "$_DEFAULT_VALUE" ]; then
         echo "$_DEFAULT_VALUE"
-        return 0
+        return
     fi
     _RESULT=""
     IFS=:
@@ -294,5 +294,5 @@ get_config() {
     done
     unset IFS
     echo "$_RESULT"
-    return 0
+    return
 }

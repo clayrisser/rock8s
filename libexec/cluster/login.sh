@@ -116,56 +116,65 @@ _main() {
     if [ -z "$_CLUSTER" ]; then
         _fail "cluster name required"
     fi
-    
-    _CLUSTER_DIR="$(_get_cluster_dir "$_TENANT" "$_CLUSTER")"
-    
-    _CONFIG_FILE="$(_get_cluster_config_file "$_TENANT" "$_CLUSTER")"
-    
-    _CONFIG_JSON="$(yaml2json < "$_CONFIG_FILE")"
-    _ENTRYPOINT="$(_get_cluster_entrypoint "$_CONFIG_JSON")"
-    
-    # Get node information
-    _MASTER_OUTPUT="$(_get_node_output_file "$_CLUSTER_DIR" "master")"
-    _MASTER_SSH_PRIVATE_KEY="$(_get_node_ssh_key "$_MASTER_OUTPUT")"
-    _MASTER_IPV4="$(_get_node_master_ipv4 "$_MASTER_OUTPUT")"
-    
-    # Setup kubeconfig
+    export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    _ENTRYPOINT="$(_get_entrypoint)"
+    _FIRST_MASTER_PRIVATE_IPV4="$(_get_master_private_ipv4s | head -n 1)"
     if [ -z "$_KUBECONFIG" ]; then
         _KUBECONFIG="$HOME/.kube/config"
     fi
-    
     _KUBECONFIG_TMP="$(mktemp)"
-    _cleanup() {
-        rm -f "$_KUBECONFIG_TMP"
-    }
-    trap _cleanup EXIT
-    
-    # Get kubeconfig from master node
-    ssh -i "$_MASTER_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no "admin@$_MASTER_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"
-    
-    # Update server address
+    _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_TMP"
+    if ! ssh -i "$(_get_master_ssh_private_key)" -o StrictHostKeyChecking=no "admin@$_FIRST_MASTER_PRIVATE_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"; then
+        _fail "failed to retrieve kubeconfig from master node"
+    fi
+    if ! kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o yaml >/dev/null 2>&1; then
+        _fail "invalid kubeconfig"
+    fi
+    _CURRENT_CONTEXT=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config current-context)
+    _CURRENT_CLUSTER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.cluster}')
+    _CURRENT_USER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.user}')
+    _KUBECONFIG_JSON_TMP="$(mktemp)"
+    _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_JSON_TMP"
+    kubectl --kubeconfig="$_KUBECONFIG_TMP" config view --raw -o json | \
+        jq --arg cluster "$_CURRENT_CLUSTER" --arg context "$_CURRENT_CONTEXT" --arg user "$_CURRENT_USER" \
+           --arg name "$_ENTRYPOINT" \
+        '(.clusters[] | select(.name == $cluster).name) = $name |
+         (.users[] | select(.name == $user).name) = $name |
+         .contexts |= map(
+           if .name == $context
+           then . + {
+             "name": $name,
+             "context": {
+               "cluster": $name,
+               "user": $name
+             }
+           }
+           else .
+           end
+         ) |
+         .["current-context"] = $name' > "$_KUBECONFIG_JSON_TMP"
+    json2yaml < "$_KUBECONFIG_JSON_TMP" > "$_KUBECONFIG_TMP"
+    rm -f "$_KUBECONFIG_JSON_TMP"
     _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
     if [ -n "$_ENTRYPOINT_IPV4" ]; then
-        sed -i "s/server: https:\/\/[^:]*:/server: https:\/\/$_ENTRYPOINT_IPV4:/" "$_KUBECONFIG_TMP"
-    fi
-    
-    # Update context name
-    sed -i "s/kubernetes-admin@kubernetes/$_CLUSTER/" "$_KUBECONFIG_TMP"
-    
-    # Merge kubeconfig
-    if [ -f "$_KUBECONFIG" ]; then
-        KUBECONFIG="$_KUBECONFIG:$_KUBECONFIG_TMP" kubectl config view --flatten > "$_KUBECONFIG.tmp"
-        mv "$_KUBECONFIG.tmp" "$_KUBECONFIG"
+        kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$_ENTRYPOINT_IPV4:6443" >/dev/null
     else
-        mkdir -p "$(dirname "$_KUBECONFIG")"
-        cp "$_KUBECONFIG_TMP" "$_KUBECONFIG"
+        kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$(_get_master_private_ipv4s | head -n 1):6443" >/dev/null
     fi
-    
-    # Use the new context
-    kubectl config use-context "$_CLUSTER"
-    
+    mkdir -p "$(dirname "$_KUBECONFIG")"
+    if [ -f "$_KUBECONFIG" ]; then
+        _KUBECONFIG_MERGED_TMP="$(mktemp)"
+        _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_MERGED_TMP"
+        KUBECONFIG="$_KUBECONFIG:$_KUBECONFIG_TMP" kubectl config view --flatten > "$_KUBECONFIG_MERGED_TMP"
+        mv "$_KUBECONFIG_MERGED_TMP" "$_KUBECONFIG"
+    else
+        mv "$_KUBECONFIG_TMP" "$_KUBECONFIG"
+    fi
+    chmod 600 "$_KUBECONFIG"
+    _cleanup
     printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
-        "$_CLUSTER" "$_ENTRYPOINT" "$_MASTER_IPV4" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
+        "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
 }
 
 _main "$@" 

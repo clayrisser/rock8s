@@ -1,13 +1,11 @@
 ---
 kube_version: v1.28.6
-kube_proxy_strict_arp: true
 dashboard_enabled: true
 helm_enabled: true
 metrics_server_enabled: true
 csi_snapshot_controller_enabled: true
 cert_manager_enabled: true
 
-metallb_enabled: false
 metallb_speaker_enabled: "{{ metallb_enabled }}"
 metallb_namespace: metallb-system
 metallb_version: v0.13.9

@@ -74,7 +74,7 @@ _KANISTER_BUCKET="${ROCK8S_CLUSTER}-kanister"
 _is_addon_enabled() {
     for _SELECTED_ADDON in $_SELECTED_ADDONS; do
         if [ "$_SELECTED_ADDON" = "$1" ]; then
-            return 0
+            return
         fi
     done
     return 1
