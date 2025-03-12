@@ -9,3 +9,8 @@
     name: pfSense-pkg-acme
     state: present
   when: primary
+
+- name: Install pfBlockerNG
+  package:
+    name: pfSense-pkg-pfBlockerNG
+    state: present

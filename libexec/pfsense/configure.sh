@@ -165,6 +165,8 @@ _main() {
     fi
     _LAN_IPV4_SUBNET="$(_get_lan_ipv4_subnet)"
     _LAN_IPV4_PREFIX="$(echo "$_LAN_IPV4_SUBNET" | cut -d'/' -f2)"
+    _SYNC_IPV4_SUBNET="$(_get_sync_ipv4_subnet)"
+    _SYNC_IPV4_PREFIX="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f2)"
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     mkdir -p "$_PFSENSE_DIR/collections"
@@ -175,7 +177,6 @@ _main() {
     mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
     _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
     _SYNC_INTERFACE="$(_get_sync_interface)"
-    _SYNC_IPV4_SUBNET="$(_get_sync_ipv4_subnet)"
     _PFSENSE_PRIMARY="$(_get_pfsense_primary_hostname)"
     _PFSENSE_SECONDARY="$(_get_pfsense_secondary_hostname)"
     if ! timeout 5s ssh -i "$_PFSENSE_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no admin@$_PFSENSE_PRIMARY 'true' 2>/dev/null; then
@@ -207,7 +208,10 @@ pfsense:
           - $(_get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_SYNC_INTERFACE" ] && [ -n "$_SYNC_IPV4_SUBNET" ] && echo "
       sync:
         subnet: $_SYNC_IPV4_SUBNET
-        interface: $_SYNC_INTERFACE")$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
+        interface: $_SYNC_INTERFACE
+        ipv4:
+          primary: $(_get_pfsense_primary_sync_ipv4)/${_SYNC_IPV4_PREFIX}
+          secondary: $(_get_pfsense_secondary_sync_ipv4)/${_SYNC_IPV4_PREFIX}")$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
       wan:
         ips:
           - \"$_PFSENSE_SHARED_WAN_IPV4\"")

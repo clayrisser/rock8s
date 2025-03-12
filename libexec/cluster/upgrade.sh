@@ -101,8 +101,8 @@ _main() {
     if [ ! -f "$_WORKER_OUTPUT" ]; then
         _fail "worker output.json not found"
     fi
-    _MASTER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
-    _WORKER_NODES="$(jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
+    _MASTER_NODES="$(jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_MASTER_OUTPUT")"
+    _WORKER_NODES="$(jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"' "$_WORKER_OUTPUT")"
     _MASTER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_MASTER_OUTPUT")"
     _WORKER_SSH_PRIVATE_KEY="$(jq -r '.node_ssh_private_key.value' "$_WORKER_OUTPUT")"
     _KUBESPRAY_DIR="$(_get_kubespray_dir)"

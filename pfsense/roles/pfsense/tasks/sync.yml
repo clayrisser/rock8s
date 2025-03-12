@@ -1,7 +1,7 @@
 ---
 - name: Set sync interface
   set_fact:
-    sync_interface: "{{ {'key': 'sync', 'value': pfsense.network.interfaces.interfaces.sync} if pfsense.network.interfaces.interfaces.sync is defined else {'key': 'lan', 'value': pfsense.network.interfaces.lan} }}"
+    sync_interface: "{{ {'key': 'sync', 'value': pfsense.network.interfaces.sync} if pfsense.network.interfaces.sync is defined else {'key': 'lan', 'value': pfsense.network.interfaces.lan} }}"
   when: pfsense.network.interfaces.lan is defined
 
 - name: Check sync configuration
@@ -177,7 +177,7 @@
   pfsensible.core.pfsense_rule:
     name: "ha state sync"
     action: "pass"
-    interface: "{{ pfsense.network.interfaces.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
     protocol: "pfsync"
     source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
     destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"
@@ -187,7 +187,7 @@
   pfsensible.core.pfsense_rule:
     name: "ha carp"
     action: "pass"
-    interface: "{{ pfsense.network.interfaces.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
     protocol: "carp"
     source: "any"
     destination: "any"
@@ -197,7 +197,7 @@
   pfsensible.core.pfsense_rule:
     name: "ha xmlrpc"
     action: "pass"
-    interface: "{{ pfsense.network.interfaces.interfaces.sync is defined | ternary('sync', 'lan') }}"
+    interface: "{{ pfsense.network.interfaces.sync is defined | ternary('sync', 'lan') }}"
     protocol: "tcp"
     source: "{{ sync_interface.value.ipv4.primary | regex_replace('/.*$', '') }}"
     destination: "{{ sync_interface.value.ipv4.secondary | regex_replace('/.*$', '') }}"

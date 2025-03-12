@@ -28,7 +28,7 @@ _get_master_ansible_private_hosts() {
         echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS"
         return
     fi
-    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(_get_master_output_json | jq -r '.node_private_ips.value | to_entries[] | "\(.key) ansible_host=\(.value)"')"
+    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(_get_master_output_json | jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"')"
     echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS"
 }
 
@@ -46,7 +46,7 @@ _get_master_node_count() {
         echo "$_MASTER_NODE_COUNT"
         return
     fi
-    _MASTER_NODE_COUNT="$(_get_master_output_json | jq -r '.node_private_ips.value | length')"
+    _MASTER_NODE_COUNT="$(_get_master_output_json | jq -r '.node_private_ipv4s.value | length')"
     echo "$_MASTER_NODE_COUNT"
 }
 
@@ -55,7 +55,7 @@ _get_master_private_ipv4s() {
         echo "$_MASTER_PRIVATE_IPV4S"
         return
     fi
-    _MASTER_PRIVATE_IPV4S="$(_get_master_output_json | jq -r '.node_private_ips.value | .[] | @text')"
+    _MASTER_PRIVATE_IPV4S="$(_get_master_output_json | jq -r '.node_private_ipv4s.value | .[] | @text')"
     echo "$_MASTER_PRIVATE_IPV4S"
 }
 
@@ -64,7 +64,7 @@ _get_master_public_ipv4s() {
         echo "$_MASTER_PUBLIC_IPV4S"
         return
     fi
-    _MASTER_PUBLIC_IPV4S="$(_get_master_output_json | jq -r '.node_public_ips.value | .[] | @text')"
+    _MASTER_PUBLIC_IPV4S="$(_get_master_output_json | jq -r '.node_public_ipv4s.value | .[] | @text')"
     echo "$_MASTER_PUBLIC_IPV4S"
 }
 

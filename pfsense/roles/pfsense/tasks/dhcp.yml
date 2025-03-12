@@ -10,10 +10,8 @@
     if (!is_array($config)) {
         $config = parse_config();
     }
-    $network_parts = explode('/', '{{ item.value.ipv4.primary }}');
+    $network_parts = explode('/', '{{ item.value.ipv4.primary if item.value.ipv4 is defined else item.value.subnet }}');
     $ip_parts = explode('.', $network_parts[0]);
-    $ipv6_parts = explode('/', '{{ item.value.ipv6.primary }}');
-    $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
     $interface = '{{ item.key }}';
     $current = array(
       'dhcpbackend' => config_get_path('dhcpbackend', 'isc'),
@@ -24,16 +22,6 @@
             'from' => config_get_path('dhcpd/' . $interface . '/range/from', ''),
             'to' => config_get_path('dhcpd/' . $interface . '/range/to', '')
           )
-        )
-      ),
-      'dhcpdv6' => array(
-        $interface => array(
-          'enable' => isset($config['dhcpdv6'][$interface]['enable']) ? 'yes' : '',
-          'range' => array(
-            'from' => config_get_path('dhcpdv6/' . $interface . '/range/from', ''),
-            'to' => config_get_path('dhcpdv6/' . $interface . '/range/to', '')
-          ),
-          'ramode' => config_get_path('dhcpdv6/' . $interface . '/ramode', 'assist')
         )
       )
     );
@@ -47,20 +35,46 @@
             'to' => $ip_parts[0] . '.' . $ip_parts[1] . '.255.254'
           )
         )
-      ),
-      'dhcpdv6' => array(
-        $interface => array(
-          'enable' => '',
-          'range' => array(
-            'from' => $ipv6_prefix . '::',
-            'to' => $ipv6_prefix . '::ffff:ffff:ffff:ffff'
-          ),
-          'ramode' => 'unmanaged'
-        )
       )
     );
+    // Normalize values for comparison
+    function normalize_config($config) {
+        array_walk_recursive($config, function(&$value) {
+            if ($value === null) $value = '';
+            if (is_bool($value)) $value = $value ? 'yes' : '';
+        });
+        return $config;
+    }
+    $current = normalize_config($current);
+    $desired = normalize_config($desired);
+    {% if item.value.ipv6 is defined %}
+    $ipv6_parts = explode('/', '{{ item.value.ipv6.primary }}');
+    $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
+    $current['dhcpdv6'] = array(
+      $interface => array(
+        'enable' => isset($config['dhcpdv6'][$interface]['enable']) ? 'yes' : '',
+        'range' => array(
+          'from' => config_get_path('dhcpdv6/' . $interface . '/range/from', ''),
+          'to' => config_get_path('dhcpdv6/' . $interface . '/range/to', '')
+        ),
+        'ramode' => config_get_path('dhcpdv6/' . $interface . '/ramode', ''),
+        'rapriority' => config_get_path('dhcpdv6/' . $interface . '/rapriority', '')
+      )
+    );
+    $desired['dhcpdv6'] = array(
+      $interface => array(
+        'enable' => '',
+        'range' => array(
+          'from' => $ipv6_prefix . '::',
+          'to' => $ipv6_prefix . '::ffff:ffff:ffff:ffff'
+        ),
+        'ramode' => 'unmanaged',
+        'rapriority' => 'medium'
+      )
+    );
+    {% endif %}
     echo json_encode(array(
-      'changed' => $current != $desired,
+      'changed' => $current !== $desired,
       'current' => $current,
       'desired' => $desired
     ));
@@ -88,13 +102,17 @@
         $config = parse_config();
     }
     config_set_path('dhcpbackend', 'kea');
-    $network_parts = explode('/', '{{ item.0.value.ipv4.primary }}');
+    $network_parts = explode('/', '{{ item.0.value.ipv4.primary if item.0.value.ipv4 is defined else item.0.value.subnet }}');
     $ip_parts = explode('.', $network_parts[0]);
     $interface = '{{ item.0.key }}';
     config_set_path('dhcpd/' . $interface . '/range/from', $ip_parts[0] . '.' . $ip_parts[1] . '.0.1');
     config_set_path('dhcpd/' . $interface . '/range/to', $ip_parts[0] . '.' . $ip_parts[1] . '.255.254');
+    {% if item.0.value.ipv6 is defined %}
     $ipv6_parts = explode('/', '{{ item.0.value.ipv6.primary }}');
     $ipv6_prefix = explode('::', $ipv6_parts[0])[0];
+    {% else %}
+    $ipv6_prefix = null;
+    {% endif %}
     if ({{ item.0.value.dhcp | default(false) | bool | to_json }}) {
         config_set_path('dhcpd/' . $interface . '/enable', 'yes');
     } else {
@@ -107,10 +125,12 @@
         unset($config['dhcpdv6'][$interface]['enable']);
     }
     config_del_path('dhcpdv6/' . $interface . '/enable');
-    config_set_path('dhcpdv6/' . $interface . '/range/from', $ipv6_prefix . '::');
-    config_set_path('dhcpdv6/' . $interface . '/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
-    config_set_path('dhcpdv6/' . $interface . '/ramode', 'unmanaged');
-    config_set_path('dhcpdv6/' . $interface . '/rapriority', 'medium');
+    if ($ipv6_prefix !== null) {
+        config_set_path('dhcpdv6/' . $interface . '/range/from', $ipv6_prefix . '::');
+        config_set_path('dhcpdv6/' . $interface . '/range/to', $ipv6_prefix . '::ffff:ffff:ffff:ffff');
+        config_set_path('dhcpdv6/' . $interface . '/ramode', 'unmanaged');
+        config_set_path('dhcpdv6/' . $interface . '/rapriority', 'medium');
+    }
     if (write_config(sprintf('Updated dhcp configuration from ansible (%s@%s)', '{{ ansible_user }}', '{{ ansible_host }}'))) {
         services_dhcpd_configure();
     }
