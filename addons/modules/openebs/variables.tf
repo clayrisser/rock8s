@@ -24,11 +24,11 @@ variable "enabled" {
 }
 
 variable "namespace" {
-  default = "longhorn-system"
+  default = "openebs"
 }
 
 variable "chart_version" {
-  default = "1.7.2"
+  default = "4.2.0"
 }
 
 variable "values" {

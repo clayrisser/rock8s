@@ -32,6 +32,8 @@ tcp: {}
 udp: {}
 controller:
   kind: DaemonSet
+  service:
+    type: ClusterIP
   watchIngressWithoutClass: true
   hostPort:
     enabled: true

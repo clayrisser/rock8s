@@ -202,3 +202,24 @@ variable "registries" {
   }))
   default = {}
 }
+
+variable "ingress_nginx_load_balancer" {
+  default = true
+  type    = bool
+}
+
+variable "longhorn_s3_bucket" {
+  default = ""
+}
+
+variable "longhorn_s3_access_key" {
+  default = ""
+}
+
+variable "longhorn_s3_secret_key" {
+  default = ""
+}
+
+variable "longhorn_s3_endpoint" {
+  default = ""
+}

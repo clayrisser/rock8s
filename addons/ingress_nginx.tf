@@ -24,7 +24,7 @@ module "ingress-nginx" {
   enabled       = var.ingress_nginx
   replicas      = 0
   ingress_ports = local.ingress_ports
-  load_balancer = true
+  load_balancer = var.ingress_nginx_load_balancer
 }
 
 data "kubernetes_service" "ingress_nginx" {

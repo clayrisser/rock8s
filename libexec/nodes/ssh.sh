@@ -10,7 +10,7 @@ NAME
        rock8s nodes ssh - ssh into a cluster node
 
 SYNOPSIS
-       rock8s nodes ssh [-h] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]
+       rock8s nodes ssh [-h] [--cluster <cluster>] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]
 
 DESCRIPTION
        SSH into a specific node in the cluster. The node can be specified in three ways:
@@ -23,6 +23,9 @@ DESCRIPTION
 OPTIONS
        -h, --help
               display this help message and exit
+
+       --cluster <cluster>
+              name of the cluster to manage
 
        <purpose> <number>
               node purpose and number:
@@ -41,23 +44,23 @@ OPTIONS
 
 EXAMPLES
        # SSH by purpose and number
-       rock8s nodes ssh master 1
-       rock8s nodes ssh worker 2
-       rock8s nodes ssh pfsense 1
+       rock8s nodes ssh --cluster mycluster master 1
+       rock8s nodes ssh --cluster mycluster worker 2
+       rock8s nodes ssh --cluster mycluster pfsense 1
 
        # SSH by purpose only (when only one node exists)
-       rock8s nodes ssh master    # connects to master-1 if it's the only master
+       rock8s nodes ssh --cluster mycluster master    # connects to master-1 if it's the only master
 
        # SSH by node name
-       rock8s nodes ssh master-1
-       rock8s nodes ssh worker-2
-       rock8s nodes ssh pfsense-1
+       rock8s nodes ssh --cluster mycluster master-1
+       rock8s nodes ssh --cluster mycluster worker-2
+       rock8s nodes ssh --cluster mycluster pfsense-1
 
        # SSH by IP
-       rock8s nodes ssh 172.20.0.3
+       rock8s nodes ssh --cluster mycluster 172.20.0.3
 
        # SSH with custom arguments
-       rock8s nodes ssh master 1 -i ~/.ssh/custom_key
+       rock8s nodes ssh --cluster mycluster master 1 -i ~/.ssh/custom_key
 EOF
 }
 
@@ -65,10 +68,10 @@ _show_available_nodes() {
     _PURPOSE="$1"
     if [ -n "$_PURPOSE" ]; then
         echo "Available ${_PURPOSE} nodes:" >&2
-        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" "$_PURPOSE" | cat >&2
+        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" "$_PURPOSE" | cat >&2
     else
         echo "Available nodes:" >&2
-        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" | cat >&2
+        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" | cat >&2
     fi
 }
 
@@ -101,11 +104,24 @@ _main() {
     _NODE_NUM=""
     _NODE_IP=""
     _SSH_ARGS=""
+    _CLUSTER="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
                 _help
                 exit 0
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             master|worker|pfsense)
                 _PURPOSE="$1"
@@ -150,6 +166,10 @@ _main() {
                 ;;
         esac
     done
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        _fail "cluster name required (use --cluster)"
+    fi
     if [ -n "$_NODE_IP" ]; then
         _PRIVATE_IPS="$(_get_master_private_ipv4s)"
         _COUNT=1

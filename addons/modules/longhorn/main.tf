@@ -28,8 +28,49 @@ resource "helm_release" "this" {
   namespace        = var.namespace
   create_namespace = true
   values = [<<EOF
+persistence:
+  defaultClassReplicaCount: 2
+  defaultDataLocality: "best-effort"
+defaultSettings:
+  guaranteedInstanceManagerCPU: 25
+  storageMinimalAvailablePercentage: 10
+  concurrentReplicaRebuildPerNodeLimit: 5
+  engineReplicaTimeout: 20
+  snapshotMaxCount: 10
+  backupCompressionMethod: "lz4"
+  backupConcurrentLimit: 2
+  defaultReplicaCount: 2
+  createDefaultDiskLabeledNodes: true
+  v2DataEngine: true
+service:
+  ui:
+    type: ClusterIP
+longhornUI:
+  replicas: 1
 EOF
     ,
+    var.s3_endpoint != "" && var.s3_bucket != "" ? <<EOF
+defaultBackupStore:
+  backupTarget: s3://${var.s3_bucket}/
+  backupTargetCredentialSecret: longhorn-system
+  pollInterval: 300
+EOF
+    : "",
     var.values
   ]
+}
+
+resource "kubernetes_secret" "longhorn_system" {
+  count = var.s3_endpoint != "" && var.s3_bucket != "" ? 1 : 0
+  metadata {
+    name      = "longhorn-system"
+    namespace = var.namespace
+  }
+  type = "Opaque"
+  data = {
+    AWS_ACCESS_KEY_ID     = var.s3_access_key
+    AWS_SECRET_ACCESS_KEY = var.s3_secret_key
+    AWS_ENDPOINTS         = var.s3_endpoint
+  }
+  depends_on = [helm_release.this]
 }

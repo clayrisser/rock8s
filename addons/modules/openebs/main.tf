@@ -21,13 +21,32 @@
 
 resource "helm_release" "this" {
   count            = var.enabled ? 1 : 0
-  name             = "longhorn"
+  name             = "openebs"
   version          = var.chart_version
-  repository       = "https://charts.longhorn.io"
-  chart            = "longhorn"
+  repository       = "https://openebs.github.io/openebs"
+  chart            = "openebs"
   namespace        = var.namespace
   create_namespace = true
   values = [<<EOF
+engines:
+  local:
+    lvm:
+      enabled: true
+    zfs:
+      enabled: false
+  replicated:
+    mayastor:
+      enabled: false
+localpv-provisioner:
+  rbac:
+    create: true
+lvm-localpv:
+  crds:
+    csi:
+      volumeSnapshots:
+        enabled: true
+    lvmLocalPv:
+      enabled: true
 EOF
     ,
     var.values
