@@ -1,5 +1,5 @@
 resource "kubernetes_secret" "registry" {
-  count = length(var.registries) > 0 ? 1 : 0
+  count = var.registries != null && length(values(var.registries)) > 0 ? 1 : 0
   metadata {
     name      = "registries"
     namespace = "kube-system"
@@ -23,10 +23,10 @@ resource "kubernetes_secret" "registry" {
 }
 
 resource "kubectl_manifest" "sync-registry" {
-  count     = length(var.registries) > 0 ? 1 : 0
+  count     = var.registries != null && length(values(var.registries)) > 0 ? 1 : 0
   yaml_body = <<EOF
 apiVersion: kyverno.io/v1
-kind: Policy
+kind: ClusterPolicy
 metadata:
   name: ${kubernetes_secret.registry[0].metadata.0.name}
 spec:
@@ -35,9 +35,10 @@ spec:
   rules:
     - name: sync-registry
       match:
-        resources:
-          kinds:
-            - v1/Pod
+        any:
+        - resources:
+            kinds:
+              - Pod
       mutate:
         targets:
           - apiVersion: v1

@@ -25,38 +25,38 @@ provider "argocd" {
   }
 }
 
-resource "argocd_repository" "git" {
-  count    = (var.argocd && var.git_repo != "") ? 1 : 0
-  repo     = var.git_repo
-  username = local.git_username
-  password = local.git_password
-  insecure = false
-}
+# resource "argocd_repository" "git" {
+#   count    = (var.argocd && var.git_repo != "") ? 1 : 0
+#   repo     = var.git_repo
+#   username = local.git_username
+#   password = local.git_password
+#   insecure = false
+# }
 
-resource "argocd_application" "apps" {
-  count = length(argocd_repository.git)
-  metadata {
-    name      = "apps"
-    namespace = "argocd"
-  }
-  spec {
-    project = "default"
-    source {
-      repo_url        = argocd_repository.git[0].repo
-      target_revision = "main"
-      path            = "apps"
-      directory {
-        recurse = false
-      }
-    }
-    destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "argocd"
-    }
-    sync_policy {
-      sync_options = [
-        "CreateNamespace=true"
-      ]
-    }
-  }
-}
+# resource "argocd_application" "apps" {
+#   count = length(argocd_repository.git)
+#   metadata {
+#     name      = "apps"
+#     namespace = "argocd"
+#   }
+#   spec {
+#     project = "default"
+#     source {
+#       repo_url        = argocd_repository.git[0].repo
+#       target_revision = "main"
+#       path            = "apps"
+#       directory {
+#         recurse = false
+#       }
+#     }
+#     destination {
+#       server    = "https://kubernetes.default.svc"
+#       namespace = "argocd"
+#     }
+#     sync_policy {
+#       sync_options = [
+#         "CreateNamespace=true"
+#       ]
+#     }
+#   }
+# }

@@ -207,7 +207,9 @@ _main() {
     export TF_VAR_entrypoint="$(_get_entrypoint)"
     export TF_VAR_kubeconfig="$_CLUSTER_DIR/kube.yaml"
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
-    _get_config_json | jq -r '.addons' > "$_ADDONS_DIR/terraform.tfvars.json"
+    export TF_VAR_ingress_nginx_load_balancer="$([ "$(_get_external_network)" = "1" ] && echo "0" || echo "1")"
+    _get_config_json | jq -r '.addons * {registries: .registries}' > "$_ADDONS_DIR/terraform.tfvars.json"
+    chmod 600 "$_ADDONS_DIR/terraform.tfvars.json"
     cd "$_ADDONS_DIR/terraform"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
         [ ! -f "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" ] || \
@@ -220,7 +222,7 @@ _main() {
     terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
     terraform output -json > "$_ADDONS_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$(_get_cluster_provider)" "$_TENANT" | \
+        "$_CLUSTER" "$(_get_provider)" "$_TENANT" | \
         _format_output "$_FORMAT"
 }
 

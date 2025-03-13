@@ -124,11 +124,33 @@ _get_cloud_init_config() {
     _SSH_PUBLIC_KEY="$1"
     cat <<EOF
 #cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - xfsprogs
+  - nfs-common
+  - open-iscsi
+  - util-linux
 users:
   - name: admin
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     ssh_authorized_keys:
       - $(cat "$_SSH_PUBLIC_KEY")
+write_files:
+  - content: |
+      vm.nr_hugepages = 1024
+    path: /etc/sysctl.d/60-hugepages.conf
+    owner: root:root
+    permissions: '0644'
+bootcmd:
+  - modprobe dm_thin_pool
+  - modprobe dm_snapshot
+  - modprobe dm_mirror
+  - modprobe dm_crypt
+runcmd:
+  - sysctl -p /etc/sysctl.d/60-hugepages.conf
+  - systemctl enable iscsid
+  - systemctl start iscsid
 EOF
 }

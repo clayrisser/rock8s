@@ -167,7 +167,8 @@ _main() {
     fi
     rm -rf "$_CLUSTER_DIR/provider"
     cp -r "$_PROVIDER_DIR" "$_CLUSTER_DIR/provider"
-    echo "$(_get_config_json)" | sh "$_CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
+    _get_config_json | sh "$_CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
+    chmod 600 "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ "$_PURPOSE" != "pfsense" ]; then
         export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
     fi

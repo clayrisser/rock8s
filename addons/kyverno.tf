@@ -48,5 +48,11 @@ backgroundController:
             - temporalclusters
           verbs:
             - '*'
+        - apiGroups:
+            - ''
+          resources:
+            - pods
+          verbs:
+            - '*'
 EOF
 }

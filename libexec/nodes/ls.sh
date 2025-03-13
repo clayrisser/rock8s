@@ -10,7 +10,7 @@ NAME
        rock8s nodes ls - list cluster nodes
 
 SYNOPSIS
-       rock8s nodes ls [-h] [<purpose>]
+       rock8s nodes ls [-h] [--cluster <cluster>] [<purpose>]
 
 DESCRIPTION
        List all nodes in the cluster grouped by their purpose.
@@ -20,6 +20,9 @@ OPTIONS
        -h, --help
               display this help message and exit
 
+       --cluster <cluster>
+              name of the cluster to manage
+
        <purpose>
               filter nodes by purpose:
               - master  : list only master nodes
@@ -28,27 +31,40 @@ OPTIONS
 
 EXAMPLES
        # List all nodes
-       rock8s nodes ls
+       rock8s nodes ls --cluster mycluster
 
        # List only master nodes
-       rock8s nodes ls master
+       rock8s nodes ls --cluster mycluster master
 
        # List only worker nodes
-       rock8s nodes ls worker
+       rock8s nodes ls --cluster mycluster worker
 
        # List only pfsense nodes
-       rock8s nodes ls pfsense
+       rock8s nodes ls --cluster mycluster pfsense
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _CLUSTER="$ROCK8S_CLUSTER"
     _FILTER=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
                 _help
                 exit 0
+                ;;
+            --cluster|--cluster=*)
+                case "$1" in
+                    *=*)
+                        _CLUSTER="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             master|worker|pfsense)
                 _FILTER="$1"
@@ -60,6 +76,10 @@ _main() {
                 ;;
         esac
     done
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        _fail "cluster name required (use --cluster)"
+    fi
     _MASTER_PRIVATE_IPS="$(_get_master_private_ipv4s)"
     _WORKER_PRIVATE_IPS="$(_get_worker_private_ipv4s)"
     _PFSENSE_PRIVATE_IPS="$(_get_pfsense_private_ipv4s)"

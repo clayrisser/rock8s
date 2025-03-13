@@ -28,9 +28,25 @@ variable "namespace" {
 }
 
 variable "chart_version" {
-  default = "1.7.2"
+  default = "1.8.1"
 }
 
 variable "values" {
+  default = ""
+}
+
+variable "s3_endpoint" {
+  default = ""
+}
+
+variable "s3_access_key" {
+  default = ""
+}
+
+variable "s3_secret_key" {
+  default = ""
+}
+
+variable "s3_bucket" {
   default = ""
 }
