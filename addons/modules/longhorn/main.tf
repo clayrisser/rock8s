@@ -40,7 +40,7 @@ defaultSettings:
   backupCompressionMethod: "lz4"
   backupConcurrentLimit: 2
   defaultReplicaCount: 2
-  createDefaultDiskLabeledNodes: true
+  createDefaultDiskLabeledNodes: false
   v2DataEngine: true
 service:
   ui:

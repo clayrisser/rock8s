@@ -121,39 +121,39 @@ _main() {
     done
     if [ "$_SSH_PASSWORD" = "1" ]; then
         command -v sshpass >/dev/null 2>&1 || {
-            _fail "sshpass is not installed"
+            fail "sshpass is not installed"
         }
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
-    _PFSENSE_DIR="$(_get_cluster_dir)/pfsense"
+    _PFSENSE_DIR="$(get_cluster_dir)/pfsense"
     if [ "$_SSH_PASSWORD" = "1" ] && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
         _PASSWORD="$(whiptail --title "Enter admin password" \
             --backtitle "Rock8s Configuration" \
             --passwordbox " " \
             0 0 \
-            3>&1 1>&2 2>&3)" || _fail "password required"
+            3>&1 1>&2 2>&3)" || fail "password required"
     fi
     rm -rf "$_PFSENSE_DIR/ansible"
     cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
     if [ ! -f "$_PFSENSE_DIR/vars.yml" ] || [ ! -f "$_PFSENSE_DIR/collections/ansible_collections/pfsensible/core/FILES.json" ]; then
-        _fail "pfsense configure must be run first"
+        fail "pfsense configure must be run first"
     fi
-    _LAN_INGRESS_IPV4="$(_get_lan_ingress_ipv4)"
-    _ENTRYPOINT_IP="$(_get_entrypoint_ip)"
+    _LAN_INGRESS_IPV4="$(get_lan_ingress_ipv4)"
+    _ENTRYPOINT_IP="$(get_entrypoint_ip)"
     if [ -n "$_LAN_INGRESS_IPV4" ]; then
         _INGRESS_RULES="      - \"8080 -> check:${_LAN_INGRESS_IPV4}:80\"
       - \"${_ENTRYPOINT_IP}:443 -> check:${_LAN_INGRESS_IPV4}:443\""
     else
-        _HTTP_BACKEND="$(_get_haproxy_backend 80 $(_get_worker_private_ipv4s))"
-        _HTTPS_BACKEND="$(_get_haproxy_backend 443 $(_get_worker_private_ipv4s))"
+        _HTTP_BACKEND="$(get_haproxy_backend 80 $(get_worker_private_ipv4s))"
+        _HTTPS_BACKEND="$(get_haproxy_backend 443 $(get_worker_private_ipv4s))"
         _INGRESS_RULES="      - \"${_ENTRYPOINT_IP}:80 -> ${_HTTP_BACKEND}\"
       - \"${_ENTRYPOINT_IP}:443 -> ${_HTTPS_BACKEND}\""
     fi
-    _KUBE_BACKEND="$(_get_haproxy_backend 6443 $(_get_master_private_ipv4s))"
+    _KUBE_BACKEND="$(get_haproxy_backend 6443 $(get_master_private_ipv4s))"
     cat > "$_PFSENSE_DIR/vars.publish.yml" <<EOF
 pfsense:
-  provider: $(_get_provider)
+  provider: $(get_provider)
   network:
     interfaces:
       wan:
@@ -166,8 +166,8 @@ EOF
     if [ -n "$_ENTRYPOINT_IP" ]; then
         echo "      - \"${_ENTRYPOINT_IP}:6443 -> ${_KUBE_BACKEND}\"" >> "$_PFSENSE_DIR/vars.publish.yml"
     fi
-    _PFSENSE_SSH_PRIVATE_KEY="$(_get_pfsense_ssh_private_key)"
-    if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_PFSENSE_SSH_PRIVATE_KEY" != "null" ] && [ "$_SSH_PASSWORD" = "0" ]; then
+    _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_ssh_private_key)"
+    if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_SSH_PASSWORD" = "0" ]; then
         export ANSIBLE_PRIVATE_KEY_FILE="$_PFSENSE_SSH_PRIVATE_KEY"
     fi
     cd "$_PFSENSE_DIR/ansible"
@@ -179,7 +179,7 @@ EOF
         -e "@$_PFSENSE_DIR/vars.publish.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
         "$_PFSENSE_DIR/ansible/playbooks/publish.yml" -v
-    printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT"
+    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT"
 }
 
 _main "$@"

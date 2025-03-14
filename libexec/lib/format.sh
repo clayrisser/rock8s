@@ -1,6 +1,8 @@
 #!/bin/sh
 
-_format_json_table() {
+set -e
+
+format_json_table() {
     _JSON="$1"
     _KEYS="$2"
     [ -z "$_JSON" ] && return
@@ -38,7 +40,7 @@ _format_json_table() {
     fi
 }
 
-_format_output() {
+format_output() {
     _FORMAT="${1:-text}"
     _TYPE="$2"
     if [ ! -t 0 ]; then
@@ -62,13 +64,13 @@ _format_output() {
                     printf "%s\n" "$_INPUT" | jq -r '.[] | .name'
                     ;;
                 search)
-                    _format_json_table "$_INPUT" "repo name version path"
+                    format_json_table "$_INPUT" "repo name version path"
                     ;;
                 ls)
-                    _format_json_table "$_INPUT" "name environment status path"
+                    format_json_table "$_INPUT" "name environment status path"
                     ;;
                 repo-list)
-                    _format_json_table "$_INPUT" "path"
+                    format_json_table "$_INPUT" "path"
                     ;;
                 success)
                     printf "${GREEN}%s${NC}\n" "$(echo "$_INPUT" | jq -r '.message')"
@@ -78,12 +80,12 @@ _format_output() {
                     return 1
                     ;;
                 *)
-                    _format_json_table "$_INPUT" -
+                    format_json_table "$_INPUT" -
                     ;;
             esac
             ;;
         *)
-            printf '{"error":"unsupported output format: %s"}\n' "$_FORMAT" | _format_output text error
+            printf '{"error":"unsupported output format: %s"}\n' "$_FORMAT" | format_output text error
             return 1
             ;;
     esac

@@ -1,11 +1,13 @@
 #!/bin/sh
 
+set -e
+
 export WHIPTAIL_OK=0
 export WHIPTAIL_CANCEL=1
 export WHIPTAIL_ESC=255
 export WHIPTAIL_ERROR=255
 
-_handle_whiptail_exit() {
+handle_whiptail_exit() {
     _EXIT_CODE=$1
     case $_EXIT_CODE in
         $WHIPTAIL_CANCEL|$WHIPTAIL_ESC)
@@ -32,7 +34,7 @@ prompt_text() {
             echo "$_DEFAULT"
             return
         elif [ "$_REQUIRED" = "1" ]; then
-            _fail "missing required value: $_PROMPT"
+            fail "missing required value: $_PROMPT"
         else
             echo ""
             return
@@ -79,7 +81,7 @@ prompt_password() {
             echo "$_ENV_VALUE"
             return
         elif [ "$_REQUIRED" = "1" ]; then
-            _fail "missing required password: $_PROMPT"
+            fail "missing required password: $_PROMPT"
         else
             echo ""
             return
@@ -130,7 +132,7 @@ prompt_boolean() {
             echo "$_DEFAULT"
             return
         else
-            _fail "missing required boolean: $_PROMPT"
+            fail "missing required boolean: $_PROMPT"
         fi
     fi
     _EFFECTIVE_DEFAULT="${_ENV_VALUE:-$_DEFAULT}"
@@ -165,7 +167,7 @@ prompt_select() {
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
         if [ -n "$_ENV_VALUE" ]; then
             if ! validate_enum "$_ENV_VALUE" "$@"; then
-                _fail "invalid value for $_PROMPT: $_ENV_VALUE"
+                fail "invalid value for $_PROMPT: $_ENV_VALUE"
             fi
             echo "$_ENV_VALUE"
             return
@@ -173,7 +175,7 @@ prompt_select() {
             echo "$_DEFAULT"
             return
         else
-            _fail "missing required value: $_PROMPT"
+            fail "missing required value: $_PROMPT"
         fi
     fi
     _EFFECTIVE_DEFAULT="${_ENV_VALUE:-$_DEFAULT}"
@@ -190,7 +192,7 @@ prompt_select() {
         $_MENU_ITEMS \
         3>&1 1>&2 2>&3)
     _EXIT_CODE=$?
-    if ! _handle_whiptail_exit $_EXIT_CODE; then
+    if ! handle_whiptail_exit $_EXIT_CODE; then
         echo "$_EFFECTIVE_DEFAULT"
         return
     fi
@@ -236,7 +238,7 @@ prompt_multiselect() {
         $_MENU_ITEMS \
         3>&1 1>&2 2>&3)
     _EXIT_CODE=$?
-    if ! _handle_whiptail_exit $_EXIT_CODE; then
+    if ! handle_whiptail_exit $_EXIT_CODE; then
         echo ""
         return
     fi
@@ -253,46 +255,4 @@ validate_enum() {
         fi
     done
     return 1
-}
-
-json2yaml() {
-    /usr/bin/python3 -c 'import sys, yaml, json; print(yaml.dump(json.loads(sys.stdin.read()), default_flow_style=False))'
-}
-
-yaml2json() {
-    /usr/bin/python3 -c 'import sys, yaml, json; print(json.dumps(yaml.safe_load(sys.stdin.read())))'
-}
-
-get_config() {
-    _JQ_FILTER="$1"
-    _DEFAULT_VALUE="$2"
-    if [ -n "$_DEFAULT_VALUE" ]; then
-        echo "$_DEFAULT_VALUE"
-        return
-    fi
-    _RESULT=""
-    IFS=:
-    for _CONFIG_DIR in $ROCK8S_CONFIG_DIRS; do
-        _CONFIG_FILE="$_CONFIG_DIR/config.yaml"
-        if [ -f "$_CONFIG_FILE" ]; then
-            _JSON="$(yaml2json < "$_CONFIG_FILE")"
-            _VALUE="$(echo "$_JSON" | jq -r "$_JQ_FILTER" 2>/dev/null)"
-            if [ -n "$_VALUE" ] && [ "$_VALUE" != "null" ]; then
-                _RESULT="$_VALUE"
-            fi
-        fi
-        if [ "$_CONFIG_DIR" = "$ROCK8S_CONFIG_HOME" ] && [ -n "$ROCK8S_TENANT" ]; then
-            _TENANT_CONFIG="$_CONFIG_DIR/tenants/$ROCK8S_TENANT/config.yaml"
-            if [ -f "$_TENANT_CONFIG" ]; then
-                _JSON="$(yaml2json < "$_TENANT_CONFIG")"
-                _VALUE="$(echo "$_JSON" | jq -r "$_JQ_FILTER" 2>/dev/null)"
-                if [ -n "$_VALUE" ] && [ "$_VALUE" != "null" ]; then
-                    _RESULT="$_VALUE"
-                fi
-            fi
-        fi
-    done
-    unset IFS
-    echo "$_RESULT"
-    return
 }

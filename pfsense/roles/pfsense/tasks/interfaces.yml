@@ -45,11 +45,11 @@
     $ipv6 = isset($argv[4]) ? $argv[4] : null;
     $prefixlen6 = isset($argv[5]) ? $argv[5] : null;
     $current = array(
-      'ipaddr' => config_get_path('interfaces/' . $interface . '/ipaddr', ''),
-      'subnet' => config_get_path('interfaces/' . $interface . '/subnet', ''),
-      'ipaddrv6' => config_get_path('interfaces/' . $interface . '/ipaddrv6', null),
-      'subnetv6' => config_get_path('interfaces/' . $interface . '/subnetv6', null),
-      'if' => config_get_path('interfaces/' . $interface . '/if', ''),
+      'ipaddr' => configget_path('interfaces/' . $interface . '/ipaddr', ''),
+      'subnet' => configget_path('interfaces/' . $interface . '/subnet', ''),
+      'ipaddrv6' => configget_path('interfaces/' . $interface . '/ipaddrv6', null),
+      'subnetv6' => configget_path('interfaces/' . $interface . '/subnetv6', null),
+      'if' => configget_path('interfaces/' . $interface . '/if', ''),
       'enable' => isset($config['interfaces'][$interface]['enable']),
       'ipaddr_dhcp' => isset($config['interfaces'][$interface]['ipaddr']) && $config['interfaces'][$interface]['ipaddr'] === 'dhcp'
     );

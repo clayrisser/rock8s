@@ -78,11 +78,11 @@ _main() {
     done
     export ROCK8S_CLUSTER="$_CLUSTER"
     if [ -z "$ROCK8S_CLUSTER" ]; then
-        _fail "cluster name required (use --cluster)"
+        fail "cluster name required (use --cluster)"
     fi
-    _MASTER_PRIVATE_IPS="$(_get_master_private_ipv4s)"
-    _WORKER_PRIVATE_IPS="$(_get_worker_private_ipv4s)"
-    _PFSENSE_PRIVATE_IPS="$(_get_pfsense_private_ipv4s)"
+    _MASTER_PRIVATE_IPS="$(get_master_private_ipv4s)"
+    _WORKER_PRIVATE_IPS="$(get_worker_private_ipv4s)"
+    _PFSENSE_PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
     _MASTER_NODES="{"
     _COUNT=1
     for _NODE in $_MASTER_PRIVATE_IPS; do
@@ -112,16 +112,16 @@ _main() {
     _PFSENSE_NODES="$_PFSENSE_NODES}"
     case "$_FILTER" in
         master)
-            printf '%s\n' "$_MASTER_NODES" | _format_output "$_FORMAT" nodes
+            printf '%s\n' "$_MASTER_NODES" | format_output "$_FORMAT" nodes
             ;;
         worker)
-            printf '%s\n' "$_WORKER_NODES" | _format_output "$_FORMAT" nodes
+            printf '%s\n' "$_WORKER_NODES" | format_output "$_FORMAT" nodes
             ;;
         pfsense)
-            printf '%s\n' "$_PFSENSE_NODES" | _format_output "$_FORMAT" nodes
+            printf '%s\n' "$_PFSENSE_NODES" | format_output "$_FORMAT" nodes
             ;;
         *)
-            printf '{"master":%s,"worker":%s,"pfsense":%s}\n' "$_MASTER_NODES" "$_WORKER_NODES" "$_PFSENSE_NODES" | _format_output "$_FORMAT" nodes
+            printf '{"master":%s,"worker":%s,"pfsense":%s}\n' "$_MASTER_NODES" "$_WORKER_NODES" "$_PFSENSE_NODES" | format_output "$_FORMAT" nodes
             ;;
     esac
 }

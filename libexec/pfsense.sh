@@ -113,7 +113,7 @@ _main() {
     export ROCK8S_TENANT="$_TENANT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/pfsense/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
-        _fail "unknown pfsense command: $_CMD"
+        fail "unknown pfsense command: $_CMD"
     fi
     exec sh "$_SUBCMD" "$@"
 }

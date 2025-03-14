@@ -1,6 +1,8 @@
 #!/bin/sh
 
-_calculate_next_ipv4() {
+set -e
+
+calculate_next_ipv4() {
     _IPV4="$1"
     _INCREMENT="${2:-1}"
     if echo "$_IPV4" | grep -q '/'; then
@@ -27,8 +29,7 @@ _calculate_next_ipv4() {
                 _NEW_OCTET1=$((_OCTET1 + (_NEW_OCTET2 / 256)))
                 _NEW_OCTET2=$((_NEW_OCTET2 % 256))
                 if [ $_NEW_OCTET1 -gt 255 ]; then
-                    _error "ip address overflow"
-                    return 1
+                    _fail "ip address overflow"
                 fi
             fi
         fi
@@ -36,7 +37,7 @@ _calculate_next_ipv4() {
     echo "${_NEW_OCTET1}.${_NEW_OCTET2}.${_NEW_OCTET3}.${_NEW_OCTET4}"
 }
 
-_calculate_previous_ipv4() {
+calculate_previous_ipv4() {
     _IPV4="$1"
     _OFFSET="$2"
     echo "$_IPV4" | awk -F. -v offset="$_OFFSET" '{
@@ -49,7 +50,7 @@ _calculate_previous_ipv4() {
     }'
 }
 
-_calculate_first_ipv4() {
+calculate_first_ipv4() {
     _INPUT="$1"
     if echo "$_INPUT" | grep -q '/'; then
         echo "$_INPUT" | awk -F'[./]' '{
@@ -64,7 +65,7 @@ _calculate_first_ipv4() {
     fi
 }
 
-_calculate_last_ipv4() {
+calculate_last_ipv4() {
     _INPUT="$1"
     if echo "$_INPUT" | grep -q '/'; then
         echo "$_INPUT" | awk -F'[./]' '{
@@ -107,7 +108,7 @@ _resolve_hostname() {
     fi
 }
 
-_calculate_metallb() {
+calculate_metallb() {
     _SUBNET="$1"
     _SUBNET_PREFIX="$(echo "$_SUBNET" | cut -d'/' -f1)"
     _SUBNET_MASK="$(echo "$_SUBNET" | cut -d'/' -f2)"
@@ -173,21 +174,23 @@ _calculate_metallb() {
     echo "$_METALLB_RANGE"
 }
 
-_get_network_mtu() {
+get_network_mtu() {
     if [ -n "$_NETWORK_MTU" ]; then
         echo "$_NETWORK_MTU"
         return
     fi
-    _NETWORK_MTU="$(_get_config_json | jq -r '.network.lan.mtu // "1500"')"
+    _CONFIG_JSON="$(get_config_json)"
+    _NETWORK_MTU="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.mtu // "1500"')"
     echo "$_NETWORK_MTU"
 }
 
-_get_network_dualstack() {
+get_network_dualstack() {
     if [ -n "$_NETWORK_DUALSTACK" ]; then
         echo "$_NETWORK_DUALSTACK"
         return
     fi
-    _NETWORK_DUALSTACK="$(_get_config_json | jq -r '.network.lan.dualstack')"
+    _CONFIG_JSON="$(get_config_json)"
+    _NETWORK_DUALSTACK="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dualstack')"
     if [ "$_NETWORK_DUALSTACK" = "false" ]; then
         echo "false"
     else
@@ -195,28 +198,29 @@ _get_network_dualstack() {
     fi
 }
 
-_get_lan_metallb() {
+get_lan_metallb() {
     if [ -n "$_LAN_METALLB" ]; then
         echo "$_LAN_METALLB"
         return
     fi
-    if [ "$(_get_external_network)" = "1" ]; then
+    if [ "$(get_external_network)" = "1" ]; then
         _LAN_METALLB=""
     else
-        _LAN_METALLB="$(_get_config_json | jq -r '.network.lan.metallb')"
-        if [ -z "$_LAN_METALLB" ] || [ "$_LAN_METALLB" = "null" ]; then
-            _LAN_METALLB="$(_calculate_metallb "$(_get_lan_ipv4_subnet)")"
+        _CONFIG_JSON="$(get_config_json)"
+        _LAN_METALLB="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.metallb // ""')"
+        if [ -z "$_LAN_METALLB" ]; then
+            _LAN_METALLB="$(calculate_metallb "$(get_lan_ipv4_subnet)")"
         fi
     fi
     echo "$_LAN_METALLB"
 }
 
-_get_external_network() {
+get_external_network() {
     if [ -n "$_EXTERNAL_NETWORK" ]; then
         echo "$_EXTERNAL_NETWORK"
         return
     fi
-    if [ "$(_get_provider)" = "hetzner" ]; then
+    if [ "$(get_provider)" = "hetzner" ]; then
         _EXTERNAL_NETWORK="1"
     else
         _EXTERNAL_NETWORK="0"
@@ -224,15 +228,15 @@ _get_external_network() {
     echo "$_EXTERNAL_NETWORK"
 }
 
-_get_lan_ingress_ipv4() {
+get_lan_ingress_ipv4() {
     if [ -n "$_LAN_INGRESS_IPV4" ]; then
         echo "$_LAN_INGRESS_IPV4"
         return
     fi
-    if [ "$(_get_external_network)" = "1" ]; then
+    if [ "$(get_external_network)" = "1" ]; then
         _LAN_INGRESS_IPV4=""
     else
-        _LAN_METALLB="$(_get_lan_metallb)"
+        _LAN_METALLB="$(get_lan_metallb)"
         _LAN_INGRESS_IPV4="$(echo "$_LAN_METALLB" | cut -d'-' -f1)"
     fi
     echo "$_LAN_INGRESS_IPV4"

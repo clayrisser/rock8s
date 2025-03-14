@@ -106,21 +106,21 @@ _main() {
         esac
     done
     if [ -z "$_CLUSTER" ]; then
-        _fail "cluster name required"
+        fail "cluster name required"
     fi
     if [ -z "$_NODE" ]; then
-        _fail "node name required"
+        fail "node name required"
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
-    _CLUSTER_DIR="$(_get_cluster_dir)"
-    _KUBESPRAY_DIR="$(_get_kubespray_dir)"
+    _CLUSTER_DIR="$(get_cluster_dir)"
+    _KUBESPRAY_DIR="$(get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        _fail "kubespray directory not found"
+        fail "kubespray directory not found"
     fi
     _VENV_DIR="$_KUBESPRAY_DIR/venv"
     if [ ! -d "$_VENV_DIR" ]; then
-        _fail "kubespray virtual environment not found"
+        fail "kubespray virtual environment not found"
     fi
     . "$_VENV_DIR/bin/activate"
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
@@ -132,7 +132,7 @@ _main() {
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/remove-node.yml" -b -v
     
-    printf '{"cluster":"%s","node":"%s"}\n' "$_CLUSTER" "$_NODE" | _format_output "$_FORMAT" node
+    printf '{"cluster":"%s","node":"%s"}\n' "$_CLUSTER" "$_NODE" | format_output "$_FORMAT" node
 }
 
 _main "$@"

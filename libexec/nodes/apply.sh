@@ -126,11 +126,11 @@ _main() {
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
-        _fail "$_PURPOSE is invalid"
+        fail "$_PURPOSE is invalid"
     fi
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
-    _CLUSTER_DIR="$(_get_cluster_dir)"
-    _PROVIDER="$(_get_provider)"
+    _CLUSTER_DIR="$(get_cluster_dir)"
+    _PROVIDER="$(get_provider)"
     _PURPOSE_DIR="$_CLUSTER_DIR/$_PURPOSE"
     _IS_UPDATE=0
     if [ -d "$_PURPOSE_DIR" ] && [ -f "$_PURPOSE_DIR/output.json" ]; then
@@ -141,15 +141,15 @@ _main() {
             case "$_PURPOSE" in
                 master)
                     if [ ! -d "$_CLUSTER_DIR/pfsense" ]; then
-                        _fail "pfsense nodes must be created before master nodes"
+                        fail "pfsense nodes must be created before master nodes"
                     fi
                     ;;
                 worker)
                     if [ ! -d "$_CLUSTER_DIR/pfsense" ]; then
-                        _fail "pfsense nodes must be created before worker nodes"
+                        fail "pfsense nodes must be created before worker nodes"
                     fi
                     if [ ! -d "$_CLUSTER_DIR/master" ]; then
-                        _fail "master nodes must be created before worker nodes"
+                        fail "master nodes must be created before worker nodes"
                     fi
                     ;;
             esac
@@ -163,21 +163,19 @@ _main() {
     fi
     _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     if [ ! -d "$_PROVIDER_DIR" ]; then
-        _fail "provider $_PROVIDER not found"
+        fail "provider $_PROVIDER not found"
     fi
     rm -rf "$_CLUSTER_DIR/provider"
     cp -r "$_PROVIDER_DIR" "$_CLUSTER_DIR/provider"
-    _get_config_json | sh "$_CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
-    chmod 600 "$_PURPOSE_DIR/terraform.tfvars.json"
-    if [ "$_PURPOSE" != "pfsense" ]; then
-        export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
-    fi
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_purpose="$_PURPOSE"
     export TF_VAR_ssh_public_key_path="$_PURPOSE_DIR/id_rsa.pub"
     export TF_VAR_cluster_dir="$_CLUSTER_DIR"
     export TF_VAR_tenant="$_TENANT"
     export TF_DATA_DIR="$_PURPOSE_DIR/.terraform"
+    _CONFIG_JSON="$(get_config_json)"
+    echo "$_CONFIG_JSON" | . "$_CLUSTER_DIR/provider/tfvars.sh" > "$_PURPOSE_DIR/terraform.tfvars.json"
+    chmod 600 "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ -f "$_CLUSTER_DIR/provider/variables.sh" ]; then
         . "$_CLUSTER_DIR/provider/variables.sh"
     fi
@@ -194,7 +192,7 @@ _main() {
     terraform output -json > "$_PURPOSE_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
-        _format_output "$_FORMAT"
+        format_output "$_FORMAT"
 }
 
 _main "$@"

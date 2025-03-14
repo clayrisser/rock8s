@@ -114,22 +114,22 @@ _main() {
         esac
     done
     if [ -z "$_CLUSTER" ]; then
-        _fail "cluster name required"
+        fail "cluster name required"
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
-    _ENTRYPOINT="$(_get_entrypoint)"
-    _FIRST_MASTER_PRIVATE_IPV4="$(_get_master_private_ipv4s | head -n 1)"
+    _ENTRYPOINT="$(get_entrypoint)"
+    _FIRST_MASTER_PRIVATE_IPV4="$(get_master_private_ipv4s | head -n 1)"
     if [ -z "$_KUBECONFIG" ]; then
         _KUBECONFIG="$HOME/.kube/config"
     fi
     _KUBECONFIG_TMP="$(mktemp)"
     _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_TMP"
-    if ! ssh -i "$(_get_master_ssh_private_key)" -o StrictHostKeyChecking=no "admin@$_FIRST_MASTER_PRIVATE_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"; then
-        _fail "failed to retrieve kubeconfig from master node"
+    if ! ssh -i "$(get_master_ssh_private_key)" -o StrictHostKeyChecking=no "admin@$_FIRST_MASTER_PRIVATE_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"; then
+        fail "failed to retrieve kubeconfig from master node"
     fi
     if ! kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o yaml >/dev/null 2>&1; then
-        _fail "invalid kubeconfig"
+        fail "invalid kubeconfig"
     fi
     _CURRENT_CONTEXT=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config current-context)
     _CURRENT_CLUSTER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.cluster}')
@@ -160,7 +160,7 @@ _main() {
     if [ -n "$_ENTRYPOINT_IPV4" ]; then
         kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$_ENTRYPOINT_IPV4:6443" >/dev/null
     else
-        kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$(_get_master_private_ipv4s | head -n 1):6443" >/dev/null
+        kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$(get_master_private_ipv4s | head -n 1):6443" >/dev/null
     fi
     mkdir -p "$(dirname "$_KUBECONFIG")"
     if [ -f "$_KUBECONFIG" ]; then
@@ -174,7 +174,7 @@ _main() {
     chmod 600 "$_KUBECONFIG"
     _cleanup
     printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
-        "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | _format_output "$_FORMAT" cluster
+        "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_FORMAT" cluster
 }
 
 _main "$@" 

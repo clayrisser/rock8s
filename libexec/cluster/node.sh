@@ -66,7 +66,7 @@ _main() {
     export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/cluster/node/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
-        _fail "unknown node command: $_CMD"
+        fail "unknown node command: $_CMD"
     fi
     exec sh "$_SUBCMD" $_CMD_ARGS
 }
