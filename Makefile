@@ -24,7 +24,7 @@ build: manpages
 .PHONY: manpages
 manpages:
 	@mkdir -p $(BUILD_DIR)
-	@./manpages.sh
+	@sh manpages.sh
 
 .PHONY: install
 install: build
