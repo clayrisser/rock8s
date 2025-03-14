@@ -170,12 +170,12 @@ _main() {
         esac
     done
     if [ -z "$_CLUSTER" ]; then
-        _fail "cluster name required (use --cluster)"
+        fail "cluster name required (use --cluster)"
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
-    _CLUSTER_DIR="$(_get_cluster_dir)"
+    _CLUSTER_DIR="$(get_cluster_dir)"
     _ADDONS_DIR="$_CLUSTER_DIR/addons"
     if [ -z "$_SKIP_KUBESPRAY" ]; then
         if [ ! -f "$_CLUSTER_DIR/kube.yaml" ]; then
@@ -204,11 +204,12 @@ _main() {
     rm -rf "$_ADDONS_DIR/terraform"
     cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"
     export TF_VAR_cluster_name="$_CLUSTER"
-    export TF_VAR_entrypoint="$(_get_entrypoint)"
+    export TF_VAR_entrypoint="$(get_entrypoint)"
     export TF_VAR_kubeconfig="$_CLUSTER_DIR/kube.yaml"
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
-    export TF_VAR_ingress_nginx_load_balancer="$([ "$(_get_external_network)" = "1" ] && echo "0" || echo "1")"
-    _get_config_json | jq -r '.addons * {registries: .registries}' > "$_ADDONS_DIR/terraform.tfvars.json"
+    export TF_VAR_ingress_nginx_load_balancer="$([ "$(get_external_network)" = "1" ] && echo "0" || echo "1")"
+    _CONFIG_JSON="$(get_config_json)"
+    echo "$_CONFIG_JSON" | jq -r '.addons * {registries: .registries}' > "$_ADDONS_DIR/terraform.tfvars.json"
     chmod 600 "$_ADDONS_DIR/terraform.tfvars.json"
     cd "$_ADDONS_DIR/terraform"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
@@ -222,8 +223,8 @@ _main() {
     terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
     terraform output -json > "$_ADDONS_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$(_get_provider)" "$_TENANT" | \
-        _format_output "$_FORMAT"
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_FORMAT"
 }
 
 _main "$@"

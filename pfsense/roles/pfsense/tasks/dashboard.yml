@@ -10,8 +10,8 @@
         $config = parse_config();
     }
     $current = array(
-      'sequence' => config_get_path('widgets/sequence', ''),
-      'dashboardcolumns' => config_get_path('system/webgui/dashboardcolumns', ''),
+      'sequence' => configget_path('widgets/sequence', ''),
+      'dashboardcolumns' => configget_path('system/webgui/dashboardcolumns', ''),
       'widgets' => array()
     );
     $left_widgets = {{ (pfsense.dashboard.widgets.left | default([])) | to_json }};
@@ -22,9 +22,9 @@
     foreach ($widget_list as $widget) {
       $config_key = $widget . '-config';
       $current['widgets'][$widget] = array(
-        'enable' => config_get_path('widgets/' . $config_key . '/enable', '0'),
-        'name' => config_get_path('widgets/' . $config_key . '/name', ''),
-        'display' => config_get_path('widgets/' . $config_key . '/display', '')
+        'enable' => configget_path('widgets/' . $config_key . '/enable', '0'),
+        'name' => configget_path('widgets/' . $config_key . '/name', ''),
+        'display' => configget_path('widgets/' . $config_key . '/display', '')
       );
     }
     $sequence_parts = array();

@@ -144,7 +144,7 @@ _main() {
         esac
     done
     if [ -z "$_CLUSTER" ]; then
-        _fail "cluster name required"
+        fail "cluster name required"
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
@@ -165,9 +165,9 @@ _main() {
         $([ "$_YES" = "1" ] && echo "--yes") \
         $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         worker
-    _KUBESPRAY_DIR="$(_get_kubespray_dir)"
+    _KUBESPRAY_DIR="$(get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        _fail "kubespray directory not found"
+        fail "kubespray directory not found"
     fi
     _VENV_DIR="$_KUBESPRAY_DIR/venv"
     if [ ! -d "$_VENV_DIR" ]; then
@@ -179,27 +179,27 @@ _main() {
     else
         pip install -r "$_KUBESPRAY_DIR/requirements.txt"
     fi
-    _INVENTORY_DIR="$(_get_inventory_dir)"
+    _INVENTORY_DIR="$(get_inventory_dir)"
     if [ ! -d "$_INVENTORY_DIR" ]; then
         cp -r "$_KUBESPRAY_DIR/inventory/sample" "$_INVENTORY_DIR"
     fi
     cp "$ROCK8S_LIB_PATH/kubespray/vars.yml" "$_INVENTORY_DIR/vars.yml"
     cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
-    _MTU="$(_get_network_mtu)"
-    _LAN_METALLB="$(_get_lan_metallb)"
+    _MTU="$(get_network_mtu)"
+    _LAN_METALLB="$(get_lan_metallb)"
     cat >> "$_INVENTORY_DIR/vars.yml" <<EOF
 metallb_enabled: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
 kube_proxy_strict_arp: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
-enable_dual_stack_networks: $(_get_network_dualstack)
-supplementary_addresses_in_ssl_keys: [$(_get_supplementary_addresses)]
+enable_dual_stack_networks: $(get_network_dualstack)
+supplementary_addresses_in_ssl_keys: [$(get_supplementary_addresses)]
 calico_mtu: $_MTU
 calico_veth_mtu: $(($_MTU - 50))
 metallb: "$_LAN_METALLB"
 EOF
-    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(_get_master_ansible_private_hosts)"
-    _MASTER_SSH_PRIVATE_KEY="$(_get_master_ssh_private_key)"
-    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(_get_worker_ansible_private_hosts)"
-    _WORKER_SSH_PRIVATE_KEY="$(_get_worker_ssh_private_key)"
+    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(get_master_ansible_private_hosts)"
+    _MASTER_SSH_PRIVATE_KEY="$(get_master_ssh_private_key)"
+    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(get_worker_ansible_private_hosts)"
+    _WORKER_SSH_PRIVATE_KEY="$(get_worker_ssh_private_key)"
     cat > "$_INVENTORY_DIR/inventory.ini" <<EOF
 [kube_control_plane]
 $(echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS" | sed "s|\(.*\)|\1 ansible_ssh_private_key_file=$_MASTER_SSH_PRIVATE_KEY|g")
@@ -245,8 +245,8 @@ EOF
         --output="$_FORMAT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
-        --kubeconfig "$(_get_cluster_dir)/kube.yaml"
-    printf '{"name":"%s"}\n' "$_CLUSTER" | _format_output "$_FORMAT" cluster
+        --kubeconfig "$(get_cluster_dir)/kube.yaml"
+    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT" cluster
 }
 
 _main "$@"

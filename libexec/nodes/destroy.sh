@@ -118,41 +118,36 @@ _main() {
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
-        _fail "purpose $_PURPOSE not found"
+        fail "purpose $_PURPOSE not found"
     fi
-    _CLUSTER_DIR="$(_get_cluster_dir)"
-    _PROVIDER="$(_get_provider)"
+    _CLUSTER_DIR="$(get_cluster_dir)"
+    _PROVIDER="$(get_provider)"
     _PURPOSE_DIR="$_CLUSTER_DIR/$_PURPOSE"
     if [ ! -d "$_PURPOSE_DIR" ] || [ ! -f "$_PURPOSE_DIR/output.json" ]; then
-        _fail "nodes $_PURPOSE not found"
+        fail "nodes $_PURPOSE not found"
     fi
     if [ "$_FORCE" != "1" ]; then
         case "$_PURPOSE" in
             pfsense)
                 if [ -d "$_CLUSTER_DIR/master" ] || [ -d "$_CLUSTER_DIR/worker" ]; then
-                    _fail "nodes master and worker must be destroyed before nodes pfsense"
+                    fail "nodes master and worker must be destroyed before nodes pfsense"
                 fi
                 ;;
             master)
                 if [ -d "$_CLUSTER_DIR/worker" ]; then
-                    _fail "nodes worker must be destroyed before nodes master"
+                    fail "nodes worker must be destroyed before nodes master"
                 fi
                 ;;
         esac
     fi
     _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
     if [ ! -d "$_PROVIDER_DIR" ]; then
-        _fail "provider $_PROVIDER not found"
+        fail "provider $_PROVIDER not found"
     fi
     rm -rf "$_CLUSTER_DIR/provider"
     cp -r "$_PROVIDER_DIR" "$_CLUSTER_DIR/provider"
     if [ -d "$_CLUSTER_DIR/provider.terraform" ]; then
         mv "$_CLUSTER_DIR/provider.terraform" "$_CLUSTER_DIR/provider/.terraform"
-    fi
-    echo "$(_get_config_json)" | sh "$_CLUSTER_DIR/provider/tfvars.sh" "$_PURPOSE" > "$_PURPOSE_DIR/terraform.tfvars.json"
-    chmod 600 "$_PURPOSE_DIR/terraform.tfvars.json"
-    if [ "$_PURPOSE" != "pfsense" ]; then
-        export TF_VAR_user_data="$(_get_cloud_init_config "$_PURPOSE_DIR/id_rsa.pub")"
     fi
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_purpose="$_PURPOSE"
@@ -160,6 +155,9 @@ _main() {
     export TF_VAR_cluster_dir="$_CLUSTER_DIR"
     export TF_VAR_tenant="$_TENANT"
     export TF_DATA_DIR="$_PURPOSE_DIR/.terraform"
+    _CONFIG_JSON="$(get_config_json)"
+    echo "$_CONFIG_JSON" | . "$_CLUSTER_DIR/provider/tfvars.sh" > "$_PURPOSE_DIR/terraform.tfvars.json"
+    chmod 600 "$_PURPOSE_DIR/terraform.tfvars.json"
     if [ -f "$_CLUSTER_DIR/provider/variables.sh" ]; then
         . "$_CLUSTER_DIR/provider/variables.sh"
     fi
@@ -182,7 +180,7 @@ _main() {
     fi
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
-        _format_output "$_FORMAT"
+        format_output "$_FORMAT"
 }
 
 _main "$@"

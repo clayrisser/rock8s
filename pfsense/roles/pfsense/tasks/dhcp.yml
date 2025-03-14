@@ -14,13 +14,13 @@
     $ip_parts = explode('.', $network_parts[0]);
     $interface = '{{ item.key }}';
     $current = array(
-      'dhcpbackend' => config_get_path('dhcpbackend', 'isc'),
+      'dhcpbackend' => configget_path('dhcpbackend', 'isc'),
       'dhcpd' => array(
         $interface => array(
           'enable' => isset($config['dhcpd'][$interface]['enable']) ? 'yes' : '',
           'range' => array(
-            'from' => config_get_path('dhcpd/' . $interface . '/range/from', ''),
-            'to' => config_get_path('dhcpd/' . $interface . '/range/to', '')
+            'from' => configget_path('dhcpd/' . $interface . '/range/from', ''),
+            'to' => configget_path('dhcpd/' . $interface . '/range/to', '')
           )
         )
       )
@@ -54,11 +54,11 @@
       $interface => array(
         'enable' => isset($config['dhcpdv6'][$interface]['enable']) ? 'yes' : '',
         'range' => array(
-          'from' => config_get_path('dhcpdv6/' . $interface . '/range/from', ''),
-          'to' => config_get_path('dhcpdv6/' . $interface . '/range/to', '')
+          'from' => configget_path('dhcpdv6/' . $interface . '/range/from', ''),
+          'to' => configget_path('dhcpdv6/' . $interface . '/range/to', '')
         ),
-        'ramode' => config_get_path('dhcpdv6/' . $interface . '/ramode', ''),
-        'rapriority' => config_get_path('dhcpdv6/' . $interface . '/rapriority', '')
+        'ramode' => configget_path('dhcpdv6/' . $interface . '/ramode', ''),
+        'rapriority' => configget_path('dhcpdv6/' . $interface . '/rapriority', '')
       )
     );
     $desired['dhcpdv6'] = array(

@@ -41,9 +41,6 @@ _DEFAULT_WORKER_COUNT="2"
 : "${LOCATION:=$_DEFAULT_LOCATION}"
 : "${NETWORK:=$_DEFAULT_NETWORK}"
 
-_CONFIG_FILE="$1"
-. "$(dirname "$0")/../providers.sh"
-
 _LOCATION="$(prompt_select "Select location" "LOCATION" "$_DEFAULT_LOCATION" $_AVAILABLE_LOCATIONS)"
 _ENTRYPOINT="$(prompt_text "Enter network entrypoint" "ENTRYPOINT" "$_DEFAULT_ENTRYPOINT" 1)"
 _PFSENSE_TYPE="$(prompt_select "Select pfsense node type" "PFSENSE_TYPE" "$_DEFAULT_PFSENSE_TYPE" $_AVAILABLE_SERVER_TYPES)"
@@ -60,13 +57,19 @@ _MASTER_TYPE="$(prompt_select "Select master node type" "MASTER_TYPE" "$_DEFAULT
 _WORKER_TYPE="$(prompt_select "Select worker node type" "WORKER_TYPE" "$_DEFAULT_WORKER_TYPE" $_AVAILABLE_SERVER_TYPES)"
 _WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "WORKER_COUNT" "$_DEFAULT_WORKER_COUNT" 1)"
 
-cat <<EOF > "$_CONFIG_FILE"
+_TENANT_CONFIG_FILE="$(get_tenant_config_file)"
+
+cat <<EOF > "$_TENANT_CONFIG_FILE"
 image: debian-12
 location: $_LOCATION
 network:
   entrypoint: $_ENTRYPOINT
   lan:
-    subnet: 172.20.0.0/16
+    ipv4:
+      subnet: 172.20.0.0/16$([ -n "$_SECONDARY_HOSTNAME" ] && echo "
+  sync:
+    ipv4:
+      subnet: 172.20.0.0/16")
 pfsense:
   - type: $_PFSENSE_TYPE
     hostnames:

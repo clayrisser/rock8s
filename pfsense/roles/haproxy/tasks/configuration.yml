@@ -389,7 +389,7 @@
     require_once("config.inc");
     require_once("functions.inc");
     require_once("haproxy/haproxy.inc");
-    $json = file_get_contents('/tmp/haproxy_check.json');
+    $json = fileget_contents('/tmp/haproxy_check.json');
     $check_result = json_decode($json, true);
     if (!$check_result['changed']) {
         echo "UNCHANGED";

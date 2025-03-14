@@ -75,7 +75,7 @@ _show_available_nodes() {
     fi
 }
 
-_fail_with_nodes() {
+fail_with_nodes() {
     _MSG="$1"
     _PURPOSE="$2"
     echo "Error: $_MSG" >&2
@@ -88,13 +88,13 @@ _count_nodes() {
     _NODE_TYPE="$1"
     case "$_NODE_TYPE" in
         master)
-            echo "$(_get_master_private_ipv4s)" | wc -w
+            get_master_private_ipv4s | wc -w
             ;;
         worker)
-            echo "$(_get_worker_private_ipv4s)" | wc -w
+            get_worker_private_ipv4s | wc -w
             ;;
         pfsense)
-            echo "$(_get_pfsense_private_ipv4s)" | wc -w
+            get_pfsense_private_ipv4s | wc -w
             ;;
     esac
 }
@@ -145,7 +145,7 @@ _main() {
                     _NODE_NUM="${1##*-}"
                     case "$_PURPOSE" in
                         master|worker|pfsense) ;;
-                        *) _fail_with_nodes "Invalid node name: $1 (must be master-N, worker-N, or pfsense-N)" ;;
+                        *) fail_with_nodes "Invalid node name: $1 (must be master-N, worker-N, or pfsense-N)" ;;
                     esac
                     shift
                     if [ $# -gt 0 ]; then
@@ -168,10 +168,10 @@ _main() {
     done
     export ROCK8S_CLUSTER="$_CLUSTER"
     if [ -z "$ROCK8S_CLUSTER" ]; then
-        _fail "cluster name required (use --cluster)"
+        fail "cluster name required (use --cluster)"
     fi
     if [ -n "$_NODE_IP" ]; then
-        _PRIVATE_IPS="$(_get_master_private_ipv4s)"
+        _PRIVATE_IPS="$(get_master_private_ipv4s)"
         _COUNT=1
         for _IP in $_PRIVATE_IPS; do
             if [ "$_IP" = "$_NODE_IP" ]; then
@@ -182,7 +182,7 @@ _main() {
             _COUNT=$((_COUNT + 1))
         done
         if [ -z "$_PURPOSE" ]; then
-            _PRIVATE_IPS="$(_get_worker_private_ipv4s)"
+            _PRIVATE_IPS="$(get_worker_private_ipv4s)"
             _COUNT=1
             for _IP in $_PRIVATE_IPS; do
                 if [ "$_IP" = "$_NODE_IP" ]; then
@@ -194,7 +194,7 @@ _main() {
             done
         fi
         if [ -z "$_PURPOSE" ]; then
-            _PRIVATE_IPS="$(_get_pfsense_private_ipv4s)"
+            _PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
             _COUNT=1
             for _IP in $_PRIVATE_IPS; do
                 if [ "$_IP" = "$_NODE_IP" ]; then
@@ -205,36 +205,36 @@ _main() {
                 _COUNT=$((_COUNT + 1))
             done
         fi
-        [ -z "$_PURPOSE" ] && _fail_with_nodes "No node found with IP: $_NODE_IP"
+        [ -z "$_PURPOSE" ] && fail_with_nodes "No node found with IP: $_NODE_IP"
     else
-        [ -z "$_PURPOSE" ] && _fail_with_nodes "Node identifier required (purpose+number, node name, or IP)"
+        [ -z "$_PURPOSE" ] && fail_with_nodes "Node identifier required (purpose+number, node name, or IP)"
         if [ -z "$_NODE_NUM" ]; then
             _NODE_COUNT="$(_count_nodes "$_PURPOSE")"
             if [ "$_NODE_COUNT" -eq 1 ]; then
                 _NODE_NUM=1
             else
-                _fail_with_nodes "Node number required (found $_NODE_COUNT ${_PURPOSE} nodes)" "$_PURPOSE"
+                fail_with_nodes "Node number required (found $_NODE_COUNT ${_PURPOSE} nodes)" "$_PURPOSE"
             fi
         fi
     fi
     case "$_PURPOSE" in
         master)
-            _SSH_KEY="$(_get_master_ssh_private_key)"
-            _PRIVATE_IPS="$(_get_master_private_ipv4s)"
+            _SSH_KEY="$(get_master_ssh_private_key)"
+            _PRIVATE_IPS="$(get_master_private_ipv4s)"
             ;;
         worker)
-            _SSH_KEY="$(_get_worker_ssh_private_key)"
-            _PRIVATE_IPS="$(_get_worker_private_ipv4s)"
+            _SSH_KEY="$(get_worker_ssh_private_key)"
+            _PRIVATE_IPS="$(get_worker_private_ipv4s)"
             ;;
         pfsense)
-            _SSH_KEY="$(_get_pfsense_ssh_private_key)"
-            _PRIVATE_IPS="$(_get_pfsense_private_ipv4s)"
+            _SSH_KEY="$(get_pfsense_ssh_private_key)"
+            _PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
             ;;
     esac
-    [ -z "$_SSH_KEY" ] && _fail_with_nodes "SSH key not found for $_PURPOSE nodes" "$_PURPOSE"
+    [ -z "$_SSH_KEY" ] && fail_with_nodes "SSH key not found for $_PURPOSE nodes" "$_PURPOSE"
     if [ -z "$_NODE_IP" ]; then
         _NODE_IP="$(echo "$_PRIVATE_IPS" | tr ' ' '\n' | sed -n "${_NODE_NUM}p")"
-        [ -z "$_NODE_IP" ] && _fail_with_nodes "$_PURPOSE-$_NODE_NUM not found" "$_PURPOSE"
+        [ -z "$_NODE_IP" ] && fail_with_nodes "$_PURPOSE-$_NODE_NUM not found" "$_PURPOSE"
     fi
     exec ssh -i "$_SSH_KEY" "admin@$_NODE_IP" $_SSH_ARGS
 }

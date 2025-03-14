@@ -51,6 +51,18 @@ resource "hcloud_network_route" "default" {
   depends_on  = [hcloud_network_subnet.lan]
 }
 
+resource "hcloud_placement_group" "nodes" {
+  name = "${local.tenant == "" ? "" : "${local.tenant}-"}${var.cluster_name}-${var.purpose}"
+  type = "spread"
+  labels = merge(
+    {
+      cluster = var.cluster_name
+      purpose = var.purpose
+    },
+    local.tenant != "" ? { tenant = local.tenant } : {}
+  )
+}
+
 resource "hcloud_server" "nodes" {
   count              = length(local.node_configs)
   name               = local.node_configs[count.index].name
@@ -60,8 +72,10 @@ resource "hcloud_server" "nodes" {
   location           = var.location
   ssh_keys           = [hcloud_ssh_key.node.id]
   user_data          = var.user_data != "" ? var.user_data : null
-  delete_protection  = var.purpose != "worker"
-  rebuild_protection = var.purpose != "worker"
+  delete_protection  = true
+  rebuild_protection = true
+  backups            = true
+  placement_group_id = hcloud_placement_group.nodes.id
   labels = merge(
     {
       cluster = var.cluster_name
@@ -69,6 +83,10 @@ resource "hcloud_server" "nodes" {
     },
     local.tenant != "" ? { tenant = local.tenant } : {}
   )
+  public_net {
+    ipv4_enabled = var.purpose == "pfsense"
+    ipv6_enabled = var.purpose == "pfsense"
+  }
   network {
     network_id = var.purpose == "pfsense" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
     ip         = var.purpose == "pfsense" ? (count.index == 0 ? local.pfsense_lan_primary_ip : local.pfsense_lan_secondary_ip) : local.node_configs[count.index].ipv4

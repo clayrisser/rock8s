@@ -16,7 +16,7 @@
       $config = parse_config();
     }
     $current = array(
-      'althostnames' => config_get_path('system/webgui/althostnames', '')
+      'althostnames' => configget_path('system/webgui/althostnames', '')
     );
     $althostnames = array_unique(array_filter(array_map('trim', explode(' ',
       "{{ ansible_host }} {{ dns_lookup.stdout | default('') }} {{ pfsense.althostnames | default('') }}"))));

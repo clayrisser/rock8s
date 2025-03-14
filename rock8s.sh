@@ -23,7 +23,7 @@ export ROCK8S_STATE_ROOT
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
 if [ "$(id -u)" = "0" ]; then
-    _fail "cannot run as root"
+    fail "cannot run as root"
 fi
 
 _help() {
@@ -147,7 +147,7 @@ _main() {
     export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
-        _fail "unknown command: $_CMD"
+        fail "unknown command: $_CMD"
     fi
     exec sh "$_SUBCMD" $_CMD_ARGS
 }

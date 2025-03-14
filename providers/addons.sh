@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 _AVAILABLE_REGISTRIES="
 docker.io
 ghcr.io
@@ -46,10 +48,6 @@ integration_operator
 s3
 openebs
 cluster_issuer"
-
-_CONFIG_FILE="$1"
-
-. "$(dirname "$0")/providers.sh"
 
 _CEPH_MONITORS=""
 _CEPH_ADMIN_ID=""
@@ -176,31 +174,33 @@ if [ -z "$_CLOUDFLARE_EMAIL" ]; then
     _EMAIL="$(prompt_text "Enter your email address" "EMAIL" "" 1)"
 fi
 
+_TENANT_CONFIG_FILE="$(get_tenant_config_file)"
+
 if [ -n "$_REGISTRIES" ]; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
 registries:
 $_REGISTRIES
 EOF
 else
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
 registries:
 EOF
 fi
 
-cat <<EOF >> "$_CONFIG_FILE"
+cat <<EOF >> "$_TENANT_CONFIG_FILE"
 addons:
 $_ADDONS_CONFIG
   email: $_EMAIL
 EOF
 
 if _is_addon_enabled "kanister"; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   kanister_bucket: $_KANISTER_BUCKET
 EOF
 fi
 
 if _is_addon_enabled "ceph"; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   ceph_monitors:
 $(echo "$_CEPH_MONITORS" | tr ',' ' ' | tr -s ' ' '\n' | sed '/^$/d' | sed 's/^/    - /')
   ceph_admin_id: $_CEPH_ADMIN_ID
@@ -211,21 +211,21 @@ EOF
 fi
 
 if _is_addon_enabled "external_dns" && [ -n "$_PDNS_API_URL" ]; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   pdns_api_url: $_PDNS_API_URL
   pdns_api_key: $_PDNS_API_KEY
 EOF
 fi
 
 if _is_addon_enabled "external_dns" && [ -n "$_CLOUDFLARE_API_KEY" ]; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   cloudflare_api_key: $_CLOUDFLARE_API_KEY
   cloudflare_email: $_CLOUDFLARE_EMAIL
 EOF
 fi
 
 if _is_addon_enabled "flux"; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   git_username: $_GIT_USERNAME
   git_password: $_GIT_PASSWORD
   git_repo: $_GIT_REPO
@@ -233,7 +233,7 @@ EOF
 fi
 
 if _is_addon_enabled "s3"; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   s3_endpoint: $_S3_ENDPOINT
   s3_access_key: $_S3_ACCESS_KEY
   s3_secret_key: $_S3_SECRET_KEY
@@ -242,7 +242,7 @@ fi
 
 if _is_addon_enabled "rancher"; then
     if [ -n "$_RANCHER_TOKEN" ]; then
-        cat <<EOF >> "$_CONFIG_FILE"
+        cat <<EOF >> "$_TENANT_CONFIG_FILE"
   rancher_token: $_RANCHER_TOKEN
   rancher_hostname: $_RANCHER_HOSTNAME
 EOF
@@ -250,7 +250,7 @@ EOF
 fi
 
 if _is_addon_enabled "tempo"; then
-    cat <<EOF >> "$_CONFIG_FILE"
+    cat <<EOF >> "$_TENANT_CONFIG_FILE"
   retention_hours: $_RETENTION_HOURS
 EOF
 fi

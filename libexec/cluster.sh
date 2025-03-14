@@ -106,7 +106,7 @@ _main() {
     export ROCK8S_CLUSTER="$_CLUSTER"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/cluster/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
-        _fail "unknown cluster command: $_CMD"
+        fail "unknown cluster command: $_CMD"
     fi
     exec sh "$_SUBCMD" $_CMD_ARGS
 }
