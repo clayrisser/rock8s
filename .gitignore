@@ -1,3 +1,7 @@
+# app
+/man
+/.build
+
 # ansible
 *.retry
 

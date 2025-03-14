@@ -14,13 +14,16 @@ fi
 : "${ROCK8S_STATE_HOME:=${XDG_STATE_HOME:-$HOME/.local/state}/rock8s}"
 : "${ROCK8S_STATE_ROOT:=/var/lib/rock8s}"
 : "${ROCK8S_TENANT:=default}"
-export ANSIBLE_NOCOWS=1
-export ROCK8S_CONFIG_HOME
+: "${ROCK8S_OUTPUT:=text}"
 export ROCK8S_CONFIG_DIRS
+export ROCK8S_CONFIG_HOME
 export ROCK8S_DEBUG
 export ROCK8S_LIB_PATH
+export ROCK8S_OUTPUT
 export ROCK8S_STATE_HOME
 export ROCK8S_STATE_ROOT
+export ROCK8S_TENANT
+export ANSIBLE_NOCOWS=1
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
 if [ "$(id -u)" = "0" ]; then
@@ -64,6 +67,9 @@ COMMANDS
        pfsense
               configure and manage pfsense firewall
 
+       completion
+              generate shell completion scripts
+
 EXAMPLE
        # create a cluster
        rock8s cluster configure --cluster mycluster --yes
@@ -77,15 +83,18 @@ EXAMPLE
        # use a specific tenant and output format
        rock8s -t mytenant -o yaml nodes ls
 
+       # enable completions in your shell
+       source <(rock8s completion)
+
 SEE ALSO
        rock8s nodes --help
        rock8s cluster --help
        rock8s pfsense --help
+       rock8s completion --help
 EOF
 }
 
 _main() {
-    _FORMAT="json"
     _CMD=""
     _CMD_ARGS=""
     if [ -f "$ROCK8S_STATE_HOME/current" ]; then
@@ -97,8 +106,9 @@ _main() {
             export ROCK8S_CLUSTER="$cluster"
         fi
     fi
-    _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
+    _OUTPUT="$ROCK8S_OUTPUT"
+    _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -112,11 +122,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -151,6 +161,12 @@ _main() {
                 _CMD_ARGS="$*"
                 break
                 ;;
+            completion)
+                _CMD="$1"
+                shift
+                _CMD_ARGS="$*"
+                break
+                ;;
             *)
                 _help
                 exit 1
@@ -163,7 +179,7 @@ _main() {
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
         fail "unknown command: $_CMD"

@@ -38,7 +38,7 @@ error() {
     if [ "${_FORMAT:-text}" = "json" ]; then
         printf "%s\n" "$1" | jq -R '{"error":.}' >&2
     else
-        printf "%s\n" "$1" | jq -R '{"error":.}' | format_output "${_FORMAT:-text}" error >&2
+        printf "%s\n" "$1" | jq -R '{"error":.}' | format_output "${_FORMAT:-text}" error
     fi
 }
 

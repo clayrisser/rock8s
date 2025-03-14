@@ -2,53 +2,95 @@
 
 set -e
 
+format_table() {
+    awk 'BEGIN{FS="|"; OFS="\t"} 
+    {
+        for(i=1; i<=NF; i++) {
+            if(NR==1) header[i] = $i
+            max_len[i] = max_len[i] < length($i) ? length($i) : max_len[i]
+        }
+    }
+    END{
+        for(i=1; i<=NF; i++) printf "%-*s ", max_len[i]+2, header[i]
+        printf "\n"
+        for(i=1; i<=NF; i++) {
+            sep = ""
+            for(j=1; j<=max_len[i]+2; j++) sep = sep "-"
+            printf "%s ", sep
+        }
+        printf "\n"
+        for(row=2; row<=NR; row++) {
+            split(line[row], cells, FS)
+            for(i=1; i<=NF; i++) printf "%-*s ", max_len[i]+2, cells[i]
+            printf "\n"
+        }
+    }'
+}
+
 format_json_table() {
     _JSON="$1"
     _KEYS="$2"
     [ -z "$_JSON" ] && return
+    _TEMP_FILE=$(mktemp)
+    _TYPE=$(printf "%s\n" "$_JSON" | jq -r 'type')
+    if [ "$_TYPE" = "object" ]; then
+        _KEY_COUNT=$(printf "%s\n" "$_JSON" | jq -r 'keys | length')
+        if [ "$_KEY_COUNT" -eq 1 ]; then
+            _SINGLE_KEY=$(printf "%s\n" "$_JSON" | jq -r 'keys[0]')
+            _SINGLE_VALUE=$(printf "%s\n" "$_JSON" | jq -r --arg k "$_SINGLE_KEY" '.[$k] | if type == "object" or type == "array" then tojson else tostring end')
+            echo "$_SINGLE_VALUE"
+            rm -f "$_TEMP_FILE"
+            return
+        fi
+    fi
     if [ "$_KEYS" = "-" ]; then
-        _KEYS="$(printf "%s\n" "$_JSON" | jq -r 'to_entries | .[].key' | tr '\n' ' ')"
+        if [ "$_TYPE" = "array" ]; then
+            _KEYS=$(printf "%s\n" "$_JSON" | jq -r '.[0] | keys | join(" ")')
+        else
+            _KEYS=$(printf "%s\n" "$_JSON" | jq -r 'keys | join(" ")')
+        fi
     fi
-    _COUNT="$(printf "%s\n" "$_JSON" | jq -s 'length')"
-    if [ "$_COUNT" -eq 0 ]; then
-        return
-    elif [ "$_COUNT" -eq 1 ] && [ "$(printf "%s\n" "$_JSON" | jq -r 'type')" = "object" ]; then
-        (
-            echo "KEY VALUE"
+    for _KEY in $_KEYS; do
+        printf "%s⋮" "$(echo "$_KEY" | tr '[:lower:]' '[:upper:]')" >> "$_TEMP_FILE"
+    done
+    printf "\n" >> "$_TEMP_FILE"
+    if [ "$_TYPE" = "array" ]; then
+        _LENGTH=$(printf "%s\n" "$_JSON" | jq 'length')
+        for i in $(seq 0 $((_LENGTH - 1))); do
             for _KEY in $_KEYS; do
-                printf "%s %s\n" \
-                    "$_KEY" \
-                    "$(printf "%s\n" "$_JSON" | jq -r ".$_KEY // \"-\"")"
+                _VALUE=$(printf "%s\n" "$_JSON" | jq -r --arg k "$_KEY" "try (.[${i}] | .[\$k] | if type == \"object\" or type == \"array\" then tojson else tostring end) catch \"-\"")
+                _VALUE=$(echo "$_VALUE" | tr '⋮' ' ')
+                printf "%s⋮" "$_VALUE" >> "$_TEMP_FILE"
             done
-        ) | column -t
-    else
-        _HEADER=""
-        for _KEY in $_KEYS; do
-            _HEADER="$_HEADER $(echo "$_KEY" | tr '[:lower:]' '[:upper:]')"
+            printf "\n" >> "$_TEMP_FILE"
         done
-        _JQ_FILTER=".[] | [$(for _KEY in $_KEYS; do
-            if [ "$_KEY" = "$(echo "$_KEYS" | cut -d' ' -f1)" ]; then
-                printf ".%s // \"-\"" "$_KEY"
-            else
-                printf ", .%s // \"-\"" "$_KEY"
-            fi
-        done)] | @tsv"
-        (
-            echo "$_HEADER"
-            printf "%s\n" "$_JSON" | jq -r "$_JQ_FILTER" | sed -e 's/  */ /g'
-        ) | sed 's/^ *//' | column -t
+    else
+        for _KEY in $_KEYS; do
+            _VALUE=$(printf "%s\n" "$_JSON" | jq -r --arg k "$_KEY" "try (.[\$k] | if type == \"object\" or type == \"array\" then tojson else tostring end) catch \"-\"")
+            _VALUE=$(echo "$_VALUE" | tr '⋮' ' ')
+            printf "%s⋮" "$_VALUE" >> "$_TEMP_FILE"
+        done
+        printf "\n" >> "$_TEMP_FILE"
     fi
+    _FORMATTED=$(column -t -s '⋮' -o '  ' < "$_TEMP_FILE")
+    _HEADER=$(echo "$_FORMATTED" | head -1)
+    _DATA=$(echo "$_FORMATTED" | tail -n +2)
+    _SEP=$(printf "%s" "$_HEADER" | sed 's/./-/g')
+    echo "$_HEADER"
+    echo "$_SEP"
+    echo "$_DATA"
+    rm -f "$_TEMP_FILE"
 }
 
 format_output() {
-    _FORMAT="${1:-text}"
+    _OUTPUT="${1:-text}"
     _TYPE="$2"
     if [ ! -t 0 ]; then
         _INPUT="$(cat)"
     else
         _INPUT=""
     fi
-    case "$_FORMAT" in
+    case "$_OUTPUT" in
         json)
             printf "%s\n" "$_INPUT" | jq
             ;;
@@ -56,7 +98,7 @@ format_output() {
             printf "%s\n" "$_INPUT" | while read -r line; do
                 echo "---"
                 echo "$line" | json2yaml
-            done >&2
+            done
             ;;
         text)
             case "$_TYPE" in
@@ -85,7 +127,7 @@ format_output() {
             esac
             ;;
         *)
-            printf '{"error":"unsupported output format: %s"}\n' "$_FORMAT" | format_output text error
+            printf '{"error":"unsupported output format %s"}\n' "$_OUTPUT" | format_output text error
             return 1
             ;;
     esac

@@ -56,7 +56,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _PURPOSE=""
     _CLUSTER="$ROCK8S_CLUSTER"
     _FORCE=0
@@ -71,11 +71,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -199,7 +199,7 @@ _main() {
     fi
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
-        format_output "$_FORMAT"
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

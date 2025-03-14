@@ -59,7 +59,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _PURPOSE=""
     _CLUSTER="$ROCK8S_CLUSTER"
     _FORCE=0
@@ -74,11 +74,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -169,7 +169,7 @@ _main() {
         fi
         mkdir -p "$_PURPOSE_DIR"
         if [ ! -f "$_PURPOSE_DIR/id_rsa" ]; then
-            ssh-keygen -t rsa -b 4096 -f "$_PURPOSE_DIR/id_rsa" -N "" -C "rock8s-$_CLUSTER-$_PURPOSE"
+            ssh-keygen -t rsa -b 4096 -f "$_PURPOSE_DIR/id_rsa" -N "" -C "rock8s-$_CLUSTER-$_PURPOSE" >&2
         fi
         chmod 600 "$_PURPOSE_DIR/id_rsa"
         chmod 644 "$_PURPOSE_DIR/id_rsa.pub"
@@ -205,7 +205,7 @@ _main() {
     terraform output -json > "$_PURPOSE_DIR/output.json"
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","purpose":"%s"}\n' \
         "$_CLUSTER" "$_PROVIDER" "$_TENANT" "$_PURPOSE" | \
-        format_output "$_FORMAT"
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

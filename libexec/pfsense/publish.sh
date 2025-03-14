@@ -48,7 +48,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _PASSWORD=""
@@ -62,11 +62,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -179,8 +179,8 @@ EOF
         -i "$_PFSENSE_DIR/hosts.yml" \
         -e "@$_PFSENSE_DIR/vars.publish.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/publish.yml" -v
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT"
+        "$_PFSENSE_DIR/ansible/playbooks/publish.yml" -v >&2
+    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT"
 }
 
 _main "$@"

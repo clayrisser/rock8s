@@ -55,7 +55,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _UPDATE=""
@@ -70,11 +70,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -166,13 +166,14 @@ _main() {
     ansible-galaxy collection install \
         $([ "$_UPDATE" = "1" ] && echo "--force") \
         -r "$_PFSENSE_DIR/ansible/requirements.yml" \
-        -p "$_PFSENSE_DIR/collections"
+        -p "$_PFSENSE_DIR/collections" >&2
     mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
     _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
     _SYNC_INTERFACE="$(get_sync_interface)"
     _PFSENSE_PRIMARY="$(get_pfsense_primary_lan_ipv4)"
     _PFSENSE_SECONDARY="$(get_pfsense_secondary_hostname)"
     _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_ssh_private_key)"
+    echo PP "$_PFSENSE_SSH_PRIVATE_KEY"
     if ! timeout 5s ssh -i "$_PFSENSE_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no admin@$_PFSENSE_PRIMARY 'true' 2>/dev/null; then
         _PFSENSE_PRIMARY="$(get_pfsense_primary_hostname)"
         if [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ]; then
@@ -239,8 +240,8 @@ EOF
         -i "$_PFSENSE_DIR/hosts.yml" \
         -e "@$_PFSENSE_DIR/vars.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/configure.yml" -v
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT"
+        "$_PFSENSE_DIR/ansible/playbooks/configure.yml" -v >&2
+    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT"
 }
 
 _main "$@"

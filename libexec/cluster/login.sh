@@ -57,7 +57,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
     _KUBECONFIG="$HOME/.kube/config"
@@ -71,11 +71,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -187,7 +187,7 @@ _main() {
     chmod 600 "$_KUBECONFIG"
     _cleanup
     printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
-        "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_FORMAT" cluster
+        "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
 }
 
 _main "$@" 
