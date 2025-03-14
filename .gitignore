@@ -1,9 +1,3 @@
-# app
-/.env
-
-# mkpm
-/.mkpm/mkpm
-
 # ansible
 *.retry
 
