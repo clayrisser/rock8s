@@ -42,7 +42,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
@@ -54,11 +54,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -117,8 +117,8 @@ _main() {
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
         -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/scale.yml" -b -v
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT" cluster
+        "$_KUBESPRAY_DIR/scale.yml" -b -v >&2
+    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT" cluster
 }
 
 _main "$@"

@@ -60,7 +60,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _CMD=""
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
@@ -73,11 +73,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -121,12 +121,12 @@ _main() {
         _help
         exit 1
     fi
-    export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/pfsense/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
-        fail "unknown pfsense command: $_CMD"
+        fail "unknown pfsense command $_CMD"
     fi
     exec sh "$_SUBCMD" "$@"
 }

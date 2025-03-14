@@ -19,6 +19,9 @@ OPTIONS
        -h, --help
               display this help message and exit
 
+       -o, --output=<format>
+              output format (json, yaml, text)
+
        -c, --cluster <cluster>
               cluster name
 
@@ -47,6 +50,7 @@ EOF
 }
 
 _main() {
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _PURPOSE=""
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
@@ -55,6 +59,18 @@ _main() {
             -h|--help)
                 _help
                 exit 0
+                ;;
+            -o|--output|-o=*|--output=*)
+                case "$1" in
+                    *=*)
+                        _OUTPUT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _OUTPUT="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
@@ -96,13 +112,15 @@ _main() {
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
     _PURPOSE_DIR="$(get_cluster_dir)/$_PURPOSE"
     _PUBLIC_KEY_PATH="$_PURPOSE_DIR/id_rsa.pub"
     if [ -f "$_PUBLIC_KEY_PATH" ]; then
-        cat "$_PUBLIC_KEY_PATH"
+        _PUBLIC_KEY=$(cat "$_PUBLIC_KEY_PATH")
+        printf '{"public_key":"%s"}\n' "$_PUBLIC_KEY" | format_output "$_OUTPUT"
     else
         fail "no public key found for $_PURPOSE nodes"
     fi

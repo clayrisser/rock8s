@@ -55,7 +55,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _UPDATE=""
@@ -71,11 +71,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -145,17 +145,17 @@ _main() {
     fi
     _KUBESPRAY_DIR="$(get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        git clone --depth 1 --branch "$KUBESPRAY_VERSION" "$KUBESPRAY_REPO" "$_KUBESPRAY_DIR"
+        git clone --depth 1 --branch "$KUBESPRAY_VERSION" "$KUBESPRAY_REPO" "$_KUBESPRAY_DIR" >&2
     fi
     _VENV_DIR="$_KUBESPRAY_DIR/venv"
     if [ ! -d "$_VENV_DIR" ]; then
-        python3 -m venv "$_VENV_DIR"
+        python3 -m venv "$_VENV_DIR" >&2
     fi
     . "$_VENV_DIR/bin/activate"
     if command -v uv >/dev/null 2>&1; then
-        uv pip install -r "$_KUBESPRAY_DIR/requirements.txt"
+        uv pip install -r "$_KUBESPRAY_DIR/requirements.txt" >&2
     else
-        pip install -r "$_KUBESPRAY_DIR/requirements.txt"
+        pip install -r "$_KUBESPRAY_DIR/requirements.txt" >&2
     fi
     _INVENTORY_DIR="$(get_inventory_dir)"
     if [ ! -d "$_INVENTORY_DIR" ]; then
@@ -204,26 +204,26 @@ EOF
         -i "$_INVENTORY_DIR/inventory.ini" \
         -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/cluster.yml" -b -v
+        "$_KUBESPRAY_DIR/cluster.yml" -b -v >&2
     ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
         ANSIBLE_HOST_KEY_CHECKING=False \
         "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
         -i "$_INVENTORY_DIR/inventory.ini" \
         -e "@$_INVENTORY_DIR/vars.yml" \
         -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/postinstall.yml" -b -v
+        "$_KUBESPRAY_DIR/postinstall.yml" -b -v >&2
     sh "$ROCK8S_LIB_PATH/libexec/pfsense/publish.sh" \
-        --output="$_FORMAT" \
+        --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
-        $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password")
-    "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
-        --output="$_FORMAT" \
+        $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password") >/dev/null
+    sh "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
+        --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
-        --kubeconfig "$(get_cluster_dir)/kube.yaml"
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT" cluster
+        --kubeconfig "$(get_cluster_dir)/kube.yaml" >/dev/null
+    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT" cluster
 }
 
 _main "$@"

@@ -16,6 +16,9 @@ DESCRIPTION
        create and manage cluster nodes
 
 OPTIONS
+       -o, --output=<format>
+              output format
+
        -t, --tenant <tenant>
               tenant name
 
@@ -48,7 +51,7 @@ EXAMPLE
        # create or update worker nodes
        rock8s nodes apply --cluster mycluster worker
 
-       # get public SSH key for master nodes
+       # get public ssh key for master nodes
        rock8s nodes pubkey master
 
 SEE ALSO
@@ -61,7 +64,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _CMD=""
     _CMD_ARGS=""
     _TENANT="$ROCK8S_TENANT"
@@ -71,6 +74,18 @@ _main() {
             -h|--help)
                 _help
                 exit 0
+                ;;
+            -o|--output|-o=*|--output=*)
+                case "$1" in
+                    *=*)
+                        _OUTPUT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _OUTPUT="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
@@ -114,6 +129,7 @@ _main() {
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/nodes/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
         fail "unknown command: $_CMD"

@@ -19,6 +19,9 @@ OPTIONS
        -h, --help
               display this help message and exit
 
+       -o, --output=<format>
+              output format (json, yaml, text)
+
        -c, --cluster <cluster>
               cluster name
 
@@ -49,7 +52,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
     _FILTER=""
@@ -58,6 +61,18 @@ _main() {
             -h|--help)
                 _help
                 exit 0
+                ;;
+            -o|--output|-o=*|--output=*)
+                case "$1" in
+                    *=*)
+                        _OUTPUT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _OUTPUT="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
@@ -95,6 +110,7 @@ _main() {
     done
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
@@ -130,16 +146,16 @@ _main() {
     _PFSENSE_NODES="$_PFSENSE_NODES}"
     case "$_FILTER" in
         master)
-            printf '%s\n' "$_MASTER_NODES" | format_output "$_FORMAT" nodes
+            printf '%s\n' "$_MASTER_NODES" | format_output "$_OUTPUT" nodes
             ;;
         worker)
-            printf '%s\n' "$_WORKER_NODES" | format_output "$_FORMAT" nodes
+            printf '%s\n' "$_WORKER_NODES" | format_output "$_OUTPUT" nodes
             ;;
         pfsense)
-            printf '%s\n' "$_PFSENSE_NODES" | format_output "$_FORMAT" nodes
+            printf '%s\n' "$_PFSENSE_NODES" | format_output "$_OUTPUT" nodes
             ;;
         *)
-            printf '{"master":%s,"worker":%s,"pfsense":%s}\n' "$_MASTER_NODES" "$_WORKER_NODES" "$_PFSENSE_NODES" | format_output "$_FORMAT" nodes
+            printf '{"master":%s,"worker":%s,"pfsense":%s}\n' "$_MASTER_NODES" "$_WORKER_NODES" "$_PFSENSE_NODES" | format_output "$_OUTPUT" nodes
             ;;
     esac
 }

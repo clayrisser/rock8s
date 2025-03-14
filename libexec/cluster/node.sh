@@ -29,7 +29,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _CLUSTER="$ROCK8S_CLUSTER"
     _CMD=""
     _CMD_ARGS=""
@@ -42,11 +42,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -67,7 +67,7 @@ _main() {
         _help
         exit 1
     fi
-    export ROCK8S_OUTPUT_FORMAT="$_FORMAT"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     _SUBCMD="$ROCK8S_LIB_PATH/libexec/cluster/node/$_CMD.sh"
     if [ ! -f "$_SUBCMD" ]; then
         fail "unknown node command: $_CMD"

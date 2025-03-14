@@ -52,7 +52,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _YES=0
@@ -66,11 +66,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -120,12 +120,13 @@ _main() {
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
     sh "$ROCK8S_LIB_PATH/libexec/nodes/destroy.sh" \
-        --output="$_FORMAT" \
+        --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_YES" = "1" ] && echo "--yes") \
         $([ "$_FORCE" = "1" ] && echo "--force") \
-        pfsense
+        pfsense >/dev/null
+    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_OUTPUT"
 }
 
 _main "$@"

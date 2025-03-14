@@ -58,7 +58,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _UPDATE=""
@@ -74,11 +74,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -147,18 +147,19 @@ _main() {
         fail "cluster name required"
     fi
     sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
-        --output="$_FORMAT" \
+        --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_YES" = "1" ] && echo "--yes") \
-        pfsense
+        pfsense >/dev/null
     sh "$ROCK8S_LIB_PATH/libexec/pfsense/configure.sh" \
-        --output="$_FORMAT" \
+        --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_UPDATE" = "1" ] && echo "--update") \
         $([ -n "$_PASSWORD" ] && echo "--password '$_PASSWORD'") \
-        $([ "$_SSH_PASSWORD" = "1" ] && echo "--ssh-password")
+        $([ "$_SSH_PASSWORD" = "1" ] && echo "--ssh-password") >/dev/null
+    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_OUTPUT"
 }
 
 _main "$@"

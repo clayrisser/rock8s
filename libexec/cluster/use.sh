@@ -47,7 +47,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-json}"
+    _OUTPUT="${ROCK8S_OUTPUT:-json}"
     _CMD=""
     _ARG1=""
     _ARG2=""
@@ -60,11 +60,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -104,7 +104,7 @@ _main() {
     echo "cluster=\"$_CLUSTER\"" >> "$ROCK8S_STATE_HOME/current"
     printf '{"cluster":"%s","tenant":"%s"}\n' \
         "$_CLUSTER" "$_TENANT" | \
-        format_output "$_FORMAT" "cluster"
+        format_output "$_OUTPUT" "cluster"
 }
 
 _main "$@"

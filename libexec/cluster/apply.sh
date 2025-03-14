@@ -64,7 +64,7 @@ EOF
 }
 
 _main() {
-    _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
     _UPDATE=""
@@ -80,11 +80,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _FORMAT="${1#*=}"
+                        _OUTPUT="${1#*=}"
                         shift
                         ;;
                     *)
-                        _FORMAT="$2"
+                        _OUTPUT="$2"
                         shift 2
                         ;;
                 esac
@@ -166,57 +166,56 @@ _main() {
     fi
     if [ "$_SKIP_PFSENSE" != "1" ]; then
         sh "$ROCK8S_LIB_PATH/libexec/pfsense/apply.sh" \
-            --output="$_FORMAT" \
+            --output="$_OUTPUT" \
             --cluster="$_CLUSTER" \
             --tenant="$_TENANT" \
             $([ "$_UPDATE" = "1" ] && echo "--update") \
             $([ "$_YES" = "1" ] && echo "--yes") \
             $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
-            $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password")
+            $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password") >/dev/null
     fi
     if [ "$_SKIP_NODES" != "1" ]; then
         sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
-            --output="$_FORMAT" \
+            --output="$_OUTPUT" \
             --cluster="$_CLUSTER" \
             --tenant="$_TENANT" \
             $([ "$_YES" = "1" ] && echo "--yes") \
-            master
+            master >/dev/null
         sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
-            --output="$_FORMAT" \
+            --output="$_OUTPUT" \
             --cluster="$_CLUSTER" \
             --tenant="$_TENANT" \
             $([ "$_YES" = "1" ] && echo "--yes") \
-            worker
+            worker >/dev/null
     fi
     if [ "$_SKIP_KUBESPRAY" != "1" ]; then
         if [ ! -f "$_CLUSTER_DIR/kube.yaml" ]; then
             sh "$ROCK8S_LIB_PATH/libexec/cluster/install.sh" \
-                --output="$_FORMAT" \
+                --output="$_OUTPUT" \
                 --cluster="$_CLUSTER" \
                 --tenant="$_TENANT" \
                 $([ "$_UPDATE" = "1" ] && echo "--update") \
                 $([ "$_YES" = "1" ] && echo "--yes") \
                 $([ -n "$_PFSENSE_PASSWORD" ] && echo "--pfsense-password=$_PFSENSE_PASSWORD") \
-                $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--pfsense-ssh-password")
+                $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--pfsense-ssh-password") >/dev/null
         else
             sh "$ROCK8S_LIB_PATH/libexec/cluster/upgrade.sh" \
-                --output="$_FORMAT" \
+                --output="$_OUTPUT" \
                 --cluster="$_CLUSTER" \
                 --tenant="$_TENANT" \
                 $([ "$_UPDATE" = "1" ] && echo "--update") \
                 $([ "$_YES" = "1" ] && echo "--yes") \
                 $([ -n "$_PFSENSE_PASSWORD" ] && echo "--pfsense-password=$_PFSENSE_PASSWORD") \
-                $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--pfsense-ssh-password")
-
+                $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--pfsense-ssh-password") >/dev/null
         fi
     fi
     sh "$ROCK8S_LIB_PATH/libexec/cluster/configure.sh" \
-        --output="$_FORMAT" \
+        --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_UPDATE" = "1" ] && echo "--update") \
-        $([ "$_YES" = "1" ] && echo "--yes")
-    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_FORMAT"
+        $([ "$_YES" = "1" ] && echo "--yes") >/dev/null
+    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_OUTPUT"
 }
 
 _main "$@"

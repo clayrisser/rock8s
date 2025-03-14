@@ -19,6 +19,9 @@ OPTIONS
        -h, --help
               display this help message and exit
 
+       -o, --output=<format>
+              output format (json, yaml, text)
+
        -c, --cluster <cluster>
               cluster name
 
@@ -93,6 +96,7 @@ _count_nodes() {
 }
 
 _main() {
+    _OUTPUT="${ROCK8S_OUTPUT}"
     _PURPOSE=""
     _NODE_NUM=""
     _NODE_IP=""
@@ -104,6 +108,18 @@ _main() {
             -h|--help)
                 _help
                 exit 0
+                ;;
+            -o|--output|-o=*|--output=*)
+                case "$1" in
+                    *=*)
+                        _OUTPUT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _OUTPUT="$2"
+                        shift 2
+                        ;;
+                esac
                 ;;
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
@@ -174,6 +190,7 @@ _main() {
     done
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_OUTPUT="$_OUTPUT"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
