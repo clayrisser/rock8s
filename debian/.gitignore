@@ -1,0 +1,5 @@
+/.debhelper
+/debhelper-build-*
+/files
+/rock8s
+/rock8s.substvars

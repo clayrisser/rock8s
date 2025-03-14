@@ -1,0 +1,30 @@
+Source: rock8s
+Section: utils
+Priority: optional
+Maintainer: Clay Risser <clay@clayrisser.com>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+Standards-Version: 4.6.2
+Homepage: https://github.com/bitspur/rock8s
+Vcs-Browser: https://github.com/bitspur/rock8s
+Vcs-Git: https://github.com/bitspur/rock8s.git
+
+Package: rock8s
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ansible,
+ bind9-host,
+ bsdextrautils,
+ jq,
+ python3,
+ python3-pip,
+ python3-venv,
+ python3-yaml,
+ whiptail,
+Description: universal kubernetes cluster
+ A comprehensive tool for creating, configuring, and managing Kubernetes clusters
+ across various environments. Features include automated cluster provisioning,
+ network configuration with pfSense integration, HAProxy load balancing,
+ and advanced cluster operations management.
