@@ -24,20 +24,34 @@ OPTIONS
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to destroy nodes for
+       -c, --cluster <cluster>
+              cluster name
 
        --force
-              skip dependency checks for destruction order
+              skip dependency checks
 
        -y, --yes
               skip confirmation prompt
+
+EXAMPLE
+       # destroy worker nodes
+       rock8s nodes destroy --cluster mycluster worker
+
+       # destroy master nodes
+       rock8s nodes destroy --cluster mycluster master
+
+       # force destroy pfsense nodes without confirmation
+       rock8s nodes destroy --cluster mycluster --force --yes pfsense
+
+SEE ALSO
+       rock8s nodes apply --help
+       rock8s nodes ls --help
+       rock8s nodes ssh --help
 EOF
 }
 
@@ -66,7 +80,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -119,6 +133,11 @@ _main() {
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
         fail "purpose $_PURPOSE not found"
+    fi
+    export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        fail "cluster name required"
     fi
     _CLUSTER_DIR="$(get_cluster_dir)"
     _PROVIDER="$(get_provider)"

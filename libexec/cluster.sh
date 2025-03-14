@@ -13,10 +13,20 @@ NAME
        rock8s cluster - manage kubernetes clusters
 
 SYNOPSIS
-       rock8s cluster [-h] [-o <format>] [--cluster <cluster>] <command> [<args>]
+       rock8s cluster [-h] [-o <format>] [-c|--cluster <cluster>] <command> [<args>]
 
 DESCRIPTION
        create and manage kubernetes clusters
+
+OPTIONS
+       -h, --help
+              show this help message
+
+       -o, --output=<format>
+              output format
+
+       -c, --cluster <cluster>
+              cluster name
 
 COMMANDS
        configure
@@ -40,6 +50,22 @@ COMMANDS
        reset
               reset/remove the cluster
 
+       use
+              select a default cluster for subsequent commands
+
+EXAMPLE
+       # install a new kubernetes cluster
+       rock8s cluster install --cluster mycluster --yes
+
+       # configure with operators after installation
+       rock8s cluster configure --cluster mycluster
+
+       # set a default cluster for other commands
+       rock8s cluster use mycluster mytenant
+
+       # login to an existing cluster
+       rock8s cluster login --cluster mycluster
+
 SEE ALSO
        rock8s cluster configure --help
        rock8s cluster install --help
@@ -48,14 +74,16 @@ SEE ALSO
        rock8s cluster scale --help
        rock8s cluster login --help
        rock8s cluster reset --help
+       rock8s cluster use --help
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _CLUSTER="$ROCK8S_CLUSTER"
     _CMD=""
     _CMD_ARGS=""
+    _TENANT="$ROCK8S_TENANT"
+    _CLUSTER="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -74,7 +102,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -86,7 +114,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            configure|install|upgrade|node|scale|login|reset)
+            configure|install|upgrade|node|scale|login|reset|use)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

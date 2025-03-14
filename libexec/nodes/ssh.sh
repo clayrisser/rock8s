@@ -10,57 +10,50 @@ NAME
        rock8s nodes ssh - ssh into a cluster node
 
 SYNOPSIS
-       rock8s nodes ssh [-h] [--cluster <cluster>] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]
+       rock8s nodes ssh [-h] [-c|--cluster <cluster>] [-t|--tenant <tenant>] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]
 
 DESCRIPTION
-       SSH into a specific node in the cluster. The node can be specified in three ways:
-       1. By purpose and number (e.g., master 1)
-       2. By full node name (e.g., master-1)
-       3. By IP address
-
-       If only one node exists for the specified purpose, the number can be omitted.
+       ssh into a specific node in the cluster
 
 OPTIONS
        -h, --help
               display this help message and exit
 
-       --cluster <cluster>
-              name of the cluster to manage
+       -c, --cluster <cluster>
+              cluster name
+
+       -t, --tenant <tenant>
+              tenant name
 
        <purpose> <number>
-              node purpose and number:
-              - master N  : ssh into master-N node
-              - worker N  : ssh into worker-N node
-              - pfsense N : ssh into pfsense-N node
+              node purpose and number
 
        <node_name>
-              full node name (e.g., master-1, worker-2, pfsense-1)
+              full node name
 
        <ip>
-              node IP address
+              node ip address
 
        <ssh_args>
-              additional arguments to pass to ssh
+              additional arguments for ssh
 
-EXAMPLES
-       # SSH by purpose and number
-       rock8s nodes ssh --cluster mycluster master 1
-       rock8s nodes ssh --cluster mycluster worker 2
-       rock8s nodes ssh --cluster mycluster pfsense 1
+EXAMPLE
+       # ssh into the first master node
+       rock8s nodes ssh master 1
 
-       # SSH by purpose only (when only one node exists)
-       rock8s nodes ssh --cluster mycluster master    # connects to master-1 if it's the only master
+       # ssh into a node by name
+       rock8s nodes ssh master-1
 
-       # SSH by node name
-       rock8s nodes ssh --cluster mycluster master-1
-       rock8s nodes ssh --cluster mycluster worker-2
-       rock8s nodes ssh --cluster mycluster pfsense-1
+       # ssh into a node by ip address
+       rock8s nodes ssh 192.168.1.10
 
-       # SSH by IP
-       rock8s nodes ssh --cluster mycluster 172.20.0.3
+       # ssh with additional arguments
+       rock8s nodes ssh master 1 -L 8080:localhost:8080
 
-       # SSH with custom arguments
-       rock8s nodes ssh --cluster mycluster master 1 -i ~/.ssh/custom_key
+SEE ALSO
+       rock8s nodes ls --help
+       rock8s nodes apply --help
+       rock8s nodes destroy --help
 EOF
 }
 
@@ -105,13 +98,14 @@ _main() {
     _NODE_IP=""
     _SSH_ARGS=""
     _CLUSTER="$ROCK8S_CLUSTER"
+    _TENANT="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
                 _help
                 exit 0
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -119,6 +113,18 @@ _main() {
                         ;;
                     *)
                         _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -t|--tenant|-t=*|--tenant=*)
+                case "$1" in
+                    *=*)
+                        _TENANT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _TENANT="$2"
                         shift 2
                         ;;
                 esac
@@ -145,7 +151,7 @@ _main() {
                     _NODE_NUM="${1##*-}"
                     case "$_PURPOSE" in
                         master|worker|pfsense) ;;
-                        *) fail_with_nodes "Invalid node name: $1 (must be master-N, worker-N, or pfsense-N)" ;;
+                        *) fail_with_nodes "invalid node name: $1 (must be master-N, worker-N, or pfsense-N)" ;;
                     esac
                     shift
                     if [ $# -gt 0 ]; then
@@ -166,9 +172,10 @@ _main() {
                 ;;
         esac
     done
+    export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
     if [ -z "$ROCK8S_CLUSTER" ]; then
-        fail "cluster name required (use --cluster)"
+        fail "cluster name required"
     fi
     if [ -n "$_NODE_IP" ]; then
         _PRIVATE_IPS="$(get_master_private_ipv4s)"
@@ -205,15 +212,15 @@ _main() {
                 _COUNT=$((_COUNT + 1))
             done
         fi
-        [ -z "$_PURPOSE" ] && fail_with_nodes "No node found with IP: $_NODE_IP"
+        [ -z "$_PURPOSE" ] && fail_with_nodes "no node found with ip $_NODE_IP"
     else
-        [ -z "$_PURPOSE" ] && fail_with_nodes "Node identifier required (purpose+number, node name, or IP)"
+        [ -z "$_PURPOSE" ] && fail_with_nodes "node identifier required"
         if [ -z "$_NODE_NUM" ]; then
             _NODE_COUNT="$(_count_nodes "$_PURPOSE")"
             if [ "$_NODE_COUNT" -eq 1 ]; then
                 _NODE_NUM=1
             else
-                fail_with_nodes "Node number required (found $_NODE_COUNT ${_PURPOSE} nodes)" "$_PURPOSE"
+                fail_with_nodes "node number required (found $_NODE_COUNT ${_PURPOSE} nodes)" "$_PURPOSE"
             fi
         fi
     fi
@@ -231,7 +238,7 @@ _main() {
             _PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
             ;;
     esac
-    [ -z "$_SSH_KEY" ] && fail_with_nodes "SSH key not found for $_PURPOSE nodes" "$_PURPOSE"
+    [ -z "$_SSH_KEY" ] && fail_with_nodes "ssh key not found for $_PURPOSE nodes" "$_PURPOSE"
     if [ -z "$_NODE_IP" ]; then
         _NODE_IP="$(echo "$_PRIVATE_IPS" | tr ' ' '\n' | sed -n "${_NODE_NUM}p")"
         [ -z "$_NODE_IP" ] && fail_with_nodes "$_PURPOSE-$_NODE_NUM not found" "$_PURPOSE"

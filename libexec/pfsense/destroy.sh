@@ -7,36 +7,50 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense destroy - destroy pfSense firewall
+       rock8s pfsense destroy - destroy pfsense firewall
 
 SYNOPSIS
        rock8s pfsense destroy [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] [--force] [--non-interactive]
 
 DESCRIPTION
-       destroy pfSense firewall nodes
+       destroy pfsense firewall nodes.
 
 OPTIONS
        -h, --help
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to destroy pfSense for (required)
+       -c, --cluster <cluster>
+              cluster name
 
        -y, --yes
               skip confirmation prompt
 
        --force
-              skip dependency checks for destruction order
+              skip dependency checks
 
        --non-interactive
-              fail instead of prompting for missing values
+              fail instead of prompting
+
+EXAMPLE
+       # destroy pfsense firewall with confirmation
+       rock8s pfsense destroy --cluster mycluster
+
+       # destroy pfsense firewall without confirmation
+       rock8s pfsense destroy --cluster mycluster --yes
+
+       # force destroy pfsense firewall
+       rock8s pfsense destroy --cluster mycluster --force --yes
+
+SEE ALSO
+       rock8s pfsense configure --help
+       rock8s pfsense publish --help
+       rock8s nodes destroy --help
 EOF
 }
 
@@ -77,7 +91,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"

@@ -7,37 +7,43 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense - manage pfSense firewall
+       rock8s pfsense - manage pfsense firewall
 
 SYNOPSIS
-       rock8s pfsense [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] <command>
+       rock8s pfsense [-h] [-o <format>] [-c|--cluster <cluster>] [-t <tenant>] <command>
 
 DESCRIPTION
-       configure and manage pfSense firewall
+       configure and manage pfsense firewall
 
 COMMANDS
        configure
-              configure pfSense settings and rules
+              configure pfsense settings and rules
 
        destroy
-              destroy pfSense firewall nodes
+              destroy pfsense firewall nodes
 
        publish
-              publish HAProxy configuration
+              publish haproxy configuration
 
 OPTIONS
        -h, --help
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to manage pfSense for
+       -c, --cluster <cluster>
+              cluster name
+
+EXAMPLE
+       # configure pfsense for a cluster
+       rock8s pfsense configure --cluster mycluster
+
+       # publish haproxy configuration
+       rock8s pfsense publish --cluster mycluster --password mypassword
 
 SEE ALSO
        rock8s pfsense configure --help
@@ -81,7 +87,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"

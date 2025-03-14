@@ -13,21 +13,20 @@ SYNOPSIS
        rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [-y|--yes] [--non-interactive]
 
 DESCRIPTION
-       upgrade an existing kubernetes cluster using kubespray
+       upgrade an existing kubernetes cluster
 
 OPTIONS
        -h, --help
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to upgrade (required)
+       -c, --cluster <cluster>
+              cluster name
 
        --update
               update ansible collections
@@ -36,13 +35,28 @@ OPTIONS
               skip confirmation prompt
 
        --non-interactive
-              fail instead of prompting for missing values
+              fail instead of prompting
 
        --pfsense-password <password>
               admin password
 
        --pfsense-ssh-password
-              use password authentication for ssh instead of an ssh key
+              use password authentication for ssh
+
+EXAMPLE
+       # upgrade a cluster
+       rock8s cluster upgrade --cluster mycluster
+
+       # upgrade a cluster with automatic approval
+       rock8s cluster upgrade --cluster mycluster --yes
+
+       # upgrade a cluster and update ansible collections
+       rock8s cluster upgrade --cluster mycluster --update
+
+SEE ALSO
+       rock8s cluster install --help
+       rock8s cluster configure --help
+       rock8s cluster login --help
 EOF
 }
 
@@ -85,7 +99,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -143,11 +157,11 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CLUSTER" ]; then
-        fail "cluster name required"
-    fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        fail "cluster name required"
+    fi
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
         --output="$_FORMAT" \

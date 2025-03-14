@@ -13,15 +13,17 @@ SYNOPSIS
        rock8s nodes ls [-h] [--cluster <cluster>] [<purpose>]
 
 DESCRIPTION
-       List all nodes in the cluster grouped by their purpose.
-       The output is a JSON object where each node name maps to its private IP address.
+       list nodes in the cluster
 
 OPTIONS
        -h, --help
               display this help message and exit
 
-       --cluster <cluster>
-              name of the cluster to manage
+       -c, --cluster <cluster>
+              cluster name
+
+       -t, --tenant <tenant>
+              tenant name
 
        <purpose>
               filter nodes by purpose:
@@ -29,24 +31,27 @@ OPTIONS
               - worker  : list only worker nodes
               - pfsense : list only pfsense nodes
 
-EXAMPLES
-       # List all nodes
+EXAMPLE
+       # list all nodes in a cluster
        rock8s nodes ls --cluster mycluster
 
-       # List only master nodes
+       # list only master nodes
        rock8s nodes ls --cluster mycluster master
 
-       # List only worker nodes
-       rock8s nodes ls --cluster mycluster worker
+       # list only worker nodes with json output
+       rock8s nodes ls -o json --cluster mycluster worker
 
-       # List only pfsense nodes
-       rock8s nodes ls --cluster mycluster pfsense
+SEE ALSO
+       rock8s nodes apply --help
+       rock8s nodes destroy --help
+       rock8s nodes ssh --help
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _CLUSTER="$ROCK8S_CLUSTER"
+    _TENANT="$ROCK8S_TENANT"
     _FILTER=""
     while test $# -gt 0; do
         case "$1" in
@@ -54,7 +59,7 @@ _main() {
                 _help
                 exit 0
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -62,6 +67,18 @@ _main() {
                         ;;
                     *)
                         _CLUSTER="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -t|--tenant|-t=*|--tenant=*)
+                case "$1" in
+                    *=*)
+                        _TENANT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _TENANT="$2"
                         shift 2
                         ;;
                 esac
@@ -76,9 +93,10 @@ _main() {
                 ;;
         esac
     done
+    export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
     if [ -z "$ROCK8S_CLUSTER" ]; then
-        fail "cluster name required (use --cluster)"
+        fail "cluster name required"
     fi
     _MASTER_PRIVATE_IPS="$(get_master_private_ipv4s)"
     _WORKER_PRIVATE_IPS="$(get_worker_private_ipv4s)"

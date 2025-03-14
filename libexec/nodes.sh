@@ -17,10 +17,10 @@ DESCRIPTION
 
 OPTIONS
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to manage nodes for
+       -c, --cluster <cluster>
+              cluster name
 
 COMMANDS
        apply
@@ -34,6 +34,16 @@ COMMANDS
 
        ssh
               ssh into a specific node
+
+EXAMPLE
+       # list all nodes in a cluster
+       rock8s nodes ls --cluster mycluster
+
+       # ssh into the first master node
+       rock8s nodes ssh master 1
+
+       # create or update worker nodes
+       rock8s nodes apply --cluster mycluster worker
 
 SEE ALSO
        rock8s nodes apply --help
@@ -67,7 +77,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
