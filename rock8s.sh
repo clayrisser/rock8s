@@ -45,14 +45,13 @@ OPTIONS
               debug mode
 
        -o, --output=<format>
-              output format (default: json)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to manage
+       -c, --cluster <cluster>
+              cluster name
 
 COMMANDS
        nodes
@@ -62,7 +61,20 @@ COMMANDS
               create kubernetes clusters
 
        pfsense
-              configure and manage pfSense firewall
+              configure and manage pfsense firewall
+
+EXAMPLE
+       # create a cluster
+       rock8s cluster configure --cluster mycluster --yes
+
+       # list nodes in a cluster
+       rock8s nodes ls --cluster mycluster
+
+       # ssh into a worker node
+       rock8s nodes ssh worker 1
+
+       # use a specific tenant and output format
+       rock8s -t mytenant -o yaml nodes ls
 
 SEE ALSO
        rock8s nodes --help
@@ -114,7 +126,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -141,6 +153,15 @@ _main() {
     if [ -z "$_CMD" ]; then
         _help
         exit 1
+    fi
+    if [ -f "$ROCK8S_STATE_HOME/current" ]; then
+        . "$ROCK8S_STATE_HOME/current"
+        if [ -n "$tenant" ]; then
+            export ROCK8S_TENANT="$tenant"
+        fi
+        if [ -n "$cluster" ]; then
+            export ROCK8S_CLUSTER="$cluster"
+        fi
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"

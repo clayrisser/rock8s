@@ -19,6 +19,10 @@ COMMANDS
        rm
               remove a node from the cluster
 
+EXAMPLE
+       # remove a node from a cluster
+       rock8s cluster node rm --cluster mycluster worker-2
+
 SEE ALSO
        rock8s cluster node rm --help
 EOF

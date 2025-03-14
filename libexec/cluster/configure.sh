@@ -13,32 +13,29 @@ SYNOPSIS
        rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--non-interactive] --cluster <cluster> [--kubeconfig <path>] [--update] [--pfsense-password <password>] [--pfsense-ssh-password] [--skip-kubespray]
 
 DESCRIPTION
-       configure a kubernetes cluster with the necessary infrastructure using terraform.
-       if the cluster does not exist, it will be installed first.
-       if the cluster exists, it will be upgraded first.
+       configure a kubernetes cluster with the necessary infrastructure
 
 OPTIONS
        -h, --help
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to configure (required)
+       -c, --cluster <cluster>
+              cluster name
 
        --kubeconfig <path>
-              path to the kubeconfig file
+              path to kubeconfig
 
        -y, --yes
-              automatically approve operations without prompting
+              automatically approve operations
 
        --non-interactive
-              fail instead of prompting for missing values
+              fail instead of prompting
 
        --update
               update ansible collections
@@ -47,10 +44,22 @@ OPTIONS
               admin password
 
        --pfsense-ssh-password
-              use password authentication for ssh instead of an ssh key
+              use password authentication for ssh
 
        --skip-kubespray
-              skip kubespray installation/upgrade steps
+              skip kubespray installation steps
+
+EXAMPLE
+       # configure a cluster with automatic approval
+       rock8s cluster configure --cluster mycluster --yes
+
+       # configure a cluster with a specific tenant and password
+       rock8s cluster configure --cluster mycluster --tenant mytenant --pfsense-password mypassword
+
+SEE ALSO
+       rock8s cluster install --help
+       rock8s cluster upgrade --help
+       rock8s pfsense configure --help
 EOF
 }
 
@@ -103,7 +112,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -169,11 +178,11 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CLUSTER" ]; then
-        fail "cluster name required (use --cluster)"
-    fi
-    export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        fail "cluster name required"
+    fi
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _CLUSTER_DIR="$(get_cluster_dir)"
     _ADDONS_DIR="$_CLUSTER_DIR/addons"

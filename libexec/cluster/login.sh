@@ -22,24 +22,37 @@ SYNOPSIS
        rock8s cluster login [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--kubeconfig <path>]
 
 DESCRIPTION
-       login to kubernetes cluster and configure kubectl
+       login to kubernetes cluster
 
 OPTIONS
        -h, --help
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to login to (required)
+       -c, --cluster <cluster>
+              cluster name
 
        --kubeconfig <path>
-              path to the kubeconfig file (default: $HOME/.kube/config)
+              path to kubeconfig
+
+EXAMPLE
+       # login to a cluster
+       rock8s cluster login --cluster mycluster
+
+       # login with a specific kubeconfig path
+       rock8s cluster login --cluster mycluster --kubeconfig ~/.kube/my-config
+
+       # login with json output format
+       rock8s cluster login --cluster mycluster -o json
+
+SEE ALSO
+       rock8s cluster configure --help
+       rock8s cluster use --help
 EOF
 }
 
@@ -79,7 +92,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"

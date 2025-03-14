@@ -24,23 +24,40 @@ OPTIONS
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to create/update nodes for (required)
+       -c, --cluster <cluster>
+              cluster name
 
        --force
-              skip dependency checks for creation order
+              skip dependency checks
 
        --non-interactive
-              fail instead of prompting for missing values
+              fail instead of prompting
 
        -y, --yes
               skip confirmation prompt
+
+EXAMPLE
+       # create pfsense nodes
+       rock8s nodes apply --cluster mycluster pfsense
+
+       # create master nodes
+       rock8s nodes apply --cluster mycluster master
+
+       # create worker nodes
+       rock8s nodes apply --cluster mycluster worker
+
+       # update existing nodes with automatic approval
+       rock8s nodes apply --cluster mycluster --yes worker
+
+SEE ALSO
+       rock8s nodes destroy --help
+       rock8s nodes ls --help
+       rock8s nodes ssh --help
 EOF
 }
 
@@ -70,7 +87,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -121,12 +138,17 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_PURPOSE" ] || [ -z "$_CLUSTER" ]; then
+    if [ -z "$_PURPOSE" ]; then
         _help
         exit 1
     fi
     if ! echo "$_PURPOSE" | grep -qE '^(pfsense|master|worker)$'; then
         fail "$_PURPOSE is invalid"
+    fi
+    export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$_CLUSTER"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        fail "cluster name required"
     fi
     export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _CLUSTER_DIR="$(get_cluster_dir)"

@@ -13,24 +13,35 @@ SYNOPSIS
        rock8s cluster reset [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes]
 
 DESCRIPTION
-       reset kubernetes cluster (removes all kubernetes components but keeps the infrastructure)
+       reset kubernetes cluster
 
 OPTIONS
        -h, --help
               show this help message
 
        -o, --output=<format>
-              output format (default: text)
-              supported formats: text, json, yaml
+              output format
 
        -t, --tenant <tenant>
-              tenant name (default: current user)
+              tenant name
 
-       --cluster <cluster>
-              name of the cluster to reset (required)
+       -c, --cluster <cluster>
+              cluster name
 
        -y, --yes
               skip confirmation prompt
+
+EXAMPLE
+       # reset a cluster with confirmation
+       rock8s cluster reset --cluster mycluster
+
+       # reset a cluster without confirmation
+       rock8s cluster reset --cluster mycluster --yes
+
+SEE ALSO
+       rock8s cluster install --help
+       rock8s cluster configure --help
+       rock8s nodes destroy --help
 EOF
 }
 
@@ -69,7 +80,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            --cluster|--cluster=*)
+            -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
                         _CLUSTER="${1#*=}"
@@ -95,11 +106,11 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CLUSTER" ]; then
-        fail "cluster name required"
-    fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        fail "cluster name required"
+    fi
     _CLUSTER_DIR="$(get_cluster_dir)"
     _KUBESPRAY_DIR="$(get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
