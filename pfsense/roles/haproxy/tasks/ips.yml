@@ -113,7 +113,7 @@
     require_once("interfaces.inc");
     require_once("/etc/inc/interfaces.inc");
     require_once("/etc/inc/services.inc");
-    $json_str = fileget_contents('/tmp/check_result.json');
+    $json_str = file_get_contents('/tmp/check_result.json');
     if ($json_str === false) {
         exit(1);
     }

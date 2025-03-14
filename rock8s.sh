@@ -13,6 +13,7 @@ fi
 : "${ROCK8S_CONFIG_DIRS:=$ROCK8S_CONFIG_HOME:${XDG_CONFIG_DIRS:-/etc}/rock8s}"
 : "${ROCK8S_STATE_HOME:=${XDG_STATE_HOME:-$HOME/.local/state}/rock8s}"
 : "${ROCK8S_STATE_ROOT:=/var/lib/rock8s}"
+: "${ROCK8S_TENANT:=default}"
 export ANSIBLE_NOCOWS=1
 export ROCK8S_CONFIG_HOME
 export ROCK8S_CONFIG_DIRS
@@ -29,7 +30,7 @@ fi
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s - kubernetes cluster management cli
+       rock8s
 
 SYNOPSIS
        rock8s [-h] [-d] [-o <format>] <command> [<args>]
@@ -87,11 +88,17 @@ _main() {
     _FORMAT="json"
     _CMD=""
     _CMD_ARGS=""
+    if [ -f "$ROCK8S_STATE_HOME/current" ]; then
+        . "$ROCK8S_STATE_HOME/current"
+        if [ -n "$tenant" ]; then
+            export ROCK8S_TENANT="$tenant"
+        fi
+        if [ -n "$cluster" ]; then
+            export ROCK8S_CLUSTER="$cluster"
+        fi
+    fi
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
-    if [ -z "$_TENANT" ]; then
-        _TENANT="default"
-    fi
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -153,15 +160,6 @@ _main() {
     if [ -z "$_CMD" ]; then
         _help
         exit 1
-    fi
-    if [ -f "$ROCK8S_STATE_HOME/current" ]; then
-        . "$ROCK8S_STATE_HOME/current"
-        if [ -n "$tenant" ]; then
-            export ROCK8S_TENANT="$tenant"
-        fi
-        if [ -n "$cluster" ]; then
-            export ROCK8S_CLUSTER="$cluster"
-        fi
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"

@@ -7,13 +7,13 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster configure - configure a kubernetes cluster
+       rock8s cluster configure
 
 SYNOPSIS
-       rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--non-interactive] --cluster <cluster> [--kubeconfig <path>] [--update] [--pfsense-password <password>] [--pfsense-ssh-password] [--skip-kubespray]
+       rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--cluster <cluster>] [--kubeconfig <path>] [--update]
 
 DESCRIPTION
-       configure a kubernetes cluster with the necessary infrastructure
+       configure an existing kubernetes cluster with the necessary infrastructure
 
 OPTIONS
        -h, --help
@@ -34,46 +34,30 @@ OPTIONS
        -y, --yes
               automatically approve operations
 
-       --non-interactive
-              fail instead of prompting
-
        --update
               update ansible collections
-
-       --pfsense-password <password>
-              admin password
-
-       --pfsense-ssh-password
-              use password authentication for ssh
-
-       --skip-kubespray
-              skip kubespray installation steps
 
 EXAMPLE
        # configure a cluster with automatic approval
        rock8s cluster configure --cluster mycluster --yes
 
-       # configure a cluster with a specific tenant and password
-       rock8s cluster configure --cluster mycluster --tenant mytenant --pfsense-password mypassword
+       # configure a cluster with a custom kubeconfig
+       rock8s cluster configure --cluster mycluster --kubeconfig /path/to/kubeconfig
 
 SEE ALSO
+       rock8s cluster apply --help
        rock8s cluster install --help
        rock8s cluster upgrade --help
-       rock8s pfsense configure --help
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _YES=0
     _TENANT="$ROCK8S_TENANT"
-    _KUBECONFIG=""
-    _NON_INTERACTIVE=""
+    _CLUSTER="$ROCK8S_CLUSTER"
+    _YES="0"
     _UPDATE=""
-    _PFSENSE_PASSWORD=""
-    _PFSENSE_SSH_PASSWORD=""
-    _SKIP_KUBESPRAY=""
+    _KUBECONFIG=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -91,14 +75,6 @@ _main() {
                         shift 2
                         ;;
                 esac
-                ;;
-            -y|--yes)
-                _YES=1
-                shift
-                ;;
-            --non-interactive)
-                _NON_INTERACTIVE="1"
-                shift
                 ;;
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
@@ -136,36 +112,12 @@ _main() {
                         ;;
                 esac
                 ;;
-            --update)
-                _UPDATE="1"
+            -y|--yes)
+                _YES="1"
                 shift
                 ;;
-            --pfsense-password|--pfsense-password=*)
-                case "$1" in
-                    *=*)
-                        _PFSENSE_PASSWORD="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        _PFSENSE_PASSWORD="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            --pfsense-ssh-password|--pfsense-ssh-password=*)
-                case "$1" in
-                    *=*)
-                        _PFSENSE_SSH_PASSWORD="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        _PFSENSE_SSH_PASSWORD="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            --skip-kubespray)
-                _SKIP_KUBESPRAY="1"
+            --update)
+                _UPDATE="1"
                 shift
                 ;;
             -*)
@@ -183,32 +135,8 @@ _main() {
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _CLUSTER_DIR="$(get_cluster_dir)"
     _ADDONS_DIR="$_CLUSTER_DIR/addons"
-    if [ -z "$_SKIP_KUBESPRAY" ]; then
-        if [ ! -f "$_CLUSTER_DIR/kube.yaml" ]; then
-            sh "$ROCK8S_LIB_PATH/libexec/cluster/install.sh" \
-                --output="$_FORMAT" \
-                --cluster="$_CLUSTER" \
-                --tenant="$_TENANT" \
-                $([ "$_YES" = "1" ] && echo "--yes") \
-                $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
-                $([ "$_UPDATE" = "1" ] && echo "--update") \
-                $([ -n "$_PFSENSE_PASSWORD" ] && echo "--pfsense-password=$_PFSENSE_PASSWORD") \
-                $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--pfsense-ssh-password=$_PFSENSE_SSH_PASSWORD")
-        else
-            sh "$ROCK8S_LIB_PATH/libexec/cluster/upgrade.sh" \
-                --output="$_FORMAT" \
-                --cluster="$_CLUSTER" \
-                --tenant="$_TENANT" \
-                $([ "$_YES" = "1" ] && echo "--yes") \
-                $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
-                $([ "$_UPDATE" = "1" ] && echo "--update") \
-                $([ -n "$_PFSENSE_PASSWORD" ] && echo "--pfsense-password=$_PFSENSE_PASSWORD") \
-                $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--pfsense-ssh-password=$_PFSENSE_SSH_PASSWORD")
-        fi
-    fi
     mkdir -p "$_ADDONS_DIR"
     rm -rf "$_ADDONS_DIR/terraform"
     cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"

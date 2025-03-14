@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s nodes ls - list cluster nodes
+       rock8s nodes ls
 
 SYNOPSIS
        rock8s nodes ls [-h] [--cluster <cluster>] [<purpose>]

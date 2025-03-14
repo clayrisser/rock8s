@@ -7,10 +7,10 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster upgrade - upgrade kubernetes cluster
+       rock8s cluster upgrade
 
 SYNOPSIS
-       rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [-y|--yes] [--non-interactive]
+       rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [-y|--yes]
 
 DESCRIPTION
        upgrade an existing kubernetes cluster
@@ -33,9 +33,6 @@ OPTIONS
 
        -y, --yes
               skip confirmation prompt
-
-       --non-interactive
-              fail instead of prompting
 
        --pfsense-password <password>
               admin password
@@ -66,7 +63,6 @@ _main() {
     _TENANT="$ROCK8S_TENANT"
     _UPDATE=""
     _YES=""
-    _NON_INTERACTIVE=""
     _PFSENSE_PASSWORD=""
     _PFSENSE_SSH_PASSWORD=""
     while test $# -gt 0; do
@@ -119,10 +115,6 @@ _main() {
                 _YES="1"
                 shift
                 ;;
-            -n|--non-interactive)
-                _NON_INTERACTIVE="1"
-                shift
-                ;;
             --pfsense-password|--pfsense-password=*)
                 case "$1" in
                     *=*)
@@ -162,14 +154,12 @@ _main() {
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
     sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
         --output="$_FORMAT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_UPDATE" = "1" ] && echo "--update") \
         $([ "$_YES" = "1" ] && echo "--yes") \
-        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         master
     sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
         --output="$_FORMAT" \
@@ -177,7 +167,6 @@ _main() {
         --tenant="$_TENANT" \
         $([ "$_UPDATE" = "1" ] && echo "--update") \
         $([ "$_YES" = "1" ] && echo "--yes") \
-        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         worker
     _KUBESPRAY_DIR="$(get_kubespray_dir)"
     if [ ! -d "$_KUBESPRAY_DIR" ]; then
@@ -252,9 +241,8 @@ EOF
         --output="$_FORMAT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
-        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
-        $([ -n "$_PFSENSE_SSH_PASSWORD" ] && echo "--ssh-password=$_PFSENSE_SSH_PASSWORD")
+        $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password")
     "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
         --output="$_FORMAT" \
         --cluster="$_CLUSTER" \

@@ -10,7 +10,7 @@ export KUBESPRAY_REPO="${KUBESPRAY_REPO:-https://github.com/kubernetes-sigs/kube
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster - manage kubernetes clusters
+       rock8s cluster
 
 SYNOPSIS
        rock8s cluster [-h] [-o <format>] [-c|--cluster <cluster>] <command> [<args>]
@@ -29,6 +29,9 @@ OPTIONS
               cluster name
 
 COMMANDS
+       apply
+              create nodes, install and configure a kubernetes cluster in one step
+
        configure
               configure an existing cluster with operators
 
@@ -54,7 +57,10 @@ COMMANDS
               select a default cluster for subsequent commands
 
 EXAMPLE
-       # install a new kubernetes cluster
+       # create and setup a new kubernetes cluster in one step
+       rock8s cluster apply --cluster mycluster --yes
+
+       # install kubernetes on existing nodes
        rock8s cluster install --cluster mycluster --yes
 
        # configure with operators after installation
@@ -67,6 +73,7 @@ EXAMPLE
        rock8s cluster login --cluster mycluster
 
 SEE ALSO
+       rock8s cluster apply --help
        rock8s cluster configure --help
        rock8s cluster install --help
        rock8s cluster upgrade --help
@@ -114,7 +121,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            configure|install|upgrade|node|scale|login|reset|use)
+            apply|configure|install|upgrade|node|scale|login|reset|use)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

@@ -7,10 +7,10 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s nodes apply - create or update cluster nodes
+       rock8s nodes apply
 
 SYNOPSIS
-       rock8s nodes apply [-h] [-o <format>] [--non-interactive] [--cluster <cluster>] [--tenant <tenant>] [--force] <purpose>
+       rock8s nodes apply [-h] [-o <format>] [--cluster <cluster>] [--tenant <tenant>] [--force] <purpose>
 
 DESCRIPTION
        create new cluster nodes or update existing ones for a specific purpose (pfsense, master, or worker)
@@ -34,9 +34,6 @@ OPTIONS
 
        --force
               skip dependency checks
-
-       --non-interactive
-              fail instead of prompting
 
        -y, --yes
               skip confirmation prompt
@@ -65,7 +62,6 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _PURPOSE=""
     _CLUSTER="$ROCK8S_CLUSTER"
-    _NON_INTERACTIVE=0
     _FORCE=0
     _YES=0
     _TENANT="$ROCK8S_TENANT"
@@ -101,10 +97,6 @@ _main() {
                 ;;
             --force)
                 _FORCE=1
-                shift
-                ;;
-            --non-interactive)
-                _NON_INTERACTIVE=1
                 shift
                 ;;
             -y|--yes)
@@ -150,7 +142,6 @@ _main() {
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _CLUSTER_DIR="$(get_cluster_dir)"
     _PROVIDER="$(get_provider)"
     _PURPOSE_DIR="$_CLUSTER_DIR/$_PURPOSE"

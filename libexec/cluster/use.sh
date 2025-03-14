@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster use - select a default cluster
+       rock8s cluster use
 
 SYNOPSIS
        rock8s cluster use [-h] [-o <format>] <cluster> [<tenant>]
@@ -93,16 +93,15 @@ _main() {
     fi
     _TENANT_DIR="$ROCK8S_CONFIG_HOME/tenants/$_TENANT"
     _CLUSTER_DIR="$_TENANT_DIR/clusters/$_CLUSTER"
-    if [ ! -d "$_TENANT_DIR" ]; then
-        fail "tenant '$_TENANT' does not exist"
+    if [ ! -d "$_TENANT_DIR" ] && [ "$_TENANT" != "default" ]; then
+        fail "tenant $_TENANT does not exist"
     fi
     if [ ! -d "$_CLUSTER_DIR" ]; then
-        fail "cluster '$_CLUSTER' does not exist in tenant '$_TENANT'"
+        fail "cluster $_CLUSTER does not exist in tenant $_TENANT"
     fi
-    _STATE_DIR="$ROCK8S_STATE_HOME"
-    mkdir -p "$_STATE_DIR"
-    echo "tenant=\"$_TENANT\"" > "$_STATE_DIR/current"
-    echo "cluster=\"$_CLUSTER\"" >> "$_STATE_DIR/current"
+    mkdir -p "$ROCK8S_STATE_HOME"
+    echo "tenant=\"$_TENANT\"" > "$ROCK8S_STATE_HOME/current"
+    echo "cluster=\"$_CLUSTER\"" >> "$ROCK8S_STATE_HOME/current"
     printf '{"cluster":"%s","tenant":"%s"}\n' \
         "$_CLUSTER" "$_TENANT" | \
         format_output "$_FORMAT" "cluster"
