@@ -7,13 +7,13 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster reset
+       rock8s pfsense apply
 
 SYNOPSIS
-       rock8s cluster reset [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes]
+       rock8s pfsense apply [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password] [-y|--yes]
 
 DESCRIPTION
-       reset kubernetes cluster
+       create and configure pfsense
 
 OPTIONS
        -h, --help
@@ -28,28 +28,43 @@ OPTIONS
        -c, --cluster <cluster>
               cluster name
 
+       --update
+              update ansible collections
+
+       --password <password>
+              admin password
+
+       --ssh-password
+              use password authentication for ssh
+
        -y, --yes
               skip confirmation prompt
 
 EXAMPLE
-       # reset a cluster with confirmation
-       rock8s cluster reset --cluster mycluster
+       # apply pfsense with automatic approval
+       rock8s pfsense apply --cluster mycluster --yes
 
-       # reset a cluster without confirmation
-       rock8s cluster reset --cluster mycluster --yes
+       # apply pfsense with a specific password
+       rock8s pfsense apply --cluster mycluster --password mypassword
+
+       # apply pfsense using password authentication for ssh
+       rock8s pfsense apply --cluster mycluster --ssh-password --password mypassword
 
 SEE ALSO
+       rock8s pfsense configure --help
+       rock8s pfsense destroy --help
        rock8s cluster install --help
-       rock8s cluster configure --help
-       rock8s nodes destroy --help
 EOF
 }
 
 _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
-    _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
-    _YES=""
+    _CLUSTER="$ROCK8S_CLUSTER"
+    _UPDATE=""
+    _PASSWORD=""
+    _SSH_PASSWORD=0
+    _YES=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -92,8 +107,28 @@ _main() {
                         ;;
                 esac
                 ;;
+            --password|--password=*)
+                case "$1" in
+                    *=*)
+                        _PASSWORD="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _PASSWORD="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --ssh-password)
+                _SSH_PASSWORD=1
+                shift
+                ;;
+            --update)
+                _UPDATE="1"
+                shift
+                ;;
             -y|--yes)
-                _YES="1"
+                _YES=1
                 shift
                 ;;
             -*)
@@ -111,23 +146,19 @@ _main() {
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    _CLUSTER_DIR="$(get_cluster_dir)"
-    _KUBESPRAY_DIR="$(get_kubespray_dir)"
-    if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        fail "kubespray directory not found"
-    fi
-    _VENV_DIR="$_KUBESPRAY_DIR/venv"
-    if [ ! -d "$_VENV_DIR" ]; then
-        fail "kubespray virtual environment not found"
-    fi
-    . "$_VENV_DIR/bin/activate"
-    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
-        ANSIBLE_HOST_KEY_CHECKING=False \
-        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/reset.yml" -b -v
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_FORMAT" cluster
+    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_YES" = "1" ] && echo "--yes") \
+        pfsense
+    sh "$ROCK8S_LIB_PATH/libexec/pfsense/configure.sh" \
+        --output="$_FORMAT" \
+        --cluster="$_CLUSTER" \
+        --tenant="$_TENANT" \
+        $([ "$_UPDATE" = "1" ] && echo "--update") \
+        $([ -n "$_PASSWORD" ] && echo "--password '$_PASSWORD'") \
+        $([ "$_SSH_PASSWORD" = "1" ] && echo "--ssh-password")
 }
 
 _main "$@"

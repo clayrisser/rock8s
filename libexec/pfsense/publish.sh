@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense publish - publish cluster configuration
+       rock8s pfsense publish
 
 SYNOPSIS
        rock8s pfsense publish [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--password <password>] [--ssh-password]
@@ -34,9 +34,6 @@ OPTIONS
        --ssh-password
               use password authentication for ssh
 
-       --non-interactive
-              fail instead of prompting
-
 EXAMPLE
        # publish configuration with a password
        rock8s pfsense publish --cluster mycluster --password mypassword
@@ -54,7 +51,6 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
-    _NON_INTERACTIVE=0
     _PASSWORD=""
     _SSH_PASSWORD=0
     while test $# -gt 0; do
@@ -115,10 +111,6 @@ _main() {
                 _SSH_PASSWORD=1
                 shift
                 ;;
-            --non-interactive)
-                _NON_INTERACTIVE=1
-                shift
-                ;;
             -*)
                 _help
                 exit 1
@@ -135,9 +127,8 @@ _main() {
         }
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
     _PFSENSE_DIR="$(get_cluster_dir)/pfsense"
-    if [ "$_SSH_PASSWORD" = "1" ] && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+    if [ "$_SSH_PASSWORD" = "1" ] && [ -z "$_PASSWORD" ]; then
         _PASSWORD="$(whiptail --title "Enter admin password" \
             --backtitle "Rock8s Configuration" \
             --passwordbox " " \

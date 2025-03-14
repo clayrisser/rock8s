@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s nodes ssh - ssh into a cluster node
+       rock8s nodes ssh
 
 SYNOPSIS
        rock8s nodes ssh [-h] [-c|--cluster <cluster>] [-t|--tenant <tenant>] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]

@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense - manage pfsense firewall
+       rock8s pfsense
 
 SYNOPSIS
        rock8s pfsense [-h] [-o <format>] [-c|--cluster <cluster>] [-t <tenant>] <command>
@@ -16,6 +16,9 @@ DESCRIPTION
        configure and manage pfsense firewall
 
 COMMANDS
+       apply
+              create and configure pfsense firewall nodes
+
        configure
               configure pfsense settings and rules
 
@@ -39,6 +42,9 @@ OPTIONS
               cluster name
 
 EXAMPLE
+       # create and configure pfsense for a cluster
+       rock8s pfsense apply --cluster mycluster
+
        # configure pfsense for a cluster
        rock8s pfsense configure --cluster mycluster
 
@@ -46,6 +52,7 @@ EXAMPLE
        rock8s pfsense publish --cluster mycluster --password mypassword
 
 SEE ALSO
+       rock8s pfsense apply --help
        rock8s pfsense configure --help
        rock8s pfsense destroy --help
        rock8s pfsense publish --help
@@ -99,7 +106,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            configure|destroy|publish)
+            apply|configure|destroy|publish)
                 _CMD="$1"
                 shift
                 break

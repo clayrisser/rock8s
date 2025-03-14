@@ -16,7 +16,7 @@ _cleanup() {
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster login - login to kubernetes cluster
+       rock8s cluster login
 
 SYNOPSIS
        rock8s cluster login [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--kubeconfig <path>]

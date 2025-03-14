@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster scale - scale cluster nodes
+       rock8s cluster scale
 
 SYNOPSIS
        rock8s cluster scale [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]

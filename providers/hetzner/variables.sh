@@ -43,6 +43,7 @@ runcmd:
   - sysctl -p /etc/sysctl.d/60-hugepages.conf
   - systemctl enable iscsid
   - systemctl start iscsid
+  - sudo apt-get update
 package_update: true
 package_upgrade: true
 packages:

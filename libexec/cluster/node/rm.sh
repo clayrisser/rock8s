@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster node rm - remove node from cluster
+       rock8s cluster node rm
 
 SYNOPSIS
        rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] <node>

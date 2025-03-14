@@ -59,7 +59,7 @@ get_tenant_config_file() {
         _PROVIDER="$(whiptail --title "Select Provider" --notags --menu "Choose your cloud provider" 0 0 0 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || fail "provider selection cancelled"
         mkdir -p "$(dirname "$_TENANT_CONFIG_FILE")"
         _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
-        if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_TENANT_CONFIG_FILE" ] && [ "$NON_INTERACTIVE" = "0" ]; then
+        if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_TENANT_CONFIG_FILE" ]; then
             . "$_PROVIDER_DIR/config.sh"
             if [ -f "$_TENANT_CONFIG_FILE" ]; then
                 . "$ROCK8S_LIB_PATH/providers/addons.sh"

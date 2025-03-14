@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s nodes - manage cluster nodes
+       rock8s nodes
 
 SYNOPSIS
        rock8s nodes <command> [<args>]
@@ -35,6 +35,9 @@ COMMANDS
        ssh
               ssh into a specific node
 
+       pubkey
+              get public ssh key for nodes
+
 EXAMPLE
        # list all nodes in a cluster
        rock8s nodes ls --cluster mycluster
@@ -45,11 +48,15 @@ EXAMPLE
        # create or update worker nodes
        rock8s nodes apply --cluster mycluster worker
 
+       # get public SSH key for master nodes
+       rock8s nodes pubkey master
+
 SEE ALSO
        rock8s nodes apply --help
        rock8s nodes destroy --help
        rock8s nodes ls --help
        rock8s nodes ssh --help
+       rock8s nodes pubkey --help
 EOF
 }
 
@@ -89,7 +96,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            apply|destroy|ls|ssh)
+            apply|destroy|ls|ssh|pubkey)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

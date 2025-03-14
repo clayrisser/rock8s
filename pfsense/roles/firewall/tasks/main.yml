@@ -35,7 +35,7 @@
 - name: Validate interface rules
   assert:
     that:
-      - item.value.rules is not defined or item.value.rules | typedebug == "list"
+      - item.value.rules is not defined or item.value.rules | type_debug == "list"
       - item.value.rules is not defined or item.value.rules | length <= 50
     fail_msg: "Invalid rules for interface {{ item.key }}. Rules must be a list with max 50 entries."
   loop: "{{ pfsense.network.interfaces | dict2items }}"

@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s nodes destroy - destroy cluster nodes
+       rock8s nodes destroy
 
 SYNOPSIS
        rock8s nodes destroy [-h] [-o <format>] [--cluster <cluster>] [--tenant <tenant>] [--force] [-y|--yes] <purpose>

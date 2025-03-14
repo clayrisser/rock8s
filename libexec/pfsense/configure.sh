@@ -7,10 +7,10 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense configure - configure pfSense
+       rock8s pfsense configure
 
 SYNOPSIS
-       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password] [--non-interactive] [-y|--yes]
+       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password]
 
 DESCRIPTION
        configure pfsense
@@ -37,15 +37,9 @@ OPTIONS
        --ssh-password
               use password authentication for ssh
 
-       --non-interactive
-              fail instead of prompting
-
-       -y, --yes
-              skip confirmation prompt
-
 EXAMPLE
-       # configure pfsense with automatic approval
-       rock8s pfsense configure --cluster mycluster --yes
+       # configure pfsense
+       rock8s pfsense configure --cluster mycluster
 
        # configure pfsense with a specific password
        rock8s pfsense configure --cluster mycluster --password mypassword
@@ -64,11 +58,9 @@ _main() {
     _FORMAT="${ROCK8S_OUTPUT_FORMAT:-text}"
     _TENANT="$ROCK8S_TENANT"
     _CLUSTER="$ROCK8S_CLUSTER"
-    _NON_INTERACTIVE=0
     _UPDATE=""
     _PASSWORD=""
     _SSH_PASSWORD=0
-    _YES=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -131,14 +123,6 @@ _main() {
                 _UPDATE="1"
                 shift
                 ;;
-            -y|--yes)
-                _YES=1
-                shift
-                ;;
-            --non-interactive)
-                _NON_INTERACTIVE=1
-                shift
-                ;;
             -*)
                 _help
                 exit 1
@@ -156,21 +140,16 @@ _main() {
     fi
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
+    if [ -z "$ROCK8S_CLUSTER" ]; then
+        fail "cluster name required"
+    fi
     _CLUSTER_DIR="$(get_cluster_dir)"
     _PROVIDER="$(get_provider)"
     _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
-    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
-        --output="$_FORMAT" \
-        --cluster="$_CLUSTER" \
-        --tenant="$_TENANT" \
-        $([ "$_YES" = "1" ] && echo "--yes") \
-        $([ "$NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
-        pfsense
     mkdir -p "$_PFSENSE_DIR"
     _PFSENSE_SHARED_WAN_IPV4="$(get_pfsense_shared_wan_ipv4)"
     _PFSENSE_SECONDARY_HOSTNAME="$(get_pfsense_secondary_hostname)"
-    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_PFSENSE_SECONDARY_HOSTNAME" ])) && [ -z "$_PASSWORD" ] && [ "${NON_INTERACTIVE:-0}" = "0" ]; then
+    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_PFSENSE_SECONDARY_HOSTNAME" ])) && [ -z "$_PASSWORD" ]; then
         _PASSWORD="$(whiptail --title "Enter admin password" \
             --backtitle "Rock8s Configuration" \
             --passwordbox " " \

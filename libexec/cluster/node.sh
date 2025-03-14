@@ -7,7 +7,7 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster node - manage cluster nodes
+       rock8s cluster node
 
 SYNOPSIS
        rock8s cluster node [-h] [-o <format>] <command> [<args>]

@@ -7,10 +7,10 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s pfsense destroy - destroy pfsense firewall
+       rock8s pfsense destroy
 
 SYNOPSIS
-       rock8s pfsense destroy [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] [--force] [--non-interactive]
+       rock8s pfsense destroy [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] [--force]
 
 DESCRIPTION
        destroy pfsense firewall nodes.
@@ -33,9 +33,6 @@ OPTIONS
 
        --force
               skip dependency checks
-
-       --non-interactive
-              fail instead of prompting
 
 EXAMPLE
        # destroy pfsense firewall with confirmation
@@ -60,7 +57,6 @@ _main() {
     _CLUSTER="$ROCK8S_CLUSTER"
     _YES=0
     _FORCE=0
-    _NON_INTERACTIVE=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -111,10 +107,6 @@ _main() {
                 _FORCE=1
                 shift
                 ;;
-            --non-interactive)
-                _NON_INTERACTIVE=1
-                shift
-                ;;
             -*)
                 _help
                 exit 1
@@ -127,14 +119,12 @@ _main() {
     done
     export ROCK8S_CLUSTER="$_CLUSTER"
     export ROCK8S_TENANT="$_TENANT"
-    export NON_INTERACTIVE="$_NON_INTERACTIVE"
     sh "$ROCK8S_LIB_PATH/libexec/nodes/destroy.sh" \
         --output="$_FORMAT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_YES" = "1" ] && echo "--yes") \
         $([ "$_FORCE" = "1" ] && echo "--force") \
-        $([ "$_NON_INTERACTIVE" = "1" ] && echo "--non-interactive") \
         pfsense
 }
 
