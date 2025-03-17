@@ -173,7 +173,6 @@ _main() {
     _PFSENSE_PRIMARY="$(get_pfsense_primary_lan_ipv4)"
     _PFSENSE_SECONDARY="$(get_pfsense_secondary_hostname)"
     _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_ssh_private_key)"
-    echo PP "$_PFSENSE_SSH_PRIVATE_KEY"
     if ! timeout 5s ssh -i "$_PFSENSE_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no admin@$_PFSENSE_PRIMARY 'true' 2>/dev/null; then
         _PFSENSE_PRIMARY="$(get_pfsense_primary_hostname)"
         if [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ]; then
@@ -195,10 +194,10 @@ pfsense:
         dhcp: $(get_lan_ipv4_dhcp)
         ipv4:
           primary: $(get_pfsense_primary_lan_ipv4)/${_LAN_IPV4_PREFIX}
-          secondary: $(get_pfsense_secondary_lan_ipv4)/${_LAN_IPV4_PREFIX}
+          secondary: $(get_pfsense_secondary_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ "$(get_enable_network_dualstack)" = "1" ] && echo "
         ipv6:
           primary: $(get_pfsense_primary_lan_ipv6)/64
-          secondary: $(get_pfsense_secondary_lan_ipv6)/64
+          secondary: $(get_pfsense_secondary_lan_ipv6)/64")
         ips:
           - $(get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_SYNC_INTERFACE" ] && [ -n "$_SYNC_IPV4_SUBNET" ] && echo "
       sync:

@@ -165,10 +165,11 @@ _main() {
     _MTU="$(get_network_mtu)"
     cp "$ROCK8S_LIB_PATH/kubespray/postinstall.yml" "$_KUBESPRAY_DIR/postinstall.yml"
     _LAN_METALLB="$(get_lan_metallb)"
+    _ENABLE_DUALSTACK="$(get_enable_network_dualstack)"
     cat >> "$_INVENTORY_DIR/vars.yml" <<EOF
 metallb_enabled: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
 kube_proxy_strict_arp: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
-enable_dual_stack_networks: $(get_network_dualstack)
+enable_dual_stack_networks: $([ "$_ENABLE_DUALSTACK" = "1" ] && echo "true" || echo "false")
 supplementary_addresses_in_ssl_keys: [$(get_supplementary_addresses)]
 calico_mtu: $_MTU
 calico_veth_mtu: $(($_MTU - 50))

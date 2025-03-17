@@ -184,18 +184,19 @@ get_network_mtu() {
     echo "$_NETWORK_MTU"
 }
 
-get_network_dualstack() {
-    if [ -n "$_NETWORK_DUALSTACK" ]; then
-        echo "$_NETWORK_DUALSTACK"
+get_enable_network_dualstack() {
+    if [ -n "$_ENABLE_NETWORK_DUALSTACK" ]; then
+        echo "$_ENABLE_NETWORK_DUALSTACK"
         return
     fi
     _CONFIG_JSON="$(get_config_json)"
-    _NETWORK_DUALSTACK="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.dualstack')"
-    if [ "$_NETWORK_DUALSTACK" = "false" ]; then
-        echo "false"
+    _IPV6_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv6.subnet // ""')"
+    if [ -n "$_IPV6_SUBNET" ]; then
+        _ENABLE_NETWORK_DUALSTACK="1"
     else
-        echo "true"
+        _ENABLE_NETWORK_DUALSTACK="0"
     fi
+    echo "$_ENABLE_NETWORK_DUALSTACK"
 }
 
 get_lan_metallb() {
@@ -240,4 +241,18 @@ get_lan_ingress_ipv4() {
         _LAN_INGRESS_IPV4="$(echo "$_LAN_METALLB" | cut -d'-' -f1)"
     fi
     echo "$_LAN_INGRESS_IPV4"
+}
+
+get_lan_ipv4_nat() {
+    if [ -n "$_LAN_IPV4_NAT" ]; then
+        echo "$_LAN_IPV4_NAT"
+        return
+    fi
+    _CONFIG_JSON="$(get_config_json)"
+    if [ "$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv4.nat // false')" = "true" ]; then
+        _LAN_IPV4_NAT="1"
+    else
+        _LAN_IPV4_NAT="0"
+    fi
+    echo "$_LAN_IPV4_NAT"
 }

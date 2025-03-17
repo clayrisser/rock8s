@@ -10,7 +10,8 @@ fi
 
 if [ "$TF_VAR_purpose" != "pfsense" ]; then
     _CONFIG_JSON="$(get_config_json)"
-    _GATEWAY="$(calculate_first_ipv4 "$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv4.subnet')")"
+    _IPV4_GATEWAY="$(calculate_first_ipv4 "$(get_lan_ipv4_subnet)")"
+    _IPV4_NAT="$(get_lan_ipv4_nat)"
     _SSH_PUBLIC_KEY="$(cat "$TF_VAR_ssh_public_key_path")"
     export TF_VAR_user_data="#cloud-config
 users:
@@ -32,13 +33,13 @@ bootcmd:
   - modprobe dm_thin_pool
   - modprobe dm_snapshot
   - modprobe dm_mirror
-  - modprobe dm_crypt
+  - modprobe dm_crypt$([ "$_IPV4_NAT" = "1" ] && echo "
   - IFACE=\$(echo \$(ip link show | grep -E \"^[0-9]\" | head -n2 | tail -n1 | cut -d':' -f2))
   - echo \"auto \$IFACE\" > /etc/network/interfaces.d/50-cloud-init.cfg
   - echo \"iface \$IFACE inet dhcp\" >> /etc/network/interfaces.d/50-cloud-init.cfg
-  - echo \"  up route add default gw $_GATEWAY\" >> /etc/network/interfaces.d/50-cloud-init.cfg
+  - echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/50-cloud-init.cfg
   - echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/50-cloud-init.cfg
-  - systemctl restart networking
+  - systemctl restart networking")
 runcmd:
   - sysctl -p /etc/sysctl.d/60-hugepages.conf
   - systemctl enable iscsid

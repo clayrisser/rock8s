@@ -192,7 +192,13 @@ _main() {
     terraform destroy $([ "$_YES" = "1" ] && echo "-auto-approve" || true) -var-file="$_PURPOSE_DIR/terraform.tfvars.json" >&2
     rm -rf "$_PURPOSE_DIR"
     if [ ! -d "$_CLUSTER_DIR/worker" ] && [ ! -d "$_CLUSTER_DIR/master" ]; then
-        rm -rf "$_CLUSTER_DIR/provider"
+        rm -rf "$_CLUSTER_DIR/addons"
+        rm -rf "$_CLUSTER_DIR/inventory"
+        rm -rf "$_CLUSTER_DIR/kubespray"
+        rm -rf "$_CLUSTER_DIR/kube.yaml"
+        if [ ! -d "$_CLUSTER_DIR/pfsense" ]; then
+            rm -rf "$_CLUSTER_DIR/provider"
+        fi
     fi
     if [ -z "$(ls -A "$_CLUSTER_DIR")" ]; then
         rm -rf "$_CLUSTER_DIR"

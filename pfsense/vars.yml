@@ -26,9 +26,6 @@ pfsense:
         ipv4:
           primary: "172.20.0.2/16"
           secondary: "172.20.0.3/16"
-        ipv6:
-          primary: fd20::2/64
-          secondary: fd20::3/64
         rules:
           - allow from self to any
       wan:
