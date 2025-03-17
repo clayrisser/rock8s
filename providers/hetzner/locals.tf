@@ -1,4 +1,5 @@
 locals {
+  cluster              = local.tenant == "" ? var.cluster_name : "${local.tenant}-${var.cluster_name}"
   tenant               = var.tenant == "" || var.tenant == null || var.tenant == "default" ? "" : var.tenant
   node_ssh_private_key = "${var.cluster_dir}/${var.purpose}/id_rsa"
   location_zones = {

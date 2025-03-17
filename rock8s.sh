@@ -67,6 +67,9 @@ COMMANDS
        pfsense
               configure and manage pfsense firewall
 
+       kubectl
+              run kubectl commands using the cluster's kube.yaml file
+
        completion
               generate shell completion scripts
 
@@ -83,6 +86,9 @@ EXAMPLE
        # use a specific tenant and output format
        rock8s -t mytenant -o yaml nodes ls
 
+       # run kubectl commands using the cluster's kube.yaml file
+       rock8s kubectl get pods
+
        # enable completions in your shell
        source <(rock8s completion)
 
@@ -90,8 +96,18 @@ SEE ALSO
        rock8s nodes --help
        rock8s cluster --help
        rock8s pfsense --help
+       rock8s kubectl --help
        rock8s completion --help
 EOF
+}
+
+_kubectl() {
+    _CLUSTER_DIR="$(get_cluster_dir)"
+    _KUBE_CONFIG="$_CLUSTER_DIR/kube.yaml"
+    if [ ! -f "$_KUBE_CONFIG" ]; then
+        fail "kube.yaml not found at $_KUBE_CONFIG"
+    fi
+    kubectl --kubeconfig="$_KUBE_CONFIG" "$@"
 }
 
 _main() {
@@ -160,6 +176,11 @@ _main() {
                 shift
                 _CMD_ARGS="$*"
                 break
+                ;;
+            kubectl)
+                shift
+                _kubectl "$@"
+                exit $?
                 ;;
             completion)
                 _CMD="$1"

@@ -193,7 +193,7 @@ _main() {
     cat >> "$_INVENTORY_DIR/vars.yml" <<EOF
 metallb_enabled: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
 kube_proxy_strict_arp: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
-enable_dual_stack_networks: $(get_network_dualstack)
+enable_dual_stack_networks: $([ "$(get_enable_network_dualstack)" = "1" ] && echo "true" || echo "false")
 supplementary_addresses_in_ssl_keys: [$(get_supplementary_addresses)]
 calico_mtu: $_MTU
 calico_veth_mtu: $(($_MTU - 50))

@@ -331,13 +331,7 @@ get_pfsense_private_ipv4s() {
         echo "$_PFSENSE_PRIVATE_IPV4S"
         return
     fi
-    _PFSENSE_PRIMARY_LAN_IPV4="$(get_pfsense_primary_lan_ipv4)"
-    _PFSENSE_SECONDARY_LAN_IPV4="$(get_pfsense_secondary_lan_ipv4)"
-    if [ -n "$_PFSENSE_SECONDARY_LAN_IPV4" ]; then
-        _PFSENSE_PRIVATE_IPV4S="$_PFSENSE_PRIMARY_LAN_IPV4 $_PFSENSE_SECONDARY_LAN_IPV4"
-    else
-        _PFSENSE_PRIVATE_IPV4S="$_PFSENSE_PRIMARY_LAN_IPV4"
-    fi
+    _PFSENSE_PRIVATE_IPV4S="$(get_pfsense_output_json | jq -r '.node_private_ipv4s.value | .[] | @text')"
     echo "$_PFSENSE_PRIVATE_IPV4S"
 }
 

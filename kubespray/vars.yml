@@ -5,6 +5,7 @@ helm_enabled: true
 metrics_server_enabled: true
 csi_snapshot_controller_enabled: true
 cert_manager_enabled: true
+kube_network_plugin: calico
 
 metallb_speaker_enabled: "{{ metallb_enabled }}"
 metallb_namespace: metallb-system
