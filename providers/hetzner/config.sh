@@ -72,7 +72,7 @@ network:
       subnet: fd20::/64$([ -n "$_SECONDARY_HOSTNAME" ] && echo "
   sync:
     ipv4:
-      subnet: 172.20.0.0/16")
+      subnet: 172.21.0.0/16")
 pfsense:
   - type: $_PFSENSE_TYPE
     hostnames:
