@@ -8,94 +8,35 @@
     require_once("interfaces.inc");
     require_once("/etc/inc/interfaces.inc");
     $config = parse_config(true);
-    $rules = {{ parsed_rules | to_json }};
-    $interface_ips = array();
-    {% for interface_name, interface_data in pfsense.network.interfaces.items() %}
-    {% if interface_data.ips is defined %}
-    $interface_ips['{{ interface_name }}'] = {{ interface_data.ips | to_json }};
-    {% endif %}
-    {% endfor %}
-    $interfaces = array();
-    $if_list = get_configured_interface_list();
-    foreach ($if_list as $if_name) {
-        $interfaces[$if_name] = array(
-            'rules' => array(),
-            'ips' => array()
-        );
-        $real_if = get_real_interface($if_name);
-        $if_addresses = get_interface_addresses($real_if);
-        if (!empty($if_addresses)) {
-            foreach ($if_addresses as $if_addr) {
-                if (isset($if_addr['ipaddr'])) {
-                    $ip_addr = trim($if_addr['ipaddr']);
-                    if (is_ipaddr($ip_addr)) {
-                        $interfaces[$if_name]['ips'][] = $ip_addr;
-                    }
-                }
-            }
-        }
-    }
-    $needed_ips = array();
-    $interface_map = array();
-    $subnet_bits = array();
-    foreach ($interface_ips as $if_name => $ips) {
-        foreach ($ips as $ip) {
-            $parts = explode('/', $ip);
-            $ip = trim($parts[0]);
-            $prefix = isset($parts[1]) ? trim($parts[1]) : '32';
-            if (is_ipaddr($ip)) {
-                $needed_ips[] = $ip;
-                $interface_map[$ip] = $if_name;
-                $subnet_bits[$ip] = $prefix;
-            }
-        }
-    }
-    foreach ($rules as $rule) {
-        $parts = explode('->', trim($rule), 2);
-        $frontend = trim($parts[0]);
-        $frontend_parts = explode(':', $frontend);
-        if (count($frontend_parts) >= 2) {
-            $last_part = end($frontend_parts);
-            if (is_numeric($last_part)) {
-                array_pop($frontend_parts);
-            }
-            $host = end($frontend_parts);
-            if (is_ipaddr($host)) {
-                $needed_ips[] = $host;
-                $interface = strtolower($frontend_parts[0]);
-                if (in_array($interface, array_keys($interfaces))) {
-                    $interface_map[$host] = $interface;
-                } else {
-                    $interface_map[$host] = 'wan';
-                }
-                $subnet_bits[$host] = '32';
-            }
-        }
-    }
-    $needed_ips = array_unique($needed_ips);
+    $ipv4_addresses = array("95.217.29.248");
+    $ipv6_addresses = array("2a01:4f9:c01f:e00e::");
+    $interface_map = array(
+        "95.217.29.248" => "wan",
+        "2a01:4f9:c01f:e00e::" => "wan"
+    );
+    $subnet_bits = array(
+        "95.217.29.248" => "32",
+        "2a01:4f9:c01f:e00e::" => "64"
+    );
     $existing_vips = array();
     $existing_vip_details = array();
-    if (isset($config['virtualip']['vip'])) {
-        foreach ($config['virtualip']['vip'] as $vip) {
-            $existing_vips[] = $vip['subnet'];
+    if (isset($config["virtualip"]["vip"])) {
+        foreach ($config["virtualip"]["vip"] as $vip) {
+            $existing_vips[] = $vip["subnet"];
             $existing_vip_details[] = $vip;
         }
     }
-    $ips_to_add = array_values(array_diff($needed_ips, $existing_vips));
+    $ipv4_to_add = array_values(array_diff($ipv4_addresses, $existing_vips));
+    $ipv6_to_add = array_values(array_diff($ipv6_addresses, $existing_vips));
+    $ips_to_add = array_merge($ipv4_to_add, $ipv6_to_add);
     $result = array(
-        'changed' => !empty($ips_to_add),
-        'ips_to_add' => $ips_to_add,
-        'interface_map' => $interface_map,
-        'subnet_bits' => $subnet_bits,
-        'existing_vip_details' => $existing_vip_details,
-        'debug' => array(
-            'interfaces' => $interfaces,
-            'needed_ips' => $needed_ips,
-            'existing_vips' => $existing_vips,
-            'interface_ips' => $interface_ips
-        )
+        "changed" => !empty($ips_to_add),
+        "ips_to_add" => $ips_to_add,
+        "interface_map" => $interface_map,
+        "subnet_bits" => $subnet_bits,
+        "existing_vip_details" => $existing_vip_details
     );
-    file_put_contents('/tmp/check_result.json', json_encode($result));
+    file_put_contents("/tmp/check_result.json", json_encode($result));
     echo json_encode($result);
     EOF
     php -f /tmp/check_virtual_ips.php
@@ -105,7 +46,7 @@
   when: primary
 
 - name: Configure virtual ips
-  shell: |
+  ansible.builtin.shell: |
     cat > /tmp/configure_virtual_ips.php << 'EOF'
     <?php
     require_once("config.inc");
@@ -150,7 +91,7 @@
     $random_password = bin2hex(random_bytes(8));
     foreach ($result['ips_to_add'] as $ip) {
         $interface = isset($result['interface_map'][$ip]) ? $result['interface_map'][$ip] : 'wan';
-        $subnet_bits = isset($result['subnet_bits'][$ip]) ? $result['subnet_bits'][$ip] : '32';
+        $subnet_bits = isset($result['subnet_bits'][$ip]) ? $result['subnet_bits'][$ip] : (is_ipaddrv6($ip) ? '64' : '32');
         $new_vip = array(
             'mode' => 'carp',
             'interface' => $interface,
@@ -170,7 +111,7 @@
     {% else %}
     foreach ($result['ips_to_add'] as $ip) {
         $interface = isset($result['interface_map'][$ip]) ? $result['interface_map'][$ip] : 'wan';
-        $subnet_bits = isset($result['subnet_bits'][$ip]) ? $result['subnet_bits'][$ip] : '32';
+        $subnet_bits = isset($result['subnet_bits'][$ip]) ? $result['subnet_bits'][$ip] : (is_ipaddrv6($ip) ? '64' : '32');
         $new_vip = array(
             'mode' => 'ipalias',
             'interface' => $interface,
@@ -215,3 +156,85 @@
     php -f /tmp/restart_interfaces.php
     rm -f /tmp/restart_interfaces.php
   when: configure_result.changed
+
+- name: Check if ipv6 virtual ip exists
+  ansible.builtin.shell: |
+    php -r '
+    require_once("config.inc");
+    $config = parse_config(true);
+    $ipv6_exists = false;
+    $ipv6_addr = "2a01:4f9:c01f:e00e::";
+    if (isset($config["virtualip"]["vip"])) {
+      foreach ($config["virtualip"]["vip"] as $vip) {
+        if ($vip["subnet"] === $ipv6_addr) {
+          $ipv6_exists = true;
+          if ($vip["descr"] === $ipv6_addr &&
+              $vip["interface"] === "wan" &&
+              $vip["subnet_bits"] === "64") {
+            echo "CORRECTLY_CONFIGURED";
+            exit(0);
+          }
+        }
+      }
+    }
+    if ($ipv6_exists) {
+      echo "EXISTS_BUT_WRONG_CONFIG";
+    } else {
+      echo "MISSING";
+    }
+    '
+  args:
+    executable: /bin/sh
+  register: ipv6_check
+  changed_when: false
+  when: primary
+
+- name: Create ipv6 virtual ip for haproxy
+  ansible.builtin.shell: |
+    php -r '
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("interfaces.inc");
+    require_once("/etc/inc/interfaces.inc");
+    $config = parse_config(true);
+    $ipv6_addr = "2a01:4f9:c01f:e00e::";
+    $interface = "wan";
+    $subnet_bits = "64";
+    if (isset($config["virtualip"]["vip"])) {
+      foreach ($config["virtualip"]["vip"] as $key => $vip) {
+        if ($vip["subnet"] === $ipv6_addr) {
+          unset($config["virtualip"]["vip"][$key]);
+        }
+      }
+    }
+    if (!isset($config["virtualip"])) {
+      $config["virtualip"] = array();
+    }
+    if (!isset($config["virtualip"]["vip"]) || !is_array($config["virtualip"]["vip"])) {
+      $config["virtualip"]["vip"] = array();
+    }
+    $new_vip = array(
+      "mode" => "ipalias",
+      "interface" => $interface,
+      "uniqid" => uniqid(),
+      "descr" => $ipv6_addr,
+      "type" => "single",
+      "subnet_bits" => $subnet_bits,
+      "subnet" => $ipv6_addr
+    );
+    $config["virtualip"]["vip"][] = $new_vip;
+    if (write_config(sprintf("Added IPv6 virtual IP from ansible (%s@%s)", "admin", "172.20.0.2"))) {
+      interface_configure($interface);
+      echo "CHANGED";
+      exit(0);
+    }
+    echo "UNCHANGED";
+    '
+  args:
+    executable: /bin/sh
+  register: ipv6_create
+  changed_when: ipv6_create.stdout == "CHANGED"
+  when:
+    - primary
+    - ipv6_check.stdout is defined
+    - ipv6_check.stdout != "CORRECTLY_CONFIGURED"

@@ -70,55 +70,28 @@ resource "hcloud_firewall" "default" {
     direction       = "out"
     protocol        = "tcp"
     port            = "any"
-    destination_ips = ["0.0.0.0/0"]
+    destination_ips = ["0.0.0.0/0", "::/0"]
   }
   rule {
     direction       = "out"
     protocol        = "udp"
     port            = "any"
-    destination_ips = ["0.0.0.0/0"]
+    destination_ips = ["0.0.0.0/0", "::/0"]
   }
   rule {
     direction       = "out"
     protocol        = "icmp"
-    destination_ips = ["0.0.0.0/0"]
+    destination_ips = ["0.0.0.0/0", "::/0"]
   }
   rule {
     direction       = "out"
     protocol        = "gre"
-    destination_ips = ["0.0.0.0/0"]
+    destination_ips = ["0.0.0.0/0", "::/0"]
   }
   rule {
     direction       = "out"
     protocol        = "esp"
-    destination_ips = ["0.0.0.0/0"]
-  }
-  rule {
-    direction       = "out"
-    protocol        = "tcp"
-    port            = "any"
-    destination_ips = ["::/0"]
-  }
-  rule {
-    direction       = "out"
-    protocol        = "udp"
-    port            = "any"
-    destination_ips = ["::/0"]
-  }
-  rule {
-    direction       = "out"
-    protocol        = "icmp"
-    destination_ips = ["::/0"]
-  }
-  rule {
-    direction       = "out"
-    protocol        = "gre"
-    destination_ips = ["::/0"]
-  }
-  rule {
-    direction       = "out"
-    protocol        = "esp"
-    destination_ips = ["::/0"]
+    destination_ips = ["0.0.0.0/0", "::/0"]
   }
   labels = merge(
     {

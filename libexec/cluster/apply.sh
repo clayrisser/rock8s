@@ -189,6 +189,7 @@ _main() {
             worker >/dev/null
     fi
     if [ "$_SKIP_KUBESPRAY" != "1" ]; then
+        sleep 30
         if [ ! -f "$_CLUSTER_DIR/kube.yaml" ]; then
             sh "$ROCK8S_LIB_PATH/libexec/cluster/install.sh" \
                 --output="$_OUTPUT" \

@@ -137,11 +137,20 @@ get_entrypoint() {
     echo "$_ENTRYPOINT"
 }
 
-get_entrypoint_ip() {
-    if [ -n "$_ENTRYPOINT_IP" ]; then
-        echo "$_ENTRYPOINT_IP"
+get_entrypoint_ipv4() {
+    if [ -n "$_ENTRYPOINT_IPV4" ]; then
+        echo "$_ENTRYPOINT_IPV4"
         return
     fi
-    _ENTRYPOINT_IP="$(_resolve_hostname "$(get_entrypoint)")"
-    echo "$_ENTRYPOINT_IP"
+    _ENTRYPOINT_IPV4="$(_resolve_hostname "$(get_entrypoint)" "ipv4")"
+    echo "$_ENTRYPOINT_IPV4"
+}
+
+get_entrypoint_ipv6() {
+    if [ -n "$_ENTRYPOINT_IPV6" ]; then
+        echo "$_ENTRYPOINT_IPV6"
+        return
+    fi
+    _ENTRYPOINT_IPV6="$(_resolve_hostname "$(get_entrypoint)" "ipv6")"
+    echo "$_ENTRYPOINT_IPV6"
 }

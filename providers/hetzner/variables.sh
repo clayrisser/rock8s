@@ -34,17 +34,18 @@ bootcmd:
   - modprobe dm_snapshot
   - modprobe dm_mirror
   - modprobe dm_crypt$([ "$_IPV4_NAT" = "1" ] && echo "
-  - IFACE=\$(echo \$(ip link show | grep -E \"^[0-9]\" | head -n2 | tail -n1 | cut -d':' -f2))
-  - echo \"auto \$IFACE\" > /etc/network/interfaces.d/50-cloud-init.cfg
-  - echo \"iface \$IFACE inet dhcp\" >> /etc/network/interfaces.d/50-cloud-init.cfg
-  - echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/50-cloud-init.cfg
-  - echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/50-cloud-init.cfg
-  - systemctl restart networking")
+  - systemctl restart networking
+  - IFACE=\$(echo \$(ip link show | grep -E \"^[0-9]\" | tail -n1 | cut -d':' -f2))
+  - echo \"auto \$IFACE\" > /etc/network/interfaces.d/60-lan
+  - echo \"iface \$IFACE inet dhcp\" >> /etc/network/interfaces.d/60-lan
+  - echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/60-lan
+  - echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/60-lan")
+  - systemctl restart networking
 runcmd:
   - sysctl -p /etc/sysctl.d/60-hugepages.conf
   - systemctl enable iscsid
   - systemctl start iscsid
-  - sudo apt-get update
+  - apt-get update
 package_update: true
 package_upgrade: true
 packages:

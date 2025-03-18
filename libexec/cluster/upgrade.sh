@@ -213,7 +213,7 @@ $(echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS" | sed "s|\(.*\)|\1 ansible_ssh_private_k
 [kube_node]
 $(echo "$_WORKER_ANSIBLE_PRIVATE_HOSTS" | sed "s|\(.*\)|\1 ansible_ssh_private_key_file=$_WORKER_SSH_PRIVATE_KEY|g")
 
-[k8s-cluster:children]
+[k8s_cluster:children]
 kube_node
 kube_control_plane
 

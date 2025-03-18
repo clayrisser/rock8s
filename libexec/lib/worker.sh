@@ -30,7 +30,7 @@ get_worker_ansible_private_hosts() {
         echo "$_WORKER_ANSIBLE_PRIVATE_HOSTS"
         return
     fi
-    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(get_worker_output_json | jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"')"
+    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(get_worker_output_json | jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value) access_ip=\(.value) ip=\(.value)"')"
     echo "$_WORKER_ANSIBLE_PRIVATE_HOSTS"
 }
 
