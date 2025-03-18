@@ -16,10 +16,10 @@ DESCRIPTION
        Generate shell completion scripts for rock8s
 
        Without arguments, it will detect your current shell and print the appropriate completion script.
-       
+
        For bash, use: source <(rock8s completion bash)
        For zsh, use: source <(rock8s completion zsh)
-       
+
        For permanent setup, add the source command to your ~/.bashrc or ~/.zshrc file.
 EOF
 }

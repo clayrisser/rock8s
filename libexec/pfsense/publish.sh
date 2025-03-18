@@ -146,15 +146,15 @@ _main() {
     if [ -n "$_LAN_INGRESS_IPV4" ]; then
         _INGRESS_RULES="      - \"8080 -> check:${_LAN_INGRESS_IPV4}:80\"
       - \"${_ENTRYPOINT_IPV4}:443 -> check:${_LAN_INGRESS_IPV4}:443\"$([ -n "$_ENTRYPOINT_IPV6" ] && echo "
-      - \"${_ENTRYPOINT_IPV6}:443 -> check:${_LAN_INGRESS_IPV4}:443\"" || true)"
+      - \"[${_ENTRYPOINT_IPV6}]:443 -> check:${_LAN_INGRESS_IPV4}:443\"" || true)"
     else
         _HTTP_BACKEND="$(get_haproxy_backend 80 $(get_worker_private_ipv4s))"
         _HTTPS_BACKEND="$(get_haproxy_backend 443 $(get_worker_private_ipv4s))"
         _INGRESS_RULES="      - \"${_ENTRYPOINT_IPV4}:80 -> ${_HTTP_BACKEND}\"
       - \"${_ENTRYPOINT_IPV4}:443 -> ${_HTTPS_BACKEND}\"$(
             [ -n "$_ENTRYPOINT_IPV6" ] && echo "
-      - \"${_ENTRYPOINT_IPV6}:80 -> ${_HTTP_BACKEND}\"
-      - \"${_ENTRYPOINT_IPV6}:443 -> ${_HTTPS_BACKEND}\"" || true
+      - \"[${_ENTRYPOINT_IPV6}]:80 -> ${_HTTP_BACKEND}\"
+      - \"[${_ENTRYPOINT_IPV6}]:443 -> ${_HTTPS_BACKEND}\"" || true
         )"
     fi
     _KUBE_BACKEND="$(get_haproxy_backend 6443 $(get_master_private_ipv4s))"
@@ -166,7 +166,9 @@ pfsense:
       wan:
         rules:
           - "allow tcp from any to ${_ENTRYPOINT_IPV4}"$([ -n "$_ENTRYPOINT_IPV6" ] && echo "
-          - \"allow tcp from any to ${_ENTRYPOINT_IPV6}\"" || true)
+          - \"allow tcp from any to ${_ENTRYPOINT_IPV6}\"
+          - \"allow tcp from ${_ENTRYPOINT_IPV6} to ${_ENTRYPOINT_IPV4}\"
+          - \"allow tcp from [${_ENTRYPOINT_IPV6}] to [${_ENTRYPOINT_IPV6}]\"" || true)
   haproxy:
     rules:
 ${_INGRESS_RULES}
@@ -175,7 +177,7 @@ EOF
         echo "      - \"${_ENTRYPOINT_IPV4}:6443 -> ${_KUBE_BACKEND}\"" >> "$_PFSENSE_DIR/vars.publish.yml"
     fi
     if [ -n "$_ENTRYPOINT_IPV6" ]; then
-        echo "      - \"${_ENTRYPOINT_IPV6}:6443 -> ${_KUBE_BACKEND}\"" >> "$_PFSENSE_DIR/vars.publish.yml"
+        echo "      - \"[${_ENTRYPOINT_IPV6}]:6443 -> ${_KUBE_BACKEND}\"" >> "$_PFSENSE_DIR/vars.publish.yml"
     fi
     _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_ssh_private_key)"
     if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_SSH_PASSWORD" = "0" ]; then

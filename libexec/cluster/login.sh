@@ -205,4 +205,4 @@ _main() {
         "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
 }
 
-_main "$@" 
+_main "$@"

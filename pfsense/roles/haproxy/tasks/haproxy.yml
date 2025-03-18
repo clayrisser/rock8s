@@ -16,6 +16,7 @@
         $cleaned_parts = array();
         if ($type === 'frontend' || $type === 'both') {
             $frontend = trim($parts[0]);
+            $frontend = preg_replace('/\[([0-9a-fA-F:]+)\]/', '$1', $frontend);
             if (preg_match('/^([0-9a-fA-F:]+):{1,3}(\d+)$/', $frontend, $matches)) {
                 $cleaned_parts[] = preg_replace('/:+/', '-', $matches[1]) . '-' . $matches[2];
             } else {
@@ -36,6 +37,7 @@
                 $backend_targets = array_map('trim', explode(',', $backend));
                 $cleaned_backend_parts = array();
                 foreach ($backend_targets as $target) {
+                    $target = preg_replace('/\[([0-9a-fA-F:]+)\]/', '$1', $target);
                     if (preg_match('/^(?:check:)?([0-9a-fA-F:]+):{1,3}(\d+)$/', $target, $matches)) {
                         $cleaned_backend_parts[] = preg_replace('/:+/', '-', $matches[1]) . '-' . $matches[2];
                     } else {
@@ -368,14 +370,13 @@
         $config['installedpackages']['haproxy']['ha_pools'] = array('item' => $backends);
         if (write_config(sprintf('Updated haproxy frontend and backend configuration from ansible'))) {
             haproxy_configure();
-            echo "CHANGED";
+            print("CHANGED");
             exit(0);
         } else {
-            echo "FAILED: Could not write configuration";
             exit(1);
         }
     } else {
-        echo "UNCHANGED: No changes needed";
+        print("UNCHANGED");
         exit(0);
     }
     function deep_compare_arrays($array1, $array2) {
@@ -495,15 +496,13 @@
     $savemsg = array();
     $result = haproxy_check_and_run($savemsg, true);
     if (!$result) {
-        fwrite(STDERR, implode("\n", $savemsg));
-        echo "FAILED: Could not restart haproxy service - " . implode(", ", $savemsg);
         exit(1);
     }
     unlink_if_exists("/tmp/config.cache");
     if (file_exists("/var/etc/haproxy_dirty")) {
         unlink_if_exists("/var/etc/haproxy_dirty");
     }
-    echo "CHANGED: Service restarted successfully";
+    print("CHANGED");
     exit(0);
     EOT
     php -f /tmp/restart_haproxy.php

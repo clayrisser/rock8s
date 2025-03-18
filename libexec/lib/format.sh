@@ -3,7 +3,7 @@
 set -e
 
 format_table() {
-    awk 'BEGIN{FS="|"; OFS="\t"} 
+    awk 'BEGIN{FS="|"; OFS="\t"}
     {
         for(i=1; i<=NF; i++) {
             if(NR==1) header[i] = $i

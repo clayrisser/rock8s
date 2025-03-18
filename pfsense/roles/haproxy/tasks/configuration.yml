@@ -27,7 +27,7 @@
                     }, ARRAY_FILTER_USE_KEY);
                     if (isset($frontends1[$frontend['name']]['a_extaddr']['item'])) {
                         foreach ($frontends1[$frontend['name']]['a_extaddr']['item'] as $idx => $item) {
-                            $frontends1[$frontend['name']]['a_extaddr']['item'][$idx] = 
+                            $frontends1[$frontend['name']]['a_extaddr']['item'][$idx] =
                                 array_filter($item, function($key) {
                                     return $key !== "id" && $key !== "_index";
                                 }, ARRAY_FILTER_USE_KEY);
@@ -42,7 +42,7 @@
                     }, ARRAY_FILTER_USE_KEY);
                     if (isset($frontends2[$frontend['name']]['a_extaddr']['item'])) {
                         foreach ($frontends2[$frontend['name']]['a_extaddr']['item'] as $idx => $item) {
-                            $frontends2[$frontend['name']]['a_extaddr']['item'][$idx] = 
+                            $frontends2[$frontend['name']]['a_extaddr']['item'][$idx] =
                                 array_filter($item, function($key) {
                                     return $key !== "id" && $key !== "_index";
                                 }, ARRAY_FILTER_USE_KEY);
