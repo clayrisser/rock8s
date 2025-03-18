@@ -379,6 +379,9 @@
         exit(0);
     }
     function deep_compare_arrays($array1, $array2) {
+        if (empty($array1) && empty($array2)) {
+            return true;
+        }
         if (count($array1) !== count($array2)) {
             return false;
         }
@@ -388,6 +391,7 @@
         usort($array2, function($a, $b) {
             return strcmp($a['name'], $b['name']);
         });
+        $ignore_fields = array('id', '_index', 'uniqid');
         foreach ($array1 as $index => $value) {
             if (!isset($array2[$index])) {
                 return false;
@@ -395,11 +399,11 @@
             if ($value['name'] !== $array2[$index]['name']) {
                 return false;
             }
-            $value_clean = array_filter($value, function($key) {
-                return $key !== 'id' && $key !== '_index';
+            $value_clean = array_filter($value, function($key) use ($ignore_fields) {
+                return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
-            $other_clean = array_filter($array2[$index], function($key) {
-                return $key !== 'id' && $key !== '_index';
+            $other_clean = array_filter($array2[$index], function($key) use ($ignore_fields) {
+                return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
             if (isset($value_clean['ha_servers']) && isset($other_clean['ha_servers'])) {
                 if (!compare_servers($value_clean['ha_servers'], $other_clean['ha_servers'])) {
@@ -407,7 +411,21 @@
                 }
                 unset($value_clean['ha_servers'], $other_clean['ha_servers']);
             }
-            if (json_encode($value_clean) !== json_encode($other_clean)) {
+            foreach ($value_clean as $k => $v) {
+                if (is_string($v)) {
+                    $value_clean[$k] = trim($v);
+                }
+            }
+            foreach ($other_clean as $k => $v) {
+                if (is_string($v)) {
+                    $other_clean[$k] = trim($v);
+                }
+            }
+            ksort($value_clean);
+            ksort($other_clean);
+            $json1 = json_encode($value_clean);
+            $json2 = json_encode($other_clean);
+            if ($json1 !== $json2) {
                 return false;
             }
         }
@@ -428,14 +446,29 @@
         usort($items2, function($a, $b) {
             return strcmp($a['address'] . ':' . $a['port'], $b['address'] . ':' . $b['port']);
         });
+        $ignore_fields = array('id', '_index', 'uniqid');
         foreach ($items1 as $index => $server) {
-            $server_clean = array_filter($server, function($key) {
-                return $key !== 'id' && $key !== '_index';
+            $server_clean = array_filter($server, function($key) use ($ignore_fields) {
+                return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
-            $other_server_clean = array_filter($items2[$index], function($key) {
-                return $key !== 'id' && $key !== '_index';
+            $other_server_clean = array_filter($items2[$index], function($key) use ($ignore_fields) {
+                return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
-            if (json_encode($server_clean) !== json_encode($other_server_clean)) {
+            foreach ($server_clean as $k => $v) {
+                if (is_string($v)) {
+                    $server_clean[$k] = trim($v);
+                }
+            }
+            foreach ($other_server_clean as $k => $v) {
+                if (is_string($v)) {
+                    $other_server_clean[$k] = trim($v);
+                }
+            }
+            ksort($server_clean);
+            ksort($other_server_clean);
+            $json1 = json_encode($server_clean);
+            $json2 = json_encode($other_server_clean);
+            if ($json1 !== $json2) {
                 return false;
             }
         }

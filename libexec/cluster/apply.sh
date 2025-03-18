@@ -170,7 +170,6 @@ _main() {
             --cluster="$_CLUSTER" \
             --tenant="$_TENANT" \
             $([ "$_UPDATE" = "1" ] && echo "--update") \
-            $([ "$_YES" = "1" ] && echo "--yes") \
             $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
             $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password") >/dev/null
     fi
@@ -188,8 +187,16 @@ _main() {
             $([ "$_YES" = "1" ] && echo "--yes") \
             worker >/dev/null
     fi
+    if [ "$_SKIP_PFSENSE" != "1" ]; then
+        sh "$ROCK8S_LIB_PATH/libexec/pfsense/publish.sh" \
+            --output="$_OUTPUT" \
+            --cluster="$_CLUSTER" \
+            --tenant="$_TENANT" \
+            $([ -n "$_PFSENSE_PASSWORD" ] && echo "--password=$_PFSENSE_PASSWORD") \
+            $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--ssh-password") >/dev/null
+    fi
     if [ "$_SKIP_KUBESPRAY" != "1" ]; then
-        sleep 30
+        sleep 90
         if [ ! -f "$_CLUSTER_DIR/kube.yaml" ]; then
             sh "$ROCK8S_LIB_PATH/libexec/cluster/install.sh" \
                 --output="$_OUTPUT" \

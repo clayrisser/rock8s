@@ -114,36 +114,39 @@ _main() {
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    _MASTER_PRIVATE_IPS="$(get_master_private_ipv4s)"
-    _WORKER_PRIVATE_IPS="$(get_worker_private_ipv4s)"
-    _PFSENSE_PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
-    _MASTER_NODES="{"
-    _COUNT=1
-    for _NODE in $_MASTER_PRIVATE_IPS; do
-        _NODE_NAME="master-$_COUNT"
-        [ "$_COUNT" -gt 1 ] && _MASTER_NODES="$_MASTER_NODES,"
-        _MASTER_NODES="$_MASTER_NODES\"$_NODE_NAME\":\"$_NODE\""
-        _COUNT=$((_COUNT + 1))
-    done
-    _MASTER_NODES="$_MASTER_NODES}"
-    _WORKER_NODES="{"
-    _COUNT=1
-    for _NODE in $_WORKER_PRIVATE_IPS; do
-        _NODE_NAME="worker-$_COUNT"
-        [ "$_COUNT" -gt 1 ] && _WORKER_NODES="$_WORKER_NODES,"
-        _WORKER_NODES="$_WORKER_NODES\"$_NODE_NAME\":\"$_NODE\""
-        _COUNT=$((_COUNT + 1))
-    done
-    _WORKER_NODES="$_WORKER_NODES}"
-    _PFSENSE_NODES="{"
+    _MASTER_PRIVATE_IPS="$(get_master_private_ipv4s 2>/dev/null || echo "")"
+    _WORKER_PRIVATE_IPS="$(get_worker_private_ipv4s 2>/dev/null || echo "")"
+    _PFSENSE_PRIVATE_IPS="$(get_pfsense_private_ipv4s 2>/dev/null || echo "")"
+    _PFSENSE_NODES="["
     _COUNT=1
     for _NODE in $_PFSENSE_PRIVATE_IPS; do
+        [ -z "$_NODE" ] && continue
         _NODE_NAME="pfsense-$_COUNT"
         [ "$_COUNT" -gt 1 ] && _PFSENSE_NODES="$_PFSENSE_NODES,"
-        _PFSENSE_NODES="$_PFSENSE_NODES\"$_NODE_NAME\":\"$_NODE\""
+        _PFSENSE_NODES="$_PFSENSE_NODES{\"purpose\":\"pfsense\",\"name\":\"$_NODE_NAME\",\"lan_ipv4\":\"$_NODE\"}"
         _COUNT=$((_COUNT + 1))
     done
-    _PFSENSE_NODES="$_PFSENSE_NODES}"
+    _PFSENSE_NODES="$_PFSENSE_NODES]"
+    _MASTER_NODES="["
+    _COUNT=1
+    for _NODE in $_MASTER_PRIVATE_IPS; do
+        [ -z "$_NODE" ] && continue
+        _NODE_NAME="master-$_COUNT"
+        [ "$_COUNT" -gt 1 ] && _MASTER_NODES="$_MASTER_NODES,"
+        _MASTER_NODES="$_MASTER_NODES{\"purpose\":\"master\",\"name\":\"$_NODE_NAME\",\"lan_ipv4\":\"$_NODE\"}"
+        _COUNT=$((_COUNT + 1))
+    done
+    _MASTER_NODES="$_MASTER_NODES]"
+    _WORKER_NODES="["
+    _COUNT=1
+    for _NODE in $_WORKER_PRIVATE_IPS; do
+        [ -z "$_NODE" ] && continue
+        _NODE_NAME="worker-$_COUNT"
+        [ "$_COUNT" -gt 1 ] && _WORKER_NODES="$_WORKER_NODES,"
+        _WORKER_NODES="$_WORKER_NODES{\"purpose\":\"worker\",\"name\":\"$_NODE_NAME\",\"lan_ipv4\":\"$_NODE\"}"
+        _COUNT=$((_COUNT + 1))
+    done
+    _WORKER_NODES="$_WORKER_NODES]"
     case "$_FILTER" in
         master)
             printf '%s\n' "$_MASTER_NODES" | format_output "$_OUTPUT" nodes
@@ -155,7 +158,37 @@ _main() {
             printf '%s\n' "$_PFSENSE_NODES" | format_output "$_OUTPUT" nodes
             ;;
         *)
-            printf '{"master":%s,"worker":%s,"pfsense":%s}\n' "$_MASTER_NODES" "$_WORKER_NODES" "$_PFSENSE_NODES" | format_output "$_OUTPUT" nodes
+            _ALL_NODES="["
+            _NODE_COUNT=0
+            _FIRST_PFSENSE=1
+            for _NODE in $_PFSENSE_PRIVATE_IPS; do
+                [ -z "$_NODE" ] && continue
+                _NODE_NAME="pfsense-$_FIRST_PFSENSE"
+                [ "$_NODE_COUNT" -gt 0 ] && _ALL_NODES="$_ALL_NODES,"
+                _ALL_NODES="$_ALL_NODES{\"purpose\":\"pfsense\",\"name\":\"$_NODE_NAME\",\"lan_ipv4\":\"$_NODE\"}"
+                _FIRST_PFSENSE=$((_FIRST_PFSENSE + 1))
+                _NODE_COUNT=$((_NODE_COUNT + 1))
+            done
+            _FIRST_MASTER=1
+            for _NODE in $_MASTER_PRIVATE_IPS; do
+                [ -z "$_NODE" ] && continue
+                _NODE_NAME="master-$_FIRST_MASTER"
+                [ "$_NODE_COUNT" -gt 0 ] && _ALL_NODES="$_ALL_NODES,"
+                _ALL_NODES="$_ALL_NODES{\"purpose\":\"master\",\"name\":\"$_NODE_NAME\",\"lan_ipv4\":\"$_NODE\"}"
+                _FIRST_MASTER=$((_FIRST_MASTER + 1))
+                _NODE_COUNT=$((_NODE_COUNT + 1))
+            done
+            _FIRST_WORKER=1
+            for _NODE in $_WORKER_PRIVATE_IPS; do
+                [ -z "$_NODE" ] && continue
+                _NODE_NAME="worker-$_FIRST_WORKER"
+                [ "$_NODE_COUNT" -gt 0 ] && _ALL_NODES="$_ALL_NODES,"
+                _ALL_NODES="$_ALL_NODES{\"purpose\":\"worker\",\"name\":\"$_NODE_NAME\",\"lan_ipv4\":\"$_NODE\"}"
+                _FIRST_WORKER=$((_FIRST_WORKER + 1))
+                _NODE_COUNT=$((_NODE_COUNT + 1))
+            done
+            _ALL_NODES="$_ALL_NODES]"
+            printf '%s\n' "$_ALL_NODES" | format_output "$_OUTPUT" nodes
             ;;
     esac
 }

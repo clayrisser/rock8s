@@ -35,7 +35,7 @@ bootcmd:
   - modprobe dm_mirror
   - modprobe dm_crypt$([ "$_IPV4_NAT" = "1" ] && echo "
   - systemctl restart networking
-  - IFACE=\$(echo \$(ip link show | grep -E \"^[0-9]\" | tail -n1 | cut -d':' -f2))
+  - IFACE=\$(ip link show | grep -E \"^[0-9]\" | grep -vE \"eth0|lo\" | head -n1 | cut -d':' -f2 | tr -d ' ' | grep -v '^$' || echo \"enp7s0\")
   - echo \"auto \$IFACE\" > /etc/network/interfaces.d/60-lan
   - echo \"iface \$IFACE inet dhcp\" >> /etc/network/interfaces.d/60-lan
   - echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/60-lan
