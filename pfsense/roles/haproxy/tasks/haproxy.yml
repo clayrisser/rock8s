@@ -1,14 +1,13 @@
 ---
 - name: Configure haproxy
   ansible.builtin.shell: |
-    cat > /tmp/update_haproxy.php << 'EOT'
+    cat > /tmp/update_haproxy.php << "EOT"
     <?php
     require_once("config.inc");
     require_once("functions.inc");
     require_once("haproxy/haproxy.inc");
     $rules_json = json_decode('{{ parsed_rules | to_json }}', true);
     if (!is_array($rules_json)) {
-      echo "ERROR: Rules variable is not an array\n";
       exit(1);
     }
     function format_name($rule, $type = 'both') {
@@ -217,20 +216,27 @@
         ? $config['installedpackages']['haproxy']['ha_pools']['item']
         : array();
     $frontend_map = array();
-    foreach ($existing_frontends as $frontend) {
+    foreach ($existing_frontends as $index => $frontend) {
         if (isset($frontend['name'])) {
-            $frontend_map[$frontend['name']] = $frontend;
+            $frontend_map[$frontend['name']] = array(
+                'frontend' => $frontend,
+                'index' => $index
+            );
         }
     }
     $backend_map = array();
-    foreach ($existing_backends as $backend) {
+    foreach ($existing_backends as $index => $backend) {
         if (isset($backend['name'])) {
-            $backend_map[$backend['name']] = $backend;
+            $backend_map[$backend['name']] = array(
+                'backend' => $backend,
+                'index' => $index
+            );
         }
     }
+    $managed_frontend_names = array();
+    $managed_backend_names = array();
     $frontends = array();
     $backends = array();
-    $changed = false;
     $backend_names_map = array();
     foreach ($rules_json as $rule) {
         list($frontend_part, $backend_part) = explode('->', trim($rule), 2);
@@ -244,6 +250,8 @@
         }
         $frontend_name = format_name($rule, 'frontend');
         $backend_name = format_name($rule, 'backend');
+        $managed_frontend_names[] = $frontend_name;
+        $managed_backend_names[] = $backend_name;
         $frontend_config = array(
             'name' => $frontend_name,
             'status' => 'active',
@@ -270,8 +278,8 @@
             'a_actionitems' => '',
             'a_errorfiles' => '',
         );
-        if (isset($frontend_map[$frontend_name]['id'])) {
-            $frontend_config['id'] = $frontend_map[$frontend_name]['id'];
+        if (isset($frontend_map[$frontend_name])) {
+            $frontend_config['id'] = $frontend_map[$frontend_name]['frontend']['id'];
         } else {
             $frontend_config['id'] = strval(get_next_id('frontend'));
         }
@@ -310,8 +318,8 @@
                     return 'none';
                 })(),
             );
-            if (isset($backend_map[$backend_name]['id'])) {
-                $backend['id'] = $backend_map[$backend_name]['id'];
+            if (isset($backend_map[$backend_name])) {
+                $backend['id'] = $backend_map[$backend_name]['backend']['id'];
             } else {
                 $backend['id'] = strval(get_next_id('backend'));
             }
@@ -322,8 +330,9 @@
             }
             $backend_targets = array_map('trim', explode(',', $backend_targets_str));
             $server_map = array();
-            if (isset($backend_map[$backend_name]['ha_servers']['item'])) {
-                foreach ($backend_map[$backend_name]['ha_servers']['item'] as $server) {
+            if (isset($backend_map[$backend_name]) &&
+                isset($backend_map[$backend_name]['backend']['ha_servers']['item'])) {
+                foreach ($backend_map[$backend_name]['backend']['ha_servers']['item'] as $server) {
                     if (isset($server['name'])) {
                         $server_map[$server['name']] = $server;
                     }
@@ -341,7 +350,7 @@
                     '_index' => '',
                     'check' => ''
                 );
-                if (isset($server_map[$server_name]['id'])) {
+                if (isset($server_map[$server_name])) {
                     $server['id'] = $server_map[$server_name]['id'];
                 } else {
                     $server['id'] = strval(get_next_id('server'));
@@ -358,27 +367,28 @@
             $backend_names_map[$backend_name] = true;
         }
     }
+    $updated_frontends = array();
+    $updated_backends = array();
+    foreach ($existing_frontends as $frontend) {
+        if (!in_array($frontend['name'], $managed_frontend_names)) {
+            $updated_frontends[] = $frontend;
+        }
+    }
+    foreach ($frontends as $frontend) {
+        $updated_frontends[] = $frontend;
+    }
+    foreach ($existing_backends as $backend) {
+        if (!in_array($backend['name'], $managed_backend_names)) {
+            $updated_backends[] = $backend;
+        }
+    }
+    foreach ($backends as $backend) {
+        $updated_backends[] = $backend;
+    }
     $current_frontends = isset($config['installedpackages']['haproxy']['ha_backends']['item']) ?
         $config['installedpackages']['haproxy']['ha_backends']['item'] : array();
     $current_backends = isset($config['installedpackages']['haproxy']['ha_pools']['item']) ?
         $config['installedpackages']['haproxy']['ha_pools']['item'] : array();
-    $frontends_match = deep_compare_arrays($current_frontends, $frontends);
-    $backends_match = deep_compare_arrays($current_backends, $backends);
-    $changed = !$frontends_match || !$backends_match;
-    if ($changed) {
-        $config['installedpackages']['haproxy']['ha_backends'] = array('item' => $frontends);
-        $config['installedpackages']['haproxy']['ha_pools'] = array('item' => $backends);
-        if (write_config(sprintf('Updated haproxy frontend and backend configuration from ansible'))) {
-            haproxy_configure();
-            print("CHANGED");
-            exit(0);
-        } else {
-            exit(1);
-        }
-    } else {
-        print("UNCHANGED");
-        exit(0);
-    }
     function deep_compare_arrays($array1, $array2) {
         if (empty($array1) && empty($array2)) {
             return true;
@@ -386,24 +396,25 @@
         if (count($array1) !== count($array2)) {
             return false;
         }
-        usort($array1, function($a, $b) {
+        $a1 = array_values($array1);
+        $a2 = array_values($array2);
+        usort($a1, function($a, $b) {
             return strcmp($a['name'], $b['name']);
         });
-        usort($array2, function($a, $b) {
+        usort($a2, function($a, $b) {
             return strcmp($a['name'], $b['name']);
         });
         $ignore_fields = array('id', '_index', 'uniqid');
-        foreach ($array1 as $index => $value) {
-            if (!isset($array2[$index])) {
+        for ($i = 0; $i < count($a1); $i++) {
+            $item1 = $a1[$i];
+            $item2 = $a2[$i];
+            if ($item1['name'] !== $item2['name']) {
                 return false;
             }
-            if ($value['name'] !== $array2[$index]['name']) {
-                return false;
-            }
-            $value_clean = array_filter($value, function($key) use ($ignore_fields) {
+            $value_clean = array_filter($item1, function($key) use ($ignore_fields) {
                 return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
-            $other_clean = array_filter($array2[$index], function($key) use ($ignore_fields) {
+            $other_clean = array_filter($item2, function($key) use ($ignore_fields) {
                 return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
             if (isset($value_clean['ha_servers']) && isset($other_clean['ha_servers'])) {
@@ -448,11 +459,13 @@
             return strcmp($a['address'] . ':' . $a['port'], $b['address'] . ':' . $b['port']);
         });
         $ignore_fields = array('id', '_index', 'uniqid');
-        foreach ($items1 as $index => $server) {
-            $server_clean = array_filter($server, function($key) use ($ignore_fields) {
+        for ($i = 0; $i < count($items1); $i++) {
+            $server1 = $items1[$i];
+            $server2 = $items2[$i];
+            $server_clean = array_filter($server1, function($key) use ($ignore_fields) {
                 return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
-            $other_server_clean = array_filter($items2[$index], function($key) use ($ignore_fields) {
+            $other_server_clean = array_filter($server2, function($key) use ($ignore_fields) {
                 return !in_array($key, $ignore_fields);
             }, ARRAY_FILTER_USE_KEY);
             foreach ($server_clean as $k => $v) {
@@ -475,6 +488,23 @@
         }
         return true;
     }
+    $frontends_match = deep_compare_arrays($current_frontends, $updated_frontends);
+    $backends_match = deep_compare_arrays($current_backends, $updated_backends);
+    $changed = !$frontends_match || !$backends_match;
+    if ($changed) {
+        $config['installedpackages']['haproxy']['ha_backends'] = array('item' => $updated_frontends);
+        $config['installedpackages']['haproxy']['ha_pools'] = array('item' => $updated_backends);
+        if (write_config("Updated haproxy frontend and backend configuration from ansible")) {
+            haproxy_configure();
+            print("CHANGED");
+            exit(0);
+        } else {
+            exit(1);
+        }
+    } else {
+        print("UNCHANGED");
+        exit(0);
+    }
     EOT
     php -f /tmp/update_haproxy.php
     RET=$?
@@ -487,7 +517,7 @@
 
 - name: Restart haproxy service
   ansible.builtin.shell: |
-    cat > /tmp/restart_haproxy.php << 'EOT'
+    cat > /tmp/restart_haproxy.php << "EOT"
     <?php
     require_once("config.inc");
     require_once("functions.inc");
