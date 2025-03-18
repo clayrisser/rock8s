@@ -30,7 +30,7 @@ get_master_ansible_private_hosts() {
         echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS"
         return
     fi
-    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(get_master_output_json | jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value)"')"
+    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(get_master_output_json | jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value) access_ip=\(.value) ip=\(.value)"')"
     echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS"
 }
 
@@ -76,12 +76,16 @@ get_supplementary_addresses() {
         return
     fi
     _ENTRYPOINT="$(get_entrypoint)"
-    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
+    _ENTRYPOINT_IPV4="$(get_entrypoint_ipv4)"
+    _ENTRYPOINT_IPV6="$(get_entrypoint_ipv6)"
     _MASTER_PRIVATE_IPV4S="$(get_master_private_ipv4s)"
     _MASTER_PUBLIC_IPV4S="$(get_master_public_ipv4s)"
     _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
     if [ -n "$_ENTRYPOINT_IPV4" ]; then
         _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
+    fi
+    if [ -n "$_ENTRYPOINT_IPV6" ]; then
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV6\""
     fi
     for _IPV4 in $_MASTER_PRIVATE_IPV4S; do
         _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""

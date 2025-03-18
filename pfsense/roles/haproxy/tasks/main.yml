@@ -1,54 +1,60 @@
 ---
 - name: Define haproxy regex patterns
   set_fact:
-    haproxy_regex_key_val: '[a-zA-Z]+(?:=[^:;]+)?'
-    haproxy_regex_key_vals: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?'
-    haproxy_regex_port: '\\d+'
-    haproxy_regex_host_port: '[^:@]+:\\d+'
-    haproxy_regex_weight: '(?:@\\d+)?'
-    haproxy_regex_target: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?[^:@]+:\\d+(?:@\\d+)?'
-    haproxy_regex_shared_config: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*\\s*\\|\\s*)?'
-    haproxy_regex_targets: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?[^:@]+:\\d+(?:@\\d+)?(?:\\s*,\\s*(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?[^:@]+:\\d+(?:@\\d+)?)*'
-    haproxy_regex_frontend: '(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?(?:[^:]+:)?\\d+'
+    haproxy_regex_key_val: "[a-zA-Z]+(?:=[^:;]+)?"
+    haproxy_regex_key_vals: "(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*:)?"
+    haproxy_regex_host_port: "(?:[^:@\\[\\]]+|\\[[0-9a-fA-F:]+\\]):\\d+"
+    haproxy_regex_ipv6_host_port: "(?:[0-9a-fA-F:]+):{1,3}\\d+"
+    haproxy_regex_port: "\\d+"
+    haproxy_regex_weight: "(?:@\\d+)?"
+    haproxy_regex_shared_config: "(?:[a-zA-Z]+(?:=[^:;]+)?(?:;[a-zA-Z]+(?:=[^:;]+)?)*\\s*\\|\\s*)?"
+    haproxy_regex_frontend: "^([a-z0-9]+:)?([^\\s:]+)(:[\\d]+)\\s*->\\s*(.+)$"
+    haproxy_regex_ipv4_host_port: "(?:[^:\\[\\]]+):\\d+"
+    haproxy_regex_target: "([^\\s\\(]+)(?:\\s*\\((?:\\d+)\\))?"
+    haproxy_regex_targets: "([^\\s\\(]+(?:\\s*\\(\\d+\\))?(?:\\s*,\\s*[^\\s\\(]+(?:\\s*\\(\\d+\\))?)*)$"
 
 - name: Parse haproxy rules
-  set_fact:
+  ansible.builtin.set_fact:
+    parsed_rules: "{{ pfsense.haproxy.rules | default([]) }}"
+    haproxy_rules: "{{ pfsense.haproxy.rules | default([]) }}"
+
+- name: Normalize ipv6 addresses in haproxy rules
+  ansible.builtin.set_fact:
+    normalized_rules: |-
+      {% set result = [] %}
+      {% for rule in parsed_rules %}
+        {% set rule_parts = rule | regex_findall('(?:[^:@\[\]]+|\[[0-9a-fA-F:]+\]):\d+') %}
+        {% if rule_parts | length > 0 %}
+          {% set _ = result.append(rule) %}
+        {% endif %}
+      {% endfor %}
+      {{ result }}
+
+- name: Parse haproxy rules
+  ansible.builtin.set_fact:
+    parsed_rules: |-
+      {% set result = [] %}
+      {% for rule in normalized_rules %}
+        {% set _ = result.append(rule) %}
+      {% endfor %}
+      {{ result }}
+
+- name: Set haproxy regex patterns
+  ansible.builtin.set_fact:
+    haproxy_regex_frontend: "^([a-z0-9]+:)?([^\\s:]+)(:[\\\\d]+)\\s*->\\s*(.+)$"
+    haproxy_regex_ipv4_host_port: "(?:[^:\\[\\]]+):\\d+"
+    haproxy_regex_ipv6_host_port: "(?:\\[[0-9a-fA-F:]+\\]:\\d+|[0-9a-fA-F:]+:{1,3}\\d+)"
+    haproxy_regex_target: "([^\\s\\(]+)(?:\\s*\\((?:\\d+)\\))?"
+    haproxy_regex_targets: "([^\\s\\(]+(?:\\s*\\(\\d+\\))?(?:\\s*,\\s*[^\\s\\(]+(?:\\s*\\(\\d+\\))?)*)$"
+
+- name: Parse haproxy rules
+  ansible.builtin.set_fact:
     parsed_rules: "{{ pfsense.haproxy.rules | default([]) }}"
 
-- name: Validate haproxy rules
-  ansible.builtin.assert:
-    that:
-      - item is match('^{{ haproxy_regex_frontend }}\\s*->\\s*{{ haproxy_regex_shared_config }}{{ haproxy_regex_targets }}')
-    fail_msg: |
-      Invalid rule format: {{ item }}
-      Format: [key[=val];...:][host:]port -> [shared_key[=val];...|][[key[=val];...:][host:]port[@weight],...]
-  loop: "{{ parsed_rules }}"
-
 - name: Configure haproxy settings
-  include_tasks: settings.yml
+  ansible.builtin.include_tasks: settings.yml
+  when: primary
 - name: Configure ips
   include_tasks: ips.yml
 - name: Configure haproxy
-  include_tasks: configuration.yml
-
-- name: Restart haproxy service
-  ansible.builtin.shell: |
-    cat > /tmp/restart_haproxy.php << 'EOF'
-    <?php
-    require_once("config.inc");
-    require_once("functions.inc");
-    require_once("haproxy/haproxy.inc");
-    require_once("service-utils.inc");
-    $savemsg = array();
-    $result = haproxy_check_and_run($savemsg, true);
-    if (!$result) {
-        fwrite(STDERR, $savemsg);
-        exit(1);
-    }
-    unlink_if_exists("/tmp/config.cache");
-    unlink_if_exists($d_haproxyconfdirty_path);
-    EOF
-    php -f /tmp/restart_haproxy.php 2>&1
-    rm -f /tmp/restart_haproxy.php
-  register: haproxy_restart
-  when: haproxy_check.changed or haproxy_config.changed or haproxy_system_check.changed or haproxy_system_config.changed or (haproxy_sync_check.stdout_lines[-1].startswith("CHANGED") and haproxy_sync_config.changed)
+  include_tasks: haproxy.yml

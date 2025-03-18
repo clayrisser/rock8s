@@ -66,7 +66,7 @@ network:
   entrypoint: $_ENTRYPOINT
   lan:
     ipv4:
-      nat: false
+      nat: true
       subnet: 172.20.0.0/16
     ipv6:
       subnet: fd20::/64$([ -n "$_SECONDARY_HOSTNAME" ] && echo "

@@ -1,0 +1,483 @@
+---
+- name: Configure haproxy
+  ansible.builtin.shell: |
+    cat > /tmp/update_haproxy.php << 'EOT'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    $rules_json = json_decode('{{ parsed_rules | to_json }}', true);
+    if (!is_array($rules_json)) {
+      echo "ERROR: Rules variable is not an array\n";
+      exit(1);
+    }
+    function format_name($rule, $type = 'both') {
+        $parts = explode(' -> ', trim($rule));
+        $cleaned_parts = array();
+        if ($type === 'frontend' || $type === 'both') {
+            $frontend = trim($parts[0]);
+            if (preg_match('/^([0-9a-fA-F:]+):{1,3}(\d+)$/', $frontend, $matches)) {
+                $cleaned_parts[] = preg_replace('/:+/', '-', $matches[1]) . '-' . $matches[2];
+            } else {
+                $frontend_subparts = explode(':', $frontend);
+                if (count($frontend_subparts) > 1 && (strpos($frontend_subparts[0], '=') !== false || strpos($frontend_subparts[0], ';') !== false)) {
+                    array_shift($frontend_subparts);
+                }
+                $cleaned_parts[] = implode('-', $frontend_subparts);
+            }
+        }
+        if ($type === 'backend' || $type === 'both') {
+            if (count($parts) > 1) {
+                $backend = trim($parts[1]);
+                if (strpos($backend, '|') !== false) {
+                    list($shared_opts, $backend) = explode('|', $backend, 2);
+                    $backend = trim($backend);
+                }
+                $backend_targets = array_map('trim', explode(',', $backend));
+                $cleaned_backend_parts = array();
+                foreach ($backend_targets as $target) {
+                    if (preg_match('/^(?:check:)?([0-9a-fA-F:]+):{1,3}(\d+)$/', $target, $matches)) {
+                        $cleaned_backend_parts[] = preg_replace('/:+/', '-', $matches[1]) . '-' . $matches[2];
+                    } else {
+                        $target_parts = explode(':', $target);
+                        if (count($target_parts) > 1 && (strpos($target_parts[0], '=') !== false || strpos($target_parts[0], ';') !== false)) {
+                            array_shift($target_parts);
+                        }
+                        if (count($target_parts) == 3 && $target_parts[0] === 'check') {
+                            array_shift($target_parts);
+                        }
+                        $cleaned_backend_parts[] = implode('-', $target_parts);
+                    }
+                }
+                $cleaned_parts[] = implode('-', $cleaned_backend_parts);
+            }
+        }
+        return preg_replace('/-+/', '-', implode('_', $cleaned_parts));
+    }
+    function parse_frontend_target($str) {
+        $parts = explode(':', trim($str));
+        $result = array(
+            'rules' => array(),
+            'host' => '',
+            'port' => ''
+        );
+        if (preg_match('/^([0-9a-fA-F:]+):{1,3}(\d+)$/', trim($str), $matches)) {
+            $result['host'] = $matches[1];
+            $result['port'] = $matches[2];
+            return $result;
+        }
+        if (count($parts) > 3 && preg_match('/^[0-9a-fA-F:]+$/', $parts[0])) {
+            $port = array_pop($parts);
+            $ipv6 = implode(':', $parts);
+            if (is_numeric($port) && preg_match('/^[0-9a-fA-F:]+$/', $ipv6)) {
+                $result['host'] = $ipv6;
+                $result['port'] = $port;
+                return $result;
+            }
+            $parts = explode(':', trim($str));
+        }
+        if (preg_match('/^\[([0-9a-fA-F:]+)\]:(\d+)$/', trim($str), $matches)) {
+            $result['host'] = $matches[1];
+            $result['port'] = $matches[2];
+            return $result;
+        }
+        switch(count($parts)) {
+            case 3:
+                $result['rules'] = parse_key_values($parts[0]);
+                $result['host'] = $parts[1];
+                $result['port'] = $parts[2];
+                break;
+            case 2:
+                $result['host'] = $parts[0];
+                $result['port'] = $parts[1];
+                break;
+            case 1:
+                $result['port'] = $parts[0];
+                break;
+        }
+        return $result;
+    }
+    function parse_key_values($str) {
+        $result = array();
+        if (empty($str)) return $result;
+        $pairs = explode(';', $str);
+        foreach ($pairs as $pair) {
+            $pair = trim($pair);
+            if (empty($pair)) continue;
+            if (strpos($pair, '=') === false) {
+                $result[$pair] = '';
+            } else {
+                list($key, $value) = explode('=', $pair, 2);
+                $result[trim($key)] = trim($value);
+            }
+        }
+        return $result;
+    }
+    function parse_backend_target($str) {
+        $result = array(
+            'rules' => array(),
+            'host' => '',
+            'port' => '',
+            'weight' => ''
+        );
+        $parts = explode('@', trim($str));
+        $target = $parts[0];
+        if (count($parts) > 1) {
+            $result['weight'] = trim($parts[1]);
+        }
+        if (preg_match('/^(?:check:)?\[([0-9a-fA-F:]+)\]:(\d+)$/', trim($target), $matches)) {
+            $result['host'] = $matches[1];
+            $result['port'] = $matches[2];
+            if (strpos($target, 'check:') === 0) {
+                $result['rules']['check'] = '';
+            }
+            return $result;
+        }
+        $parts = explode(':', trim($target));
+        if (count($parts) >= 2 && $parts[0] === 'check') {
+            $result['rules']['check'] = '';
+            array_shift($parts);
+        }
+        if (preg_match('/^(?:check:)?([0-9a-fA-F:]+):{1,3}(\d+)$/', trim($target), $matches)) {
+            $result['host'] = $matches[1];
+            $result['port'] = $matches[2];
+            if (strpos($target, 'check:') === 0) {
+                $result['rules']['check'] = '';
+            }
+            return $result;
+        }
+        if (count($parts) > 3 && preg_match('/^[0-9a-fA-F:]+$/', $parts[0])) {
+            $port = array_pop($parts);
+            $ipv6 = implode(':', $parts);
+            if (is_numeric($port) && preg_match('/^[0-9a-fA-F:]+$/', $ipv6)) {
+                $result['host'] = $ipv6;
+                $result['port'] = $port;
+                return $result;
+            }
+            $parts = explode(':', trim($target));
+            if (count($parts) >= 2 && $parts[0] === 'check') {
+                $result['rules']['check'] = '';
+                array_shift($parts);
+            }
+        }
+        switch(count($parts)) {
+            case 3:
+                if (!isset($result['rules']['check'])) {
+                    $result['rules'] = parse_key_values($parts[0]);
+                }
+                $result['host'] = $parts[1];
+                $result['port'] = $parts[2];
+                break;
+            case 2:
+                if (strpos($parts[0], '=') !== false || strpos($parts[0], ';') !== false) {
+                    if (!isset($result['rules']['check'])) {
+                        $result['rules'] = parse_key_values(array_shift($parts));
+                    }
+                    $result['host'] = $parts[0];
+                    $result['port'] = $parts[1];
+                } else {
+                    $result['host'] = $parts[0];
+                    $result['port'] = $parts[1];
+                }
+                break;
+            case 1:
+                $result['port'] = $parts[0];
+                break;
+        }
+        return $result;
+    }
+    function get_next_id($type) {
+        static $counters = array(
+            'frontend' => 0,
+            'backend' => 0,
+            'server' => 0
+        );
+        $base_id = array(
+            'frontend' => 10000,
+            'backend' => 20000,
+            'server' => 30000
+        );
+        $counters[$type]++;
+        return strval($base_id[$type] + $counters[$type]);
+    }
+    $config = parse_config();
+    if (!isset($config['installedpackages'])) {
+        $config['installedpackages'] = array();
+    }
+    if (!isset($config['installedpackages']['haproxy'])) {
+        $config['installedpackages']['haproxy'] = array();
+    }
+    $config['installedpackages']['haproxy']['enable'] = '';
+    $existing_frontends = isset($config['installedpackages']['haproxy']['ha_backends']['item'])
+        ? $config['installedpackages']['haproxy']['ha_backends']['item']
+        : array();
+    $existing_backends = isset($config['installedpackages']['haproxy']['ha_pools']['item'])
+        ? $config['installedpackages']['haproxy']['ha_pools']['item']
+        : array();
+    $frontend_map = array();
+    foreach ($existing_frontends as $frontend) {
+        if (isset($frontend['name'])) {
+            $frontend_map[$frontend['name']] = $frontend;
+        }
+    }
+    $backend_map = array();
+    foreach ($existing_backends as $backend) {
+        if (isset($backend['name'])) {
+            $backend_map[$backend['name']] = $backend;
+        }
+    }
+    $frontends = array();
+    $backends = array();
+    $changed = false;
+    $backend_names_map = array();
+    foreach ($rules_json as $rule) {
+        list($frontend_part, $backend_part) = explode('->', trim($rule), 2);
+        $frontend = parse_frontend_target(trim($frontend_part));
+        $port = $frontend['port'];
+        $shared_config = array();
+        $backend_targets_str = trim($backend_part);
+        if (strpos($backend_targets_str, '|') !== false) {
+            list($shared_opts, $backend_targets_str) = explode('|', $backend_targets_str, 2);
+            $shared_config = parse_key_values(trim($shared_opts));
+        }
+        $frontend_name = format_name($rule, 'frontend');
+        $backend_name = format_name($rule, 'backend');
+        $frontend_config = array(
+            'name' => $frontend_name,
+            'status' => 'active',
+            'type' => isset($frontend['rules']['type']) ? $frontend['rules']['type'] : 'tcp',
+            'httpclose' => 'http-keep-alive',
+            'backend_serverpool' => $backend_name,
+            'advanced' => '',
+            'ha_acls' => '',
+            'ha_certificates' => '',
+            'clientcert_ca' => '',
+            'clientcert_crl' => '',
+            'descr' => $rule,
+            'a_extaddr' => array(
+                'item' => array(
+                    array(
+                        'extaddr' => !empty($frontend['host']) ? 'custom' :
+                               (strpos($frontend_part, 'wan:') === 0 ? 'wan_ipv4' : 'any_ipv4'),
+                        'extaddr_custom' => !empty($frontend['host']) ? $frontend['host'] : '',
+                        'extaddr_port' => $port,
+                        '_index' => ''
+                    )
+                )
+            ),
+            'a_actionitems' => '',
+            'a_errorfiles' => '',
+        );
+        if (isset($frontend_map[$frontend_name]['id'])) {
+            $frontend_config['id'] = $frontend_map[$frontend_name]['id'];
+        } else {
+            $frontend_config['id'] = strval(get_next_id('frontend'));
+        }
+        if (isset($frontend['rules']['ssl'])) {
+            $frontend_config['ssloffloadcert'] = $frontend['rules']['ssl'];
+            $frontend_config['ssloffloadacl_an'] = 'yes';
+        }
+        foreach ($frontend['rules'] as $key => $value) {
+            if ($key !== 'ssl') {
+                $frontend_config[$key] = $value;
+            }
+        }
+        $frontends[] = $frontend_config;
+        if (!isset($backend_names_map[$backend_name])) {
+            $backend = array(
+                'name' => $backend_name,
+                'descr' => $rule,
+                'status' => 'active',
+                'ha_servers' => array('item' => array()),
+                'a_acl' => '',
+                'a_actionitems' => '',
+                'errorfiles' => '',
+                'advanced' => '',
+                'advanced_backend' => '',
+                'balance' => isset($shared_config['balance']) ? $shared_config['balance'] : 'roundrobin',
+                'check_type' => (function() use ($shared_config, $backend_targets_str) {
+                    if (preg_match('/check=([^:;]+)/', $backend_targets_str, $matches)) {
+                        return $matches[1];
+                    }
+                    if (preg_match('/(?:^|;)check(?::|\s*$|;)/', $backend_targets_str)) {
+                        return 'Basic';
+                    }
+                    if (array_key_exists('check', $shared_config) && empty($shared_config['check'])) {
+                        return 'Basic';
+                    }
+                    return 'none';
+                })(),
+            );
+            if (isset($backend_map[$backend_name]['id'])) {
+                $backend['id'] = $backend_map[$backend_name]['id'];
+            } else {
+                $backend['id'] = strval(get_next_id('backend'));
+            }
+            foreach ($shared_config as $key => $value) {
+                if (!in_array($key, array('balance', 'check'))) {
+                    $backend[$key] = $value;
+                }
+            }
+            $backend_targets = array_map('trim', explode(',', $backend_targets_str));
+            $server_map = array();
+            if (isset($backend_map[$backend_name]['ha_servers']['item'])) {
+                foreach ($backend_map[$backend_name]['ha_servers']['item'] as $server) {
+                    if (isset($server['name'])) {
+                        $server_map[$server['name']] = $server;
+                    }
+                }
+            }
+            foreach ($backend_targets as $idx => $target) {
+                $target_info = parse_backend_target($target);
+                $server_name = "{$backend_name}_{$idx}";
+                $server = array(
+                    'status' => 'active',
+                    'name' => $server_name,
+                    'descr' => $target,
+                    'address' => $target_info['host'],
+                    'port' => $target_info['port'],
+                    '_index' => '',
+                    'check' => ''
+                );
+                if (isset($server_map[$server_name]['id'])) {
+                    $server['id'] = $server_map[$server_name]['id'];
+                } else {
+                    $server['id'] = strval(get_next_id('server'));
+                }
+                if (!empty($target_info['weight'])) {
+                    $server['weight'] = $target_info['weight'];
+                }
+                foreach ($target_info['rules'] as $key => $value) {
+                    $server[$key] = $value;
+                }
+                $backend['ha_servers']['item'][] = $server;
+            }
+            $backends[] = $backend;
+            $backend_names_map[$backend_name] = true;
+        }
+    }
+    $current_frontends = isset($config['installedpackages']['haproxy']['ha_backends']['item']) ?
+        $config['installedpackages']['haproxy']['ha_backends']['item'] : array();
+    $current_backends = isset($config['installedpackages']['haproxy']['ha_pools']['item']) ?
+        $config['installedpackages']['haproxy']['ha_pools']['item'] : array();
+    $frontends_match = deep_compare_arrays($current_frontends, $frontends);
+    $backends_match = deep_compare_arrays($current_backends, $backends);
+    $changed = !$frontends_match || !$backends_match;
+    if ($changed) {
+        $config['installedpackages']['haproxy']['ha_backends'] = array('item' => $frontends);
+        $config['installedpackages']['haproxy']['ha_pools'] = array('item' => $backends);
+        if (write_config(sprintf('Updated haproxy frontend and backend configuration from ansible'))) {
+            haproxy_configure();
+            echo "CHANGED";
+            exit(0);
+        } else {
+            echo "FAILED: Could not write configuration";
+            exit(1);
+        }
+    } else {
+        echo "UNCHANGED: No changes needed";
+        exit(0);
+    }
+    function deep_compare_arrays($array1, $array2) {
+        if (count($array1) !== count($array2)) {
+            return false;
+        }
+        usort($array1, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
+        usort($array2, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
+        foreach ($array1 as $index => $value) {
+            if (!isset($array2[$index])) {
+                return false;
+            }
+            if ($value['name'] !== $array2[$index]['name']) {
+                return false;
+            }
+            $value_clean = array_filter($value, function($key) {
+                return $key !== 'id' && $key !== '_index';
+            }, ARRAY_FILTER_USE_KEY);
+            $other_clean = array_filter($array2[$index], function($key) {
+                return $key !== 'id' && $key !== '_index';
+            }, ARRAY_FILTER_USE_KEY);
+            if (isset($value_clean['ha_servers']) && isset($other_clean['ha_servers'])) {
+                if (!compare_servers($value_clean['ha_servers'], $other_clean['ha_servers'])) {
+                    return false;
+                }
+                unset($value_clean['ha_servers'], $other_clean['ha_servers']);
+            }
+            if (json_encode($value_clean) !== json_encode($other_clean)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    function compare_servers($servers1, $servers2) {
+        if (!isset($servers1['item']) || !isset($servers2['item'])) {
+            return false;
+        }
+        $items1 = $servers1['item'];
+        $items2 = $servers2['item'];
+        if (count($items1) !== count($items2)) {
+            return false;
+        }
+        usort($items1, function($a, $b) {
+            return strcmp($a['address'] . ':' . $a['port'], $b['address'] . ':' . $b['port']);
+        });
+        usort($items2, function($a, $b) {
+            return strcmp($a['address'] . ':' . $a['port'], $b['address'] . ':' . $b['port']);
+        });
+        foreach ($items1 as $index => $server) {
+            $server_clean = array_filter($server, function($key) {
+                return $key !== 'id' && $key !== '_index';
+            }, ARRAY_FILTER_USE_KEY);
+            $other_server_clean = array_filter($items2[$index], function($key) {
+                return $key !== 'id' && $key !== '_index';
+            }, ARRAY_FILTER_USE_KEY);
+            if (json_encode($server_clean) !== json_encode($other_server_clean)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    EOT
+    php -f /tmp/update_haproxy.php
+    RET=$?
+    rm -f /tmp/update_haproxy.php
+    exit $RET
+  register: haproxy_update
+  changed_when: "haproxy_update.stdout.startswith('CHANGED')"
+  failed_when: haproxy_update.rc != 0
+  when: primary
+
+- name: Restart haproxy service
+  ansible.builtin.shell: |
+    cat > /tmp/restart_haproxy.php << 'EOT'
+    <?php
+    require_once("config.inc");
+    require_once("functions.inc");
+    require_once("haproxy/haproxy.inc");
+    require_once("service-utils.inc");
+    $savemsg = array();
+    $result = haproxy_check_and_run($savemsg, true);
+    if (!$result) {
+        fwrite(STDERR, implode("\n", $savemsg));
+        echo "FAILED: Could not restart haproxy service - " . implode(", ", $savemsg);
+        exit(1);
+    }
+    unlink_if_exists("/tmp/config.cache");
+    if (file_exists("/var/etc/haproxy_dirty")) {
+        unlink_if_exists("/var/etc/haproxy_dirty");
+    }
+    echo "CHANGED: Service restarted successfully";
+    exit(0);
+    EOT
+    php -f /tmp/restart_haproxy.php
+    RET=$?
+    rm -f /tmp/restart_haproxy.php
+    exit $RET
+  register: haproxy_restart
+  changed_when: haproxy_restart.stdout.startswith("CHANGED")
+  failed_when: haproxy_restart.rc != 0
+  when: haproxy_update.changed

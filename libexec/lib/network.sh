@@ -87,6 +87,7 @@ calculate_last_ipv4() {
 
 _resolve_hostname() {
     _HOSTNAME="$1"
+    _TYPE="$2"
     if [ -z "$_HOSTNAME" ]; then
         return
     fi
@@ -95,15 +96,19 @@ _resolve_hostname() {
     elif echo "$_HOSTNAME" | grep -qE '^[0-9a-fA-F:]+$'; then
         echo "$_HOSTNAME"
     else
-        _IPV4=$(host "$_HOSTNAME" | grep 'has address' | head -n1 | awk '{print $NF}')
-        if [ -n "$_IPV4" ]; then
-            echo "$_IPV4"
-            return
+        if [ "$_TYPE" = "ipv4" ] || [ -z "$_TYPE" ]; then
+            _IPV4=$(host "$_HOSTNAME" | grep 'has address' | head -n1 | awk '{print $NF}')
+            if [ -n "$_IPV4" ]; then
+                echo "$_IPV4"
+                return
+            fi
         fi
-        _IPV6=$(host "$_HOSTNAME" | grep 'has IPv6 address' | head -n1 | awk '{print $NF}')
-        if [ -n "$_IPV6" ]; then
-            echo "$_IPV6"
-            return
+        if [ "$_TYPE" = "ipv6" ] || [ -z "$_TYPE" ]; then
+            _IPV6=$(host "$_HOSTNAME" | grep 'has IPv6 address' | head -n1 | awk '{print $NF}')
+            if [ -n "$_IPV6" ]; then
+                echo "$_IPV6"
+                return
+            fi
         fi
     fi
 }

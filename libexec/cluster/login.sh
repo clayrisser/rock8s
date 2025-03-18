@@ -19,7 +19,7 @@ NAME
        rock8s cluster login
 
 SYNOPSIS
-       rock8s cluster login [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--kubeconfig <path>]
+       rock8s cluster login [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--kubeconfig <path>] [bastion]
 
 DESCRIPTION
        login to kubernetes cluster
@@ -40,6 +40,10 @@ OPTIONS
        --kubeconfig <path>
               path to kubeconfig
 
+ARGUMENTS
+       bastion
+              hostname of bastion server to retrieve kubeconfig from
+
 EXAMPLE
        # login to a cluster
        rock8s cluster login --cluster mycluster
@@ -49,6 +53,9 @@ EXAMPLE
 
        # login with json output format
        rock8s cluster login --cluster mycluster -o json
+
+       # login using a bastion server
+       rock8s cluster login --cluster mycluster 192.168.1.10
 
 SEE ALSO
        rock8s cluster configure --help
@@ -61,6 +68,7 @@ _main() {
     _CLUSTER="$ROCK8S_CLUSTER"
     _TENANT="$ROCK8S_TENANT"
     _KUBECONFIG="$HOME/.kube/config"
+    _BASTION=""
     trap _cleanup EXIT INT TERM
     while test $# -gt 0; do
         case "$1" in
@@ -121,8 +129,8 @@ _main() {
                 exit 1
                 ;;
             *)
-                _help
-                exit 1
+                _BASTION="$1"
+                shift
                 ;;
         esac
     done
@@ -138,42 +146,49 @@ _main() {
     fi
     _KUBECONFIG_TMP="$(mktemp)"
     _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_TMP"
-    if ! ssh -i "$(get_master_ssh_private_key)" -o StrictHostKeyChecking=no "admin@$_FIRST_MASTER_PRIVATE_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"; then
-        fail "failed to retrieve kubeconfig from master node"
+    if [ -n "$_BASTION" ]; then
+        if ! ssh "admin@$_BASTION" \
+            "cat \$HOME/.config/rock8s/tenant/$ROCK8S_TENANT/cluster/$ROCK8S_CLUSTER/kube.yaml" > "$_KUBECONFIG_TMP"; then
+            fail "failed to retrieve kubeconfig from master node via bastion server"
+        fi
+    else
+        if ! ssh -i "$(get_master_ssh_private_key)" -o StrictHostKeyChecking=no "admin@$_FIRST_MASTER_PRIVATE_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"; then
+            fail "failed to retrieve kubeconfig from master node"
+        fi
+        _CURRENT_CONTEXT=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config current-context)
+        _CURRENT_CLUSTER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.cluster}')
+        _CURRENT_USER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.user}')
+        _KUBECONFIG_JSON_TMP="$(mktemp)"
+        _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_JSON_TMP"
+        kubectl --kubeconfig="$_KUBECONFIG_TMP" config view --raw -o json | \
+            jq --arg cluster "$_CURRENT_CLUSTER" --arg context "$_CURRENT_CONTEXT" --arg user "$_CURRENT_USER" \
+            --arg name "$_ENTRYPOINT" \
+            '(.clusters[] | select(.name == $cluster).name) = $name |
+            (.users[] | select(.name == $user).name) = $name |
+            .contexts |= map(
+            if .name == $context
+            then . + {
+                "name": $name,
+                "context": {
+                "cluster": $name,
+                "user": $name
+                }
+            }
+            else .
+            end
+            ) |
+            .["current-context"] = $name' > "$_KUBECONFIG_JSON_TMP"
+        json2yaml < "$_KUBECONFIG_JSON_TMP" > "$_KUBECONFIG_TMP"
+        rm -f "$_KUBECONFIG_JSON_TMP"
+        _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
+        if [ -n "$_ENTRYPOINT_IPV4" ]; then
+            kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$_ENTRYPOINT_IPV4:6443" >/dev/null
+        else
+            kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$(get_master_private_ipv4s | head -n 1):6443" >/dev/null
+        fi
     fi
     if ! kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o yaml >/dev/null 2>&1; then
         fail "invalid kubeconfig"
-    fi
-    _CURRENT_CONTEXT=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config current-context)
-    _CURRENT_CLUSTER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.cluster}')
-    _CURRENT_USER=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o jsonpath='{.contexts[?(@.name == "'$_CURRENT_CONTEXT'")].context.user}')
-    _KUBECONFIG_JSON_TMP="$(mktemp)"
-    _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_JSON_TMP"
-    kubectl --kubeconfig="$_KUBECONFIG_TMP" config view --raw -o json | \
-        jq --arg cluster "$_CURRENT_CLUSTER" --arg context "$_CURRENT_CONTEXT" --arg user "$_CURRENT_USER" \
-           --arg name "$_ENTRYPOINT" \
-        '(.clusters[] | select(.name == $cluster).name) = $name |
-         (.users[] | select(.name == $user).name) = $name |
-         .contexts |= map(
-           if .name == $context
-           then . + {
-             "name": $name,
-             "context": {
-               "cluster": $name,
-               "user": $name
-             }
-           }
-           else .
-           end
-         ) |
-         .["current-context"] = $name' > "$_KUBECONFIG_JSON_TMP"
-    json2yaml < "$_KUBECONFIG_JSON_TMP" > "$_KUBECONFIG_TMP"
-    rm -f "$_KUBECONFIG_JSON_TMP"
-    _ENTRYPOINT_IPV4="$(_resolve_hostname "$_ENTRYPOINT")"
-    if [ -n "$_ENTRYPOINT_IPV4" ]; then
-        kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$_ENTRYPOINT_IPV4:6443" >/dev/null
-    else
-        kubectl --kubeconfig="$_KUBECONFIG_TMP" config set-cluster "$_ENTRYPOINT" --server="https://$(get_master_private_ipv4s | head -n 1):6443" >/dev/null
     fi
     mkdir -p "$(dirname "$_KUBECONFIG")"
     if [ -f "$_KUBECONFIG" ]; then

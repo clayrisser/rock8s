@@ -10,7 +10,7 @@ NAME
        rock8s cluster use
 
 SYNOPSIS
-       rock8s cluster use [-h] [-o <format>] <cluster> [<tenant>]
+       rock8s cluster use [-h] [-o <format>] [<cluster>] [<tenant>]
 
 DESCRIPTION
        select a default cluster and tenant for subsequent commands
@@ -49,8 +49,8 @@ EOF
 _main() {
     _OUTPUT="${ROCK8S_OUTPUT:-json}"
     _CMD=""
-    _ARG1=""
-    _ARG2=""
+    _CLUSTER=""
+    _TENANT=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -70,40 +70,37 @@ _main() {
                 esac
                 ;;
             *)
-                if [ -z "$_ARG1" ]; then
-                    _ARG1="$1"
-                elif [ -z "$_ARG2" ]; then
-                    _ARG2="$1"
+                if [ -z "$_CLUSTER" ]; then
+                    _CLUSTER="$1"
+                    shift
+                elif [ -z "$_TENANT" ]; then
+                    _TENANT="$1"
+                    shift
                 else
                     fail "too many arguments"
                 fi
-                shift
                 ;;
         esac
     done
-    if [ -z "$_ARG1" ]; then
-        _help
-        exit 1
+    if [ -n "$_CLUSTER" ]; then
+        export ROCK8S_CLUSTER="$_CLUSTER"
     fi
-    _CLUSTER="$_ARG1"
-    if [ -n "$_ARG2" ]; then
-        _TENANT="$_ARG2"
-    else
-        _TENANT="$ROCK8S_TENANT"
+    if [ -n "$_TENANT" ]; then
+        export ROCK8S_TENANT="$_TENANT"
     fi
-    _TENANT_DIR="$ROCK8S_CONFIG_HOME/tenants/$_TENANT"
-    _CLUSTER_DIR="$_TENANT_DIR/clusters/$_CLUSTER"
-    if [ ! -d "$_TENANT_DIR" ] && [ "$_TENANT" != "default" ]; then
-        fail "tenant $_TENANT does not exist"
+    _TENANT_DIR="$ROCK8S_CONFIG_HOME/tenants/$ROCK8S_TENANT"
+    _CLUSTER_DIR="$_TENANT_DIR/clusters/$ROCK8S_CLUSTER"
+    if [ ! -d "$_TENANT_DIR" ] && [ "$ROCK8S_TENANT" != "default" ]; then
+        fail "tenant $ROCK8S_TENANT does not exist"
     fi
     if [ ! -d "$_CLUSTER_DIR" ]; then
-        fail "cluster $_CLUSTER does not exist in tenant $_TENANT"
+        fail "cluster $ROCK8S_CLUSTER does not exist in tenant $ROCK8S_TENANT"
     fi
     mkdir -p "$ROCK8S_STATE_HOME"
-    echo "tenant=\"$_TENANT\"" > "$ROCK8S_STATE_HOME/current"
-    echo "cluster=\"$_CLUSTER\"" >> "$ROCK8S_STATE_HOME/current"
+    echo "tenant=\"$ROCK8S_TENANT\"" > "$ROCK8S_STATE_HOME/current"
+    echo "cluster=\"$ROCK8S_CLUSTER\"" >> "$ROCK8S_STATE_HOME/current"
     printf '{"cluster":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$_TENANT" | \
+        "$ROCK8S_CLUSTER" "$ROCK8S_TENANT" | \
         format_output "$_OUTPUT" "cluster"
 }
 
