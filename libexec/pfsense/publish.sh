@@ -163,12 +163,11 @@ pfsense:
   provider: $(get_provider)
   network:
     interfaces:
+      lan: {}
       wan:
         rules:
           - "allow tcp from any to ${_ENTRYPOINT_IPV4}"$([ -n "$_ENTRYPOINT_IPV6" ] && echo "
-          - \"allow tcp from any to ${_ENTRYPOINT_IPV6}\"
-          - \"allow tcp from ${_ENTRYPOINT_IPV6} to ${_ENTRYPOINT_IPV4}\"
-          - \"allow tcp from [${_ENTRYPOINT_IPV6}] to [${_ENTRYPOINT_IPV6}]\"" || true)
+          - \"allow tcp from any to ${_ENTRYPOINT_IPV6}\"" || true)
   haproxy:
     rules:
 ${_INGRESS_RULES}
