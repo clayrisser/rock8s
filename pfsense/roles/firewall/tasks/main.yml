@@ -126,53 +126,78 @@
   register: current_rules
   changed_when: false
 
-- name: Configure interface firewall rules
-  pfsensible.core.pfsense_rule:
-    name: "{{ item.1.rule }}"
-    action: "{{ (item.1.rule | regex_replace('^(\\w+).*$', '\\1') == 'allow') | ternary('pass', 'block') }}"
-    interface: "{{ item.0.key }}"
-    protocol: >-
-      {%- if ' tcp ' in item.1.rule -%}
-      tcp
-      {%- elif ' udp ' in item.1.rule -%}
-      udp
-      {%- elif ' icmp ' in item.1.rule -%}
-      icmp
-      {%- else -%}
-      any
-      {%- endif -%}
-    source: >-
-      {%- set src = item.1.rule | regex_replace('^.*from\\s+(\\S+)\\s+to.*$', '\\1') -%}
-      {%- if src == 'self' -%}
-      {{ item.0.key }}
-      {%- elif src | regex_search('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}$') -%}
-      {{ src }}
-      {%- else -%}
-      any
-      {%- endif -%}
-    destination: >-
-      {%- set dst = item.1.rule | regex_replace('^.*to\\s+(\\S+)(?:\\s+port.*)?$', '\\1') -%}
-      {%- if dst == 'self' -%}
-      {{ item.0.key }}
-      {%- elif dst == 'any' -%}
-      any
-      {%- elif dst | regex_search('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}$') -%}
-      {{ dst }}
-      {%- elif ':' in dst -%}
-      {{ dst }}
-      {%- else -%}
-      {{ dst }}
-      {%- endif -%}
-    destination_port: "{{ item.1.port | default(omit) }}"
-    state: present
-  with_subelements:
-    - "{{ processed_rules.ansible_facts.processed_interfaces | from_json | dict2items }}"
-    - value.rules
-  loop_control:
-    index_var: rule_idx
-    label: "{{ item.1.rule }}"
-  register: firewall_rules
+- name: Configure firewall rules
+  ansible.builtin.shell: |
+    cat > /tmp/configure_firewall_rules.php << 'EOF'
+    <?php
+    require_once("config.inc");
+    require_once("util.inc");
+    require_once("config.lib.inc");
+    require_once("filter.inc");
+    $config = parse_config(true);
+    $rules = json_decode('{{ pfsense.network.interfaces.wan.rules | to_json }}', true);
+    $changes = false;
+    foreach ($rules as $rule_text) {
+        if (empty($rule_text)) continue;
+        if (!preg_match('/^(allow|deny)\s+(tcp|udp|icmp)?\s*from\s+([^\s]+)\s+to\s+([^\s]+)(\s+.*)?$/', $rule_text, $matches)) continue;
+        $action = $matches[1];
+        $protocol = !empty($matches[2]) ? $matches[2] : 'tcp';
+        $source = preg_replace('/^\[|\]$/', '', $matches[3]);
+        $destination = preg_replace('/^\[|\]$/', '', $matches[4]);
+        $is_ipv6 = (strpos($source, ':') !== false && $source !== 'any') ||
+                   (strpos($destination, ':') !== false && $destination !== 'any');
+        $pf_action = ($action === 'allow') ? 'pass' : 'block';
+        $source_config = ($source === 'any') ? array('any' => '') : array('address' => $source);
+        $destination_config = ($destination === 'any') ? array('any' => '') : array('address' => $destination);
+        $rule_exists = false;
+        if (isset($config['filter']['rule']) && is_array($config['filter']['rule'])) {
+            foreach ($config['filter']['rule'] as $key => $rule) {
+                if ($rule['descr'] === $rule_text) {
+                    if ($rule['type'] === $pf_action &&
+                        $rule['ipprotocol'] === ($is_ipv6 ? 'inet6' : 'inet') &&
+                        $rule['protocol'] === $protocol) {
+                        $src_match = ($source === 'any' && isset($rule['source']['any'])) ||
+                                     ($source !== 'any' && isset($rule['source']['address']) &&
+                                      $rule['source']['address'] === $source);
+                        $dst_match = ($destination === 'any' && isset($rule['destination']['any'])) ||
+                                     ($destination !== 'any' && isset($rule['destination']['address']) &&
+                                      $rule['destination']['address'] === $destination);
+                        if ($src_match && $dst_match) {
+                            $rule_exists = true;
+                            break;
+                        }
+                    }
+                    unset($config['filter']['rule'][$key]);
+                    break;
+                }
+            }
+        }
+        if (!$rule_exists) {
+            if (!isset($config['filter']['rule']) || !is_array($config['filter']['rule'])) {
+                $config['filter']['rule'] = array();
+            }
+            array_push($config['filter']['rule'], array(
+                'type' => $pf_action,
+                'ipprotocol' => $is_ipv6 ? 'inet6' : 'inet',
+                'interface' => 'wan',
+                'source' => $source_config,
+                'destination' => $destination_config,
+                'descr' => $rule_text,
+                'protocol' => $protocol
+            ));
+            $changes = true;
+        }
+    }
+    if ($changes) {
+        write_config("Firewall rules via API") && filter_configure() ?
+            exit(print("CHANGED")) : exit(1);
+    }
+    exit(print("NO_CHANGE"));
+    EOF
+    php -f /tmp/configure_firewall_rules.php
+    rm -f /tmp/configure_firewall_rules.php
+  register: firewall_rules_result
+  changed_when: firewall_rules_result.stdout == "CHANGED"
   when:
     - pfsense.network.interfaces is defined
-    - processed_rules.ansible_facts.processed_interfaces | from_json | length > 0
-    - not (current_rules.stdout | from_json | selectattr('name', 'equalto', item.1.rule) | selectattr('interface', 'equalto', item.0.key) | list | length > 0)
+    - pfsense.network.interfaces.wan.rules is defined

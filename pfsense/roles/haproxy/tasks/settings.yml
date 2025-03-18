@@ -132,7 +132,7 @@
     if (!isset($config["installedpackages"]["haproxy"])) {
         $config["installedpackages"]["haproxy"] = array();
     }
-    $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) && 
+    $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) &&
         $config['installedpackages']['haproxy']['enablesync'] === '';
     $desired_sync = $primary && $ha_sync_enabled;
     if ($current_sync !== $desired_sync) {
@@ -162,7 +162,7 @@
     if (!isset($config["installedpackages"]["haproxy"])) {
         $config["installedpackages"]["haproxy"] = array();
     }
-    $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) && 
+    $current_sync = isset($config['installedpackages']['haproxy']['enablesync']) &&
         $config['installedpackages']['haproxy']['enablesync'] === '';
     $desired_sync = $primary && $ha_sync_enabled;
     if ($current_sync !== $desired_sync) {
