@@ -29,11 +29,11 @@
                 $subnet_bits[$ip] = $subnet_part;
             }
         }
-        if ($ip == "any" || $ip == "self" || $ip == "0.0.0.0" || $ip == "::" || 
-            strpos($ip, '127.') === 0 || strpos($ip, '192.168.') === 0 || 
-            strpos($ip, '10.') === 0 || 
+        if ($ip == "any" || $ip == "self" || $ip == "0.0.0.0" || $ip == "::" ||
+            strpos($ip, '127.') === 0 || strpos($ip, '192.168.') === 0 ||
+            strpos($ip, '10.') === 0 ||
             (strpos($ip, '172.') === 0 && preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $ip)) ||
-            strpos($ip, 'fc00:') === 0 || $ip == '::1' || 
+            strpos($ip, 'fc00:') === 0 || $ip == '::1' ||
             strpos($ip, 'fe80:') === 0 || strpos($ip, 'lan') === 0) {
             return;
         }
