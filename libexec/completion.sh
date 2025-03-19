@@ -38,9 +38,9 @@ _rock8s_completion() {
     fi
     local commands="nodes cluster pfsense completion"
     local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster"
-    local nodes_cmds="ls create destroy ssh"
-    local cluster_cmds="configure setup bootstrap"
-    local pfsense_cmds="configure list"
+    local nodes_cmds="ls apply destroy ssh pubkey"
+    local cluster_cmds="configure setup bootstrap login reset use apply install upgrade node scale"
+    local pfsense_cmds="configure list apply destroy publish"
     local completion_cmds="bash zsh"
     local node_types="master worker"
     if [[ ${cword} -eq 1 ]]; then
@@ -164,9 +164,10 @@ _rock8s() {
                     if (( CURRENT == 2 )); then
                         _values 'nodes subcommand' \
                             'ls[List nodes]' \
-                            'create[Create nodes]' \
+                            'apply[Create or update nodes]' \
                             'destroy[Destroy nodes]' \
-                            'ssh[SSH into a node]'
+                            'ssh[SSH into a node]' \
+                            'pubkey[Get public SSH key for nodes]'
                     elif (( CURRENT == 3 )) && [[ $line[2] == "ssh" ]]; then
                         _describe -t node_types "node type" node_types
                     elif (( CURRENT == 4 )) && [[ $line[2] == "ssh" ]]; then
@@ -184,12 +185,23 @@ _rock8s() {
                 cluster)
                     _values 'cluster subcommand' \
                         'configure[Configure a cluster]' \
+                        'apply[Create nodes, install and configure in one step]' \
+                        'install[Install kubernetes on a cluster]' \
                         'setup[Set up a cluster]' \
-                        'bootstrap[Bootstrap a cluster]'
+                        'bootstrap[Bootstrap a cluster]' \
+                        'login[Login to a kubernetes cluster]' \
+                        'reset[Reset/remove the cluster]' \
+                        'use[Select a default cluster for subsequent commands]' \
+                        'upgrade[Upgrade an existing cluster]' \
+                        'node[Manage cluster nodes]' \
+                        'scale[Scale cluster nodes]'
                     ;;
                 pfsense)
                     _values 'pfsense subcommand' \
                         'configure[Configure pfsense]' \
+                        'apply[Create and configure pfsense firewall]' \
+                        'destroy[Destroy pfsense firewall nodes]' \
+                        'publish[Publish haproxy configuration]' \
                         'list[List pfsense configurations]'
                     ;;
                 completion)
