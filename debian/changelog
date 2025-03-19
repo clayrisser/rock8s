@@ -1,0 +1,392 @@
+rock8s (0.1.0-0~1.gbp45f351) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @45f351707883ccc50a1d7167a9f7f21c1ef4c5c4 **
+
+  [ Clay Risser ]
+  * Initial commit
+  * Upload New File
+  * Update README.md
+  * Initial commit
+  * Fixed install scripts
+  * Updated scripts
+  * Updated README.md
+  * Support a storage role
+  * Update single-nic.sh
+  * Updated network prepare
+  * Started docs
+  * Created initial proxmox setup
+  * Added initial instructions
+  * Updated install scripts
+  * Improved installation
+  * Improved scripts
+  * Started packer update
+  * Updated cloud init
+  * Added docker image
+  * Updated build image
+  * Improved token cleanup
+  * Started improving setup
+  * Improved post install
+  * Updated README.md
+  * Updated installer
+  * Updated install
+  * Update 01_post-install.sh
+  * Update 01_post-install.sh
+  * Updated post install
+  * Updated interface
+  * Updated bridge
+  * Fixed debian install
+  * Improved scripts
+  * Updated storage pool
+  * Use archived image
+  * Improved dhcp setup
+  * Fixed redirection bug
+  * Fixed num_hosts
+  * Updated router
+  * Updated default network
+  * Fixed storage pool
+  * Fixed bug
+  * Fixed template vm name
+  * Updated script
+  * Updated hosts file
+  * Downgraded proxmox version
+  * Updated version
+  * Update preseed.cfg
+  * Fixed passwd
+  * Fixed lang
+  * Created initial kubernetes config
+  * Updated gitignore
+  * Setup initial vars
+  * Updated terraform
+  * Added worker nodes
+  * Updated cloud init
+  * Fixed iothread
+  * Fixed vm nodes
+  * Added more vars
+  * Fixed tags
+  * Updated config
+  * Updated vm
+  * Enable numa
+  * Updated for kubespray test
+  * Updated config
+  * Update config
+  * Provision kubespray
+  * Updated docker run
+  * Increased resources
+  * Updated kubernetes version
+  * Updated versions
+  * Updated scripts
+  * Renamed project
+  * Added max sessions and max startups
+  * Added automatic reboot
+  * Increased max sessions
+  * Added jsonschema package
+  * Temporary check
+  * Fixed cloud-init bug
+  * Dropped kubespray host
+  * Updated command
+  * Setup initial deployment scripts
+  * Updated post install
+  * Fixed post install
+  * Updated setup
+  * Updated setup
+  * Updated build
+  * Optimize setup
+  * Run in sync
+  * Updated proxmox auth
+  * Updated default kube subnet
+  * Fixed variables
+  * Updated vars
+  * Updated terraform
+  * Updated nodes
+  * Updated script
+  * Updated variables
+  * Updated terraform
+  * Updated script
+  * Updated script
+  * Updated private key
+  * Added keys
+  * Fixed terraform bools
+  * Updated install script
+  * Added kubespray data dir
+  * Updated scripts
+  * Auto approve
+  * Improved scripts
+  * List interfaces by role
+  * Updated scripts
+  * Updated scripts
+  * Updated scripts
+  * Updated scripts
+  * Updated update network
+  * Updated scripts
+  * Updated scripts
+  * Updated network setup
+  * Allow overriding
+  * Update network
+  * Improved update
+  * Improved update
+  * Improved update
+  * Updated dhcp
+  * Updated dhcp
+  * Updated dhcp
+  * Updated dhcp
+  * Updated dhcp
+  * Updated private ip
+  * Updated logs
+  * Fixed sudo bug
+  * Updated update network
+  * Updated devices by role
+  * Updated script
+  * Added internet check
+  * Improved network detection
+  * Debug a bit
+  * Fixed bug
+  * Fixed scripts
+  * Fixed scripts
+  * Updated get devices
+  * Don't up interfaces
+  * Updated dhcp
+  * Updated dhcp
+  * Fixed dhcp server
+  * Fixed interfaces
+  * Use sd drives
+  * Improved dhcp config
+  * Use nvme drives
+  * Only use 2 nvme
+  * Fixed ceph network
+  * Updated rdb
+  * Started ceph
+  * Started traefik setup
+  * Update storage
+  * Sync yaps
+  * Updated traefik state
+  * Updated yaps
+  * Fixed mkpm proxy
+  * Use cephfs
+  * Added more nat rules
+  * Use private ip
+  * Updated networking
+  * Updated packer networking
+  * Updated packer networking
+  * Updated packer networking
+  * Updated packer networking
+  * Updated packer networking
+  * Updated terraform state
+  * Updated terraform state
+  * Fixed vars
+  * Updated envs
+  * Updated code
+  * Added private key
+  * Updated installers
+  * Added ceph
+  * Updated ceph osd
+  * Updated user create
+  * Updated nodes
+  * Updated nodes
+  * Updated nodes
+  * Updated provisioning
+  * Started ipv6 support
+  * Added dhcp6 support
+  * Updated ipv6 config
+  * Updated ipv6
+  * Added radvd for ipv6
+  * Fixed ipv6
+  * Updated ceph
+  * Updated cloud init
+  * Fixed formatting
+  * Updated networking
+  * Formatted code
+  * Formatted code
+  * Updated kubernetes
+  * Started pfsense
+  * Updated networking
+  * Updated README.md
+  * Updated scripts
+  * Updated ipv6 address
+  * Updated README.md
+  * Added pfsense screenshots
+  * Added powerdns
+  * Improved powerdns setup
+  * Added power dns
+  * Improved kubernetes install
+  * Added login
+  * Improved kubespray
+  * Fixed altname
+  * Updated README.md
+  * Started work on mailcow
+  * Updated cores
+  * Updated README.md
+  * Updated network script
+  * Don't drop np
+  * Fixed kubespray bug
+  * Initial workking cluster
+  * Updated cluster
+  * Updated kubespray
+  * Started ceph volume provisioners
+  * Updated mkpm
+  * Updated makefiles
+  * Started ceph module
+  * Finished ceph
+  * Initial wazuh deployment
+  * Updated wazuh installer
+  * Updated powerdns
+  * Updated README.md
+  * Improved docker
+  * Added s3cmd
+  * Added csi subvolumegroup
+  * Fixed vlan name
+  * Improved cluster issuer
+  * Initial kubernetes
+  * Updated vars
+  * Fixed olm
+  * Added target to external dns
+  * Improved dns
+  * Improved external access
+  * Added gitlab repo
+  * Disabled hugepages
+  * Updated makefile
+  * Disabled hugepages
+  * Added s3 policy scripts
+  * Removed kubeflow and added avp argocd plugin
+  * Updated s3
+  * Added vault
+  * Updated argocd
+  * Removed argo plugins
+  * Fixed kanister
+  * Added resize script
+  * Added remove and scale
+  * Update 01_boot-installer.sh
+
+  [ Lalit Rajak ]
+  * updated setup script for standalone
+  * updated kubernetes variables.sh script work without ceph
+  * disable ipv6 and gave default value for the pdns apiUrl
+
+  [ Clay Risser ]
+  * Added crontab
+  * updated pdns to cloudflare  and updated external_dns
+
+  [ Lalit Rajak ]
+  * Added longhorn support
+
+  [ Clay Risser ]
+  * Updated cloudflare
+
+  [ Lalit Rajak ]
+  * Updated defaults
+
+  [ Clay Risser ]
+  * Update 01_boot-installer.sh
+  * Update 02_boot.sh
+  * Edit README.md
+  * Edit README.md
+  * Updated terraform
+  * Custom control plane ipv4
+  * Edit 01_boot-installer.sh
+  * Edit 01_boot-installer.sh
+  * Added remove dead node info
+  * Updated readme
+  * Updated readme
+  * Updated clear disk
+  * Fixed qemu install
+  * Fixed qemu install
+  * Updated .env.example
+  * Fixed external dns
+  * Fixed control plane ipv4
+  * Added default targets
+  * Initial refactor for universal kubernetes
+  * Started hetzner provider
+  * Improved terraform
+  * Updated config
+  * Added node group support
+  * Started rock8s cli
+  * Improved hetzner provider
+  * Setup initial config
+  * Started config migration to yaml
+  * Refactored code to better handle tenants
+  * Fixed whiptail prompts
+  * Started working on pfsense
+  * Started pfsense setup
+  * Improved config
+  * Started pfsense
+  * Added nodes destroy
+  * Improved nodes create update and destroy
+  * Improved pfsense
+  * Improved pfsense
+  * Setup initial pfsense ansible
+  * Updated pfsense
+  * Improved pfsense configure
+  * Added ansible php script
+  * Updated dhcp
+  * Revert "Updated dhcp"
+  * Added lan network
+  * Setup interfaces
+  * Added dashboard task
+  * Started dhcp settings
+  * Updated settings
+  * Finished dhcp server
+  * Improved vars
+  * Added ha sync
+  * Added routes
+  * Updated firewall
+  * Added initial firewall
+  * Improved config
+  * Improved provider prompt
+  * Improved script
+  * Updated lan
+  * Improved firewall
+  * Improved firewall
+  * Improved firewall
+  * Added nat rules
+  * Updated pfsense
+  * Updated nodes
+  * Updated cluster configure
+  * Improved configure cluster
+  * Improved cluster operations
+  * Started work on addons
+  * Improved configure script
+  * Improved whiptail prompts
+  * Improved addons
+  * Small improvements
+  * Started improving haproxy
+  * Updated haproxy
+  * Initial haproxy
+  * Updated ips
+  * Updated configure
+  * Fixed naming
+  * Setting basic
+  * Finished haproxy
+  * Created lib folder
+  * Finished pfsense configure refactor
+  * Added haproxy publish
+  * Finished initial haproxy
+  * Updated haproxy
+  * Added ips
+  * Fixed ips
+  * Updated altnames
+  * Added sync
+  * Improved cluster upgrade
+  * Started initial kube terraform
+  * Improved configure cluster
+  * Improved functions
+  * Removed mkpm
+  * Regenerated lfs
+  * Refactored command options and improved help documentation across various scripts. Standardized cluster and tenant argument handling, added examples for usage, and enhanced output format options. Updated pfsense and nodes management commands for consistency.
+  * Add 'apply' command for cluster and pfsense management, enhanced help documentation, and standardized command options across scripts. Introduced public key retrieval for nodes and improved tenant handling in state management.
+  * Enhance 'apply' command in cluster management by adding options to skip kubespray, pfsense, and nodes installations. Updated help documentation to reflect new command options and improved conditional execution in the script.
+  * Add Makefile and manpages generation script; update .gitignore and README
+  * Updated manpages
+  * Fixed build manpages
+  * Added ipv6 support
+  * Fixed sync subnet
+  * Enhance cluster management scripts with improved handling of IP addresses and configurations. Added support for IPv6 in various tasks, updated regex patterns for HAProxy rules, and ensured proper configuration of virtual IPs. Adjusted network settings for Hetzner provider to enable NAT and streamline interface configurations.
+  * Refactor cluster and node management scripts for improved IP handling and output formatting. Updated apply.sh to conditionally execute pfsense publishing and increased sleep duration for kubespray installation. Enhanced ls.sh to output structured JSON for master, worker, and pfsense nodes. Adjusted firewall and haproxy tasks to handle empty arrays and added trimming for string values. Updated Hetzner provider configurations for worker type and network interface detection.
+  * Refactor completion and installation scripts for improved formatting and clarity. Updated completion.sh and install.sh to remove unnecessary whitespace, ensuring cleaner output. Enhanced publish.sh to correctly format IPv6 addresses in firewall rules and improved the handling of firewall rule configurations in main.yml. Adjusted haproxy tasks to streamline address handling and output messages.
+  * Refactor HAProxy configuration script to improve frontend and backend management. Updated the handling of existing frontends and backends to include their indices, streamlined the comparison logic for updates, and ensured proper configuration writing. Enhanced error handling and output messages for clarity.
+  * Refactor firewall rule processing and validation in pfsense tasks. Removed redundant validation checks for interface rules and rule formats, enhancing clarity and performance. Updated the handling of firewall rules to support both IPv4 and IPv6 configurations, ensuring proper integration with existing network interfaces. Improved the configuration scripts for virtual IPs in HAProxy, streamlining the addition and validation of discovered IP addresses.
+  * Refactor IP validation logic in HAProxy tasks to enhance clarity and maintainability. Streamlined the conditional checks for common IP addresses, ensuring proper handling of both IPv4 and IPv6 formats. This update improves the overall robustness of the firewall rule processing.
+  * Added gitlab cicd
+  * Refactor JSON output handling in master, pfsense, and worker scripts to ensure graceful degradation when files are missing. Updated formatting functions to improve table output and added MTU configuration in Hetzner provider scripts for better network performance. Enhanced interface detection logic in Hetzner variables to ensure reliable DHCP setup.
+  * Refactor JSON handling in master, worker, and pfsense scripts to ensure robustness against missing data. Updated formatting functions for improved output and adjusted interface detection logic. Modified Hetzner provider configurations to disable NAT and enhance network settings for better performance.
+  * Edit .gitlab-ci.yml
+
+ -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 09:20:20 -0500
