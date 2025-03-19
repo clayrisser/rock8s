@@ -331,7 +331,7 @@ get_pfsense_private_ipv4s() {
         echo "$_PFSENSE_PRIVATE_IPV4S"
         return
     fi
-    _PFSENSE_PRIVATE_IPV4S="$(get_pfsense_output_json | jq -r '.node_private_ipv4s.value | to_entries[]? | .value // empty')"
+    _PFSENSE_PRIVATE_IPV4S="$(get_pfsense_output_json | jq -r '.node_private_ipv4s?.value // [] | to_entries[]? | .value // empty')"
     echo "$_PFSENSE_PRIVATE_IPV4S"
 }
 

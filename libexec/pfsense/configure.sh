@@ -171,7 +171,7 @@ _main() {
     _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
     _SYNC_INTERFACE="$(get_sync_interface)"
     _PFSENSE_PRIMARY="$(get_pfsense_primary_lan_ipv4)"
-    _PFSENSE_SECONDARY="$(get_pfsense_secondary_hostname)"
+    _PFSENSE_SECONDARY="$_PFSENSE_SECONDARY_HOSTNAME"
     _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_ssh_private_key)"
     if ! timeout 5s ssh -i "$_PFSENSE_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no admin@$_PFSENSE_PRIMARY 'true' 2>/dev/null; then
         _PFSENSE_PRIMARY="$(get_pfsense_primary_hostname)"
@@ -193,22 +193,22 @@ pfsense:
         interface: $(get_lan_interface)
         dhcp: $(get_lan_ipv4_dhcp)
         ipv4:
-          primary: $(get_pfsense_primary_lan_ipv4)/${_LAN_IPV4_PREFIX}
-          secondary: $(get_pfsense_secondary_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ "$(get_enable_network_dualstack)" = "1" ] && echo "
+          primary: $(get_pfsense_primary_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_PFSENSE_SECONDARY" ] && echo "
+          secondary: $(get_pfsense_secondary_lan_ipv4)/${_LAN_IPV4_PREFIX}" || true)$([ "$(get_enable_network_dualstack)" = "1" ] && echo "
         ipv6:
-          primary: $(get_pfsense_primary_lan_ipv6)/64
-          secondary: $(get_pfsense_secondary_lan_ipv6)/64")
+          primary: $(get_pfsense_primary_lan_ipv6)/64$([ -n "$_PFSENSE_SECONDARY" ] && echo "
+          secondary: $(get_pfsense_secondary_lan_ipv6)/64" || true)" || true)$([ -n "$_PFSENSE_SECONDARY" ] && echo "
         ips:
-          - $(get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_SYNC_INTERFACE" ] && [ -n "$_SYNC_IPV4_SUBNET" ] && echo "
+          - $(get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}" || true)$([ -n "$_SYNC_INTERFACE" ] && [ -n "$_SYNC_IPV4_SUBNET" ] && echo "
       sync:
         subnet: $_SYNC_IPV4_SUBNET
         interface: $_SYNC_INTERFACE
         ipv4:
           primary: $(get_pfsense_primary_sync_ipv4)/${_SYNC_IPV4_PREFIX}
-          secondary: $(get_pfsense_secondary_sync_ipv4)/${_SYNC_IPV4_PREFIX}")$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
+          secondary: $(get_pfsense_secondary_sync_ipv4)/${_SYNC_IPV4_PREFIX}" || true)$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
       wan:
         ips:
-          - \"$_PFSENSE_SHARED_WAN_IPV4\"")
+          - \"$_PFSENSE_SHARED_WAN_IPV4\"" || true)
 EOF
 )"
     echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"

@@ -67,7 +67,7 @@ network:
   lan:
     mtu: 1450
     ipv4:
-      nat: true
+      nat: false
       subnet: 172.20.0.0/16
     ipv6:
       subnet: fd20::/64$([ -n "$_SECONDARY_HOSTNAME" ] && echo "

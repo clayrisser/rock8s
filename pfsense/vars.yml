@@ -25,7 +25,6 @@ pfsense:
         dhcp: true
         ipv4:
           primary: "172.20.0.2/16"
-          secondary: "172.20.0.3/16"
         rules:
           - allow from self to any
       wan:
