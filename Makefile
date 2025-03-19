@@ -30,12 +30,24 @@ manpages:
 install: build
 	@install -d $(DESTDIR)$(BINDIR)
 	@install -d $(DESTDIR)$(LIBDIR)/libexec
+	@install -d $(DESTDIR)$(LIBDIR)/providers
+	@install -d $(DESTDIR)$(LIBDIR)/pfsense
+	@install -d $(DESTDIR)$(LIBDIR)/kubespray
+	@install -d $(DESTDIR)$(LIBDIR)/addons
 	@install -d $(DESTDIR)$(MANDIR)/man1
 	@install -d $(DESTDIR)$(DOCDIR)
 	@install -m 755 rock8s.sh $(DESTDIR)$(LIBDIR)/rock8s.sh
 	@ln -sf $(LIBDIR)/rock8s.sh $(DESTDIR)$(BINDIR)/rock8s
 	@cp -r libexec/* $(DESTDIR)$(LIBDIR)/libexec/
 	@chmod -R 755 $(DESTDIR)$(LIBDIR)/libexec
+	@cp -r providers/* $(DESTDIR)$(LIBDIR)/providers/
+	@chmod -R 755 $(DESTDIR)$(LIBDIR)/providers
+	@cp -r pfsense/* $(DESTDIR)$(LIBDIR)/pfsense/
+	@chmod -R 755 $(DESTDIR)$(LIBDIR)/pfsense
+	@cp -r kubespray/* $(DESTDIR)$(LIBDIR)/kubespray/
+	@chmod -R 755 $(DESTDIR)$(LIBDIR)/kubespray
+	@cp -r addons/* $(DESTDIR)$(LIBDIR)/addons/
+	@chmod -R 755 $(DESTDIR)$(LIBDIR)/addons
 	@install -m 644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	@install -m 644 LICENSE $(DESTDIR)$(DOCDIR)/LICENSE
 	@install -m 644 $(MAN1_DIR)/*.1 $(DESTDIR)$(MANDIR)/man1/
