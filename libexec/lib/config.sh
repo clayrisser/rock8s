@@ -44,7 +44,7 @@ get_tenant_config_file() {
         return
     fi
     _TENANT_CONFIG_FILE="$(get_config_dir)/config.yaml"
-    if [ ! -f "$_TENANT_CONFIG_FILE" ]; then
+    if [ ! -f "$_TENANT_CONFIG_FILE" ] && [ -z "$ROCK8S_SKIP_CONFIG" ]; then
         _PROVIDERS_DIR="$ROCK8S_LIB_PATH/providers"
         _PROVIDERS_LIST=""
         for _P in "$_PROVIDERS_DIR"/*/ ; do

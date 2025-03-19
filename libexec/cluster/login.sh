@@ -139,19 +139,20 @@ _main() {
     fi
     export ROCK8S_TENANT="$_TENANT"
     export ROCK8S_CLUSTER="$_CLUSTER"
-    _ENTRYPOINT="$(get_entrypoint)"
-    _FIRST_MASTER_PRIVATE_IPV4="$(get_master_private_ipv4s | head -n 1)"
     if [ -z "$_KUBECONFIG" ]; then
         _KUBECONFIG="$HOME/.kube/config"
     fi
     _KUBECONFIG_TMP="$(mktemp)"
     _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_TMP"
     if [ -n "$_BASTION" ]; then
+        export ROCK8S_SKIP_CONFIG="1"
         if ! ssh "admin@$_BASTION" \
             "cat \$HOME/.config/rock8s/tenant/$ROCK8S_TENANT/cluster/$ROCK8S_CLUSTER/kube.yaml" > "$_KUBECONFIG_TMP"; then
             fail "failed to retrieve kubeconfig from master node via bastion server"
         fi
     else
+        _ENTRYPOINT="$(get_entrypoint)"
+        _FIRST_MASTER_PRIVATE_IPV4="$(get_master_private_ipv4s | head -n 1)"
         if ! ssh -i "$(get_master_ssh_private_key)" -o StrictHostKeyChecking=no "admin@$_FIRST_MASTER_PRIVATE_IPV4" sudo cat /etc/kubernetes/admin.conf > "$_KUBECONFIG_TMP"; then
             fail "failed to retrieve kubeconfig from master node"
         fi
@@ -201,8 +202,13 @@ _main() {
     fi
     chmod 600 "$_KUBECONFIG"
     _cleanup
-    printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
-        "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
+    if [ -n "$_BASTION" ]; then
+        printf '{"name":"%s","kubeconfig":"%s"}\n' \
+            "$_CLUSTER" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
+    else
+        printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
+            "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
+    fi
 }
 
 _main "$@"

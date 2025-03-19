@@ -18,7 +18,7 @@ DESCRIPTION
        Without arguments, it will detect your current shell and print the appropriate completion script.
 
        For bash, use: source <(rock8s completion bash)
-       For zsh, use: source <(rock8s completion zsh)
+       For zsh, use: rock8s completion zsh > ~/.oh-my-zsh/completions/_rock8s
 
        For permanent setup, add the source command to your ~/.bashrc or ~/.zshrc file.
 EOF
@@ -39,8 +39,8 @@ _rock8s_completion() {
     local commands="nodes cluster pfsense completion"
     local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster"
     local nodes_cmds="ls apply destroy ssh pubkey"
-    local cluster_cmds="configure setup bootstrap login reset use apply install upgrade node scale"
-    local pfsense_cmds="configure list apply destroy publish"
+    local cluster_cmds="configure login reset use apply install upgrade node scale"
+    local pfsense_cmds="configure apply destroy publish"
     local completion_cmds="bash zsh"
     local node_types="master worker"
     if [[ ${cword} -eq 1 ]]; then
@@ -89,6 +89,8 @@ _rock8s_completion() {
             cluster)
                 if [[ ${cword} -eq 2 ]]; then
                     COMPREPLY=($(compgen -W "${cluster_cmds}" -- "${cur}"))
+                elif [[ ${cword} -eq 3 && ${words[2]} == "node" ]]; then
+                    COMPREPLY=($(compgen -W "rm" -- "${cur}"))
                 fi
                 ;;
             pfsense)
@@ -183,26 +185,28 @@ _rock8s() {
                     fi
                     ;;
                 cluster)
-                    _values 'cluster subcommand' \
-                        'configure[Configure a cluster]' \
-                        'apply[Create nodes, install and configure in one step]' \
-                        'install[Install kubernetes on a cluster]' \
-                        'setup[Set up a cluster]' \
-                        'bootstrap[Bootstrap a cluster]' \
-                        'login[Login to a kubernetes cluster]' \
-                        'reset[Reset/remove the cluster]' \
-                        'use[Select a default cluster for subsequent commands]' \
-                        'upgrade[Upgrade an existing cluster]' \
-                        'node[Manage cluster nodes]' \
-                        'scale[Scale cluster nodes]'
+                    if (( CURRENT == 2 )); then
+                        _values 'cluster subcommand' \
+                            'configure[Configure a cluster]' \
+                            'apply[Create nodes, install and configure in one step]' \
+                            'install[Install kubernetes on a cluster]' \
+                            'login[Login to a kubernetes cluster]' \
+                            'reset[Reset/remove the cluster]' \
+                            'use[Select a default cluster for subsequent commands]' \
+                            'upgrade[Upgrade an existing cluster]' \
+                            'node[Manage cluster nodes]' \
+                            'scale[Scale cluster nodes]'
+                    elif (( CURRENT == 3 )) && [[ $line[2] == "node" ]]; then
+                        _values 'node subcommand' \
+                            'rm[Remove a node from the cluster]'
+                    fi
                     ;;
                 pfsense)
                     _values 'pfsense subcommand' \
                         'configure[Configure pfsense]' \
                         'apply[Create and configure pfsense firewall]' \
                         'destroy[Destroy pfsense firewall nodes]' \
-                        'publish[Publish haproxy configuration]' \
-                        'list[List pfsense configurations]'
+                        'publish[Publish haproxy configuration]'
                     ;;
                 completion)
                     _values 'completion subcommand' 'bash' 'zsh'
