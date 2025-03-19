@@ -1,6 +1,6 @@
-rock8s (0.1.1-0~1.gbpa29a8b) UNRELEASED; urgency=medium
+rock8s (0.1.2-0~1.gbpf3d118) UNRELEASED; urgency=medium
 
-  ** SNAPSHOT build @a29a8b3a87b1d55a45d017174cd5c8b8c5b7c880 **
+  ** SNAPSHOT build @f3d1187cf5d656db821ab98d7a1216c73c18096f **
 
   [ Clay Risser ]
   * Initial commit
@@ -392,5 +392,8 @@ rock8s (0.1.1-0~1.gbpa29a8b) UNRELEASED; urgency=medium
   * Enhance error handling in fail function to redirect error messages to standard error output.
   * Update command completions in completion.sh to include new subcommands for nodes, cluster, and pfsense. Enhanced user experience by adding descriptions for new commands such as 'apply', 'install', and 'publish'.
   * Add installation steps for new directories and files in Makefile
+  * Add 'rm' subcommand for node management and enhance manpage generation
+  * Update kubeconfig retrieval path and enhance context management in login script; add 'mycluster' to project words list; change ls.sh permissions
+  * Released 0.1.1
 
- -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 10:13:05 -0500
+ -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 11:44:15 -0500
