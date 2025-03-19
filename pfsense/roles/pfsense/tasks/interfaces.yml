@@ -41,15 +41,15 @@
     EOF
     interface="{{ item.key }}"
     {% if item.value.ipv4 is defined %}
-    ipv4="{{ primary | ternary(item.value.ipv4.primary | regex_replace('/.*$', ''), item.value.ipv4.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen="{{ primary | ternary(item.value.ipv4.primary | regex_replace('^.*/', ''), item.value.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    ipv4="{{ primary | ternary(item.value.ipv4.primary | regex_replace('/.*$', ''), (item.value.ipv4.secondary | default(item.value.ipv4.primary)) | regex_replace('/.*$', '')) }}"
+    prefixlen="{{ primary | ternary(item.value.ipv4.primary | regex_replace('^.*/', ''), (item.value.ipv4.secondary | default(item.value.ipv4.primary)) | regex_replace('^.*/', '')) }}"
     {% else %}
     ipv4="{{ item.value.subnet | regex_replace('/.*$', '') }}"
     prefixlen="{{ item.value.subnet | regex_replace('^.*/', '') }}"
     {% endif %}
     {% if item.value.ipv6 is defined %}
-    ipv6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('/.*$', ''), item.value.ipv6.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('^.*/', ''), item.value.ipv6.secondary | regex_replace('^.*/', '')) }}"
+    ipv6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('/.*$', ''), (item.value.ipv6.secondary | default(item.value.ipv6.primary)) | regex_replace('/.*$', '')) }}"
+    prefixlen6="{{ primary | ternary(item.value.ipv6.primary | regex_replace('^.*/', ''), (item.value.ipv6.secondary | default(item.value.ipv6.primary)) | regex_replace('^.*/', '')) }}"
     php -f /tmp/check_interface.php "$interface" "$ipv4" "$prefixlen" "$ipv6" "$prefixlen6"
     {% else %}
     php -f /tmp/check_interface.php "$interface" "$ipv4" "$prefixlen"
@@ -107,15 +107,15 @@
     {% if item.1 is changed %}
     interface="{{ item.0.key }}"
     {% if item.0.value.ipv4 is defined %}
-    ipv4="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('/.*$', ''), item.0.value.ipv4.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('^.*/', ''), item.0.value.ipv4.secondary | regex_replace('^.*/', '')) }}"
+    ipv4="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('/.*$', ''), (item.0.value.ipv4.secondary | default(item.0.value.ipv4.primary)) | regex_replace('/.*$', '')) }}"
+    prefixlen="{{ primary | ternary(item.0.value.ipv4.primary | regex_replace('^.*/', ''), (item.0.value.ipv4.secondary | default(item.0.value.ipv4.primary)) | regex_replace('^.*/', '')) }}"
     {% else %}
     ipv4="{{ item.0.value.subnet | regex_replace('/.*$', '') }}"
     prefixlen="{{ item.0.value.subnet | regex_replace('^.*/', '') }}"
     {% endif %}
     {% if item.0.value.ipv6 is defined %}
-    ipv6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('/.*$', ''), item.0.value.ipv6.secondary | regex_replace('/.*$', '')) }}"
-    prefixlen6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('^.*/', ''), item.0.value.ipv6.secondary | regex_replace('^.*/', '')) }}"
+    ipv6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('/.*$', ''), (item.0.value.ipv6.secondary | default(item.0.value.ipv6.primary)) | regex_replace('/.*$', '')) }}"
+    prefixlen6="{{ primary | ternary(item.0.value.ipv6.primary | regex_replace('^.*/', ''), (item.0.value.ipv6.secondary | default(item.0.value.ipv6.primary)) | regex_replace('^.*/', '')) }}"
     php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen" "$ipv6" "$prefixlen6"
     {% else %}
     php -f /tmp/update_interface.php "$interface" "$ipv4" "$prefixlen"

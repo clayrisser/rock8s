@@ -10,7 +10,7 @@ fi
 
 if [ "$TF_VAR_purpose" != "pfsense" ]; then
     _CONFIG_JSON="$(get_config_json)"
-    _IPV4_GATEWAY="$(calculate_first_ipv4 "$(get_lan_ipv4_subnet)")"
+    _IPV4_GATEWAY="$(get_pfsense_primary_lan_ipv4)"
     _IPV4_NAT="$(get_lan_ipv4_nat)"
     _SSH_PUBLIC_KEY="$(cat "$TF_VAR_ssh_public_key_path")"
     export TF_VAR_user_data="#cloud-config

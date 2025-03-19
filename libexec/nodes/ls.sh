@@ -114,9 +114,9 @@ _main() {
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    _MASTER_PRIVATE_IPS="$(get_master_private_ipv4s 2>/dev/null || echo "")"
-    _WORKER_PRIVATE_IPS="$(get_worker_private_ipv4s 2>/dev/null || echo "")"
-    _PFSENSE_PRIVATE_IPS="$(get_pfsense_private_ipv4s 2>/dev/null || echo "")"
+    _MASTER_PRIVATE_IPS="$(get_master_private_ipv4s)"
+    _WORKER_PRIVATE_IPS="$(get_worker_private_ipv4s)"
+    _PFSENSE_PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
     _PFSENSE_NODES="["
     _COUNT=1
     for _NODE in $_PFSENSE_PRIVATE_IPS; do

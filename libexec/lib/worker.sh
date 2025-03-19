@@ -30,7 +30,7 @@ get_worker_ansible_private_hosts() {
         echo "$_WORKER_ANSIBLE_PRIVATE_HOSTS"
         return
     fi
-    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(get_worker_output_json | jq -r '.node_private_ipv4s.value | to_entries[]? | "\(.key) ansible_host=\(.value) access_ip=\(.value) ip=\(.value)" // empty')"
+    _WORKER_ANSIBLE_PRIVATE_HOSTS="$(get_worker_output_json | jq -r '.node_private_ipv4s?.value // [] | to_entries[]? | "\(.key) ansible_host=\(.value) access_ip=\(.value) ip=\(.value)" // empty')"
     echo "$_WORKER_ANSIBLE_PRIVATE_HOSTS"
 }
 
@@ -48,7 +48,7 @@ get_worker_node_count() {
         echo "$_WORKER_NODE_COUNT"
         return
     fi
-    _WORKER_NODE_COUNT="$(get_worker_output_json | jq -r '.node_private_ipv4s.value | length // 0')"
+    _WORKER_NODE_COUNT="$(get_worker_output_json | jq -r '.node_private_ipv4s?.value // [] | length // 0')"
     echo "$_WORKER_NODE_COUNT"
 }
 
@@ -57,7 +57,7 @@ get_worker_private_ipv4s() {
         echo "$_WORKER_PRIVATE_IPV4S"
         return
     fi
-    _WORKER_PRIVATE_IPV4S="$(get_worker_output_json | jq -r '.node_private_ipv4s.value | to_entries[]? | .value // empty')"
+    _WORKER_PRIVATE_IPV4S="$(get_worker_output_json | jq -r '.node_private_ipv4s?.value // [] | to_entries[]? | .value // empty')"
     echo "$_WORKER_PRIVATE_IPV4S"
 }
 
@@ -66,6 +66,6 @@ get_worker_public_ipv4s() {
         echo "$_WORKER_PUBLIC_IPV4S"
         return
     fi
-    _WORKER_PUBLIC_IPV4S="$(get_worker_output_json | jq -r '.node_public_ipv4s.value | to_entries[]? | .value // empty')"
+    _WORKER_PUBLIC_IPV4S="$(get_worker_output_json | jq -r '.node_public_ipv4s?.value // [] | to_entries[]? | .value // empty')"
     echo "$_WORKER_PUBLIC_IPV4S"
 }

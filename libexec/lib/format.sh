@@ -45,6 +45,11 @@ format_json_table() {
     fi
     if [ "$_KEYS" = "-" ]; then
         if [ "$_TYPE" = "array" ]; then
+            _ARRAY_LENGTH=$(printf "%s\n" "$_JSON" | jq 'length')
+            if [ "$_ARRAY_LENGTH" -eq 0 ]; then
+                rm -f "$_TEMP_FILE"
+                return
+            fi
             _KEYS=$(printf "%s\n" "$_JSON" | jq -r '.[0] | keys | join(" ")')
         else
             _KEYS=$(printf "%s\n" "$_JSON" | jq -r 'keys | join(" ")')
