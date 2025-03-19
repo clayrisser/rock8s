@@ -20,7 +20,7 @@ get_master_output_json() {
     if [ -f "$_MASTER_OUTPUT_JSON_FILE" ]; then
         _MASTER_OUTPUT_JSON="$(cat "$_MASTER_OUTPUT_JSON_FILE")"
     else
-        fail "master output.json not found"
+        _MASTER_OUTPUT_JSON='{}'
     fi
     echo "$_MASTER_OUTPUT_JSON"
 }
@@ -30,7 +30,7 @@ get_master_ansible_private_hosts() {
         echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS"
         return
     fi
-    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(get_master_output_json | jq -r '.node_private_ipv4s.value | to_entries[] | "\(.key) ansible_host=\(.value) access_ip=\(.value) ip=\(.value)"')"
+    _MASTER_ANSIBLE_PRIVATE_HOSTS="$(get_master_output_json | jq -r '.node_private_ipv4s.value | to_entries[]? | "\(.key) ansible_host=\(.value) access_ip=\(.value) ip=\(.value)" // empty')"
     echo "$_MASTER_ANSIBLE_PRIVATE_HOSTS"
 }
 
@@ -48,7 +48,7 @@ get_master_node_count() {
         echo "$_MASTER_NODE_COUNT"
         return
     fi
-    _MASTER_NODE_COUNT="$(get_master_output_json | jq -r '.node_private_ipv4s.value | length')"
+    _MASTER_NODE_COUNT="$(get_master_output_json | jq -r '.node_private_ipv4s.value | length // 0')"
     echo "$_MASTER_NODE_COUNT"
 }
 
@@ -57,7 +57,7 @@ get_master_private_ipv4s() {
         echo "$_MASTER_PRIVATE_IPV4S"
         return
     fi
-    _MASTER_PRIVATE_IPV4S="$(get_master_output_json | jq -r '.node_private_ipv4s.value | .[] | @text')"
+    _MASTER_PRIVATE_IPV4S="$(get_master_output_json | jq -r '.node_private_ipv4s.value | to_entries[]? | .value // empty')"
     echo "$_MASTER_PRIVATE_IPV4S"
 }
 
@@ -66,7 +66,7 @@ get_master_public_ipv4s() {
         echo "$_MASTER_PUBLIC_IPV4S"
         return
     fi
-    _MASTER_PUBLIC_IPV4S="$(get_master_output_json | jq -r '.node_public_ipv4s.value | .[] | @text')"
+    _MASTER_PUBLIC_IPV4S="$(get_master_output_json | jq -r '.node_public_ipv4s.value | to_entries[]? | .value // empty')"
     echo "$_MASTER_PUBLIC_IPV4S"
 }
 
