@@ -11,13 +11,13 @@ format_table() {
         }
     }
     END{
-        for(i=1; i<=NF; i++) printf "%-*s ", max_len[i]+2, header[i]
-        printf "\n"
+        total_width = 0
         for(i=1; i<=NF; i++) {
-            sep = ""
-            for(j=1; j<=max_len[i]+2; j++) sep = sep "-"
-            printf "%s ", sep
+            printf "%-*s ", max_len[i]+2, header[i]
+            total_width += max_len[i] + 3
         }
+        printf "\n"
+        for(i=1; i<total_width; i++) printf "-"
         printf "\n"
         for(row=2; row<=NR; row++) {
             split(line[row], cells, FS)
@@ -75,7 +75,18 @@ format_json_table() {
     _FORMATTED=$(column -t -s '⋮' -o '  ' < "$_TEMP_FILE")
     _HEADER=$(echo "$_FORMATTED" | head -1)
     _DATA=$(echo "$_FORMATTED" | tail -n +2)
-    _SEP=$(printf "%s" "$_HEADER" | sed 's/./-/g')
+    _HEADER_TRIMMED=$(echo "$_HEADER" | sed 's/ *$//')
+    _MAX_LENGTH=${#_HEADER_TRIMMED}
+    while IFS= read -r line; do
+        trimmed_line=$(echo "$line" | sed 's/ *$//')
+        curr_length=${#trimmed_line}
+        if [ "$curr_length" -gt "$_MAX_LENGTH" ]; then
+            _MAX_LENGTH=$curr_length
+        fi
+    done <<EOF
+$(echo "$_DATA")
+EOF
+    _SEP=$(printf "%${_MAX_LENGTH}s" | tr ' ' '-')
     echo "$_HEADER"
     echo "$_SEP"
     echo "$_DATA"
@@ -102,18 +113,6 @@ format_output() {
             ;;
         text)
             case "$_TYPE" in
-                providers)
-                    printf "%s\n" "$_INPUT" | jq -r '.[] | .name'
-                    ;;
-                search)
-                    format_json_table "$_INPUT" "repo name version path"
-                    ;;
-                ls)
-                    format_json_table "$_INPUT" "name environment status path"
-                    ;;
-                repo-list)
-                    format_json_table "$_INPUT" "path"
-                    ;;
                 success)
                     printf "${GREEN}%s${NC}\n" "$(echo "$_INPUT" | jq -r '.message')"
                     ;;

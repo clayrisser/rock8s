@@ -65,6 +65,7 @@ location: $_LOCATION
 network:
   entrypoint: $_ENTRYPOINT
   lan:
+    mtu: 1450
     ipv4:
       nat: true
       subnet: 172.20.0.0/16

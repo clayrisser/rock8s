@@ -35,11 +35,20 @@ bootcmd:
   - modprobe dm_mirror
   - modprobe dm_crypt$([ "$_IPV4_NAT" = "1" ] && echo "
   - systemctl restart networking
-  - IFACE=\$(ip link show | grep -E \"^[0-9]\" | grep -vE \"eth0|lo\" | head -n1 | cut -d':' -f2 | tr -d ' ' | grep -v '^$' || echo \"enp7s0\")
-  - echo \"auto \$IFACE\" > /etc/network/interfaces.d/60-lan
-  - echo \"iface \$IFACE inet dhcp\" >> /etc/network/interfaces.d/60-lan
-  - echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/60-lan
-  - echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/60-lan")
+  - |
+    IFACE=\"\"
+    while [ -z \"\$IFACE\" ]; do
+      IFACE=\$(ip link show | grep -E \"^[0-9]\" | grep -vE \"eth0|lo\" | head -n1 | cut -d':' -f2 | tr -d ' ')
+      if [ -z \"\$IFACE\" ]; then
+        sleep 10
+        systemctl restart networking
+      fi
+    done
+    echo \"auto \$IFACE\" > /etc/network/interfaces.d/60-lan
+    echo \"iface \$IFACE inet dhcp\" >> /etc/network/interfaces.d/60-lan
+    echo \"  mtu 1450\" >> /etc/network/interfaces.d/60-lan
+    echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/60-lan
+    echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/60-lan")
   - systemctl restart networking
 runcmd:
   - sysctl -p /etc/sysctl.d/60-hugepages.conf
