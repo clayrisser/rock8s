@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-rock8s (0.1.0-0~2.gbpf12bc9) UNRELEASED; urgency=medium
-
-  ** SNAPSHOT build @f12bc96a9eccd146ded187c1898732e99c149d46 **
-=======
 rock8s (0.1.1-0~1.gbpa29a8b) UNRELEASED; urgency=medium
 
   ** SNAPSHOT build @a29a8b3a87b1d55a45d017174cd5c8b8c5b7c880 **
->>>>>>> debian/unstable
 
   [ Clay Risser ]
   * Initial commit
