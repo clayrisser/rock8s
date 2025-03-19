@@ -1,6 +1,6 @@
-rock8s (0.1.0-0~1.gbp45f351) UNRELEASED; urgency=medium
+rock8s (0.1.0-0~2.gbpf12bc9) UNRELEASED; urgency=medium
 
-  ** SNAPSHOT build @45f351707883ccc50a1d7167a9f7f21c1ef4c5c4 **
+  ** SNAPSHOT build @f12bc96a9eccd146ded187c1898732e99c149d46 **
 
   [ Clay Risser ]
   * Initial commit
@@ -388,5 +388,6 @@ rock8s (0.1.0-0~1.gbp45f351) UNRELEASED; urgency=medium
   * Refactor JSON output handling in master, pfsense, and worker scripts to ensure graceful degradation when files are missing. Updated formatting functions to improve table output and added MTU configuration in Hetzner provider scripts for better network performance. Enhanced interface detection logic in Hetzner variables to ensure reliable DHCP setup.
   * Refactor JSON handling in master, worker, and pfsense scripts to ensure robustness against missing data. Updated formatting functions for improved output and adjusted interface detection logic. Modified Hetzner provider configurations to disable NAT and enhance network settings for better performance.
   * Edit .gitlab-ci.yml
+  * Debian unstable initial commit
 
- -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 09:20:20 -0500
+ -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 09:29:00 -0500
