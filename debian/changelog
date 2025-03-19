@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 rock8s (0.1.0-0~2.gbpf12bc9) UNRELEASED; urgency=medium
 
   ** SNAPSHOT build @f12bc96a9eccd146ded187c1898732e99c149d46 **
+=======
+rock8s (0.1.1-0~1.gbpa29a8b) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @a29a8b3a87b1d55a45d017174cd5c8b8c5b7c880 **
+>>>>>>> debian/unstable
 
   [ Clay Risser ]
   * Initial commit
@@ -389,5 +395,8 @@ rock8s (0.1.0-0~2.gbpf12bc9) UNRELEASED; urgency=medium
   * Refactor JSON handling in master, worker, and pfsense scripts to ensure robustness against missing data. Updated formatting functions for improved output and adjusted interface detection logic. Modified Hetzner provider configurations to disable NAT and enhance network settings for better performance.
   * Edit .gitlab-ci.yml
   * Debian unstable initial commit
+  * Enhance error handling in fail function to redirect error messages to standard error output.
+  * Update command completions in completion.sh to include new subcommands for nodes, cluster, and pfsense. Enhanced user experience by adding descriptions for new commands such as 'apply', 'install', and 'publish'.
+  * Add installation steps for new directories and files in Makefile
 
- -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 09:29:00 -0500
+ -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 10:13:05 -0500

@@ -43,7 +43,7 @@ error() {
 }
 
 fail() {
-    error "$1"
+    error "$1" >&2
     exit 1
 }
 
