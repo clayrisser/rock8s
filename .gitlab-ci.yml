@@ -73,8 +73,6 @@ build:
       export OSC_REPOSITORY="${OSC_ROOT_REPOSITORY}:$(echo "$CI_COMMIT_BRANCH" | sed 's|^debian/||g')"
     - (rm -rf ../${PACKAGE_NAME}_*.dsc) 2>/dev/null || true
     - gbp buildpackage --git-debian-branch=$CI_COMMIT_BRANCH -S -uc -us -d
-    - git log
-    - ls ..
     - |
       export PACKAGE_VERSION="$(cat "$(ls ../${PACKAGE_NAME}_*.dsc 2>/dev/null | head -n1)" 2>/dev/null | grep -E '^Version:' | sed 's|^Version: ||g')"
     - |
