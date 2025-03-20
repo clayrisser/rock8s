@@ -147,8 +147,8 @@ _main() {
     _TEMP_FILES="$_TEMP_FILES $_KUBECONFIG_TMP"
     if [ -n "$_BASTION" ]; then
         export ROCK8S_SKIP_CONFIG="1"
-        if ! ssh "admin@$_BASTION" \
-            "cat \$HOME/.config/rock8s/tenant/$ROCK8S_TENANT/cluster/$ROCK8S_CLUSTER/kube.yaml" > "$_KUBECONFIG_TMP"; then
+        if ! ssh "$_BASTION" \
+            "cat \$HOME/.local/state/rock8s/tenants/$ROCK8S_TENANT/clusters/$ROCK8S_CLUSTER/kube.yaml" > "$_KUBECONFIG_TMP"; then
             fail "failed to retrieve kubeconfig from master node via bastion server"
         fi
     else
@@ -192,6 +192,7 @@ _main() {
     if ! kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o yaml >/dev/null 2>&1; then
         fail "invalid kubeconfig"
     fi
+    _CONTEXT_NAME=$(kubectl --kubeconfig="$_KUBECONFIG_TMP" config view -o json | jq -r '.["current-context"]')
     mkdir -p "$(dirname "$_KUBECONFIG")"
     if [ -f "$_KUBECONFIG" ]; then
         _KUBECONFIG_MERGED_TMP="$(mktemp)"
@@ -202,6 +203,7 @@ _main() {
         mv "$_KUBECONFIG_TMP" "$_KUBECONFIG"
     fi
     chmod 600 "$_KUBECONFIG"
+    kubectl --kubeconfig="$_KUBECONFIG" config use-context "$_CONTEXT_NAME" >&2
     _cleanup
     if [ -n "$_BASTION" ]; then
         printf '{"name":"%s","kubeconfig":"%s"}\n' \

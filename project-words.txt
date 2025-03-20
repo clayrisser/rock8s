@@ -70,6 +70,7 @@ mirrorsite
 mjson
 mkpm
 myaml
+mycluster
 natport
 ncdu
 netcommon
