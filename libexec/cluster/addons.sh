@@ -7,13 +7,13 @@ set -e
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster configure
+       rock8s cluster addons
 
 SYNOPSIS
-       rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--cluster <cluster>] [--kubeconfig <path>] [--update]
+       rock8s cluster addons [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--cluster <cluster>] [--kubeconfig <path>] [--update]
 
 DESCRIPTION
-       configure an existing kubernetes cluster with the necessary infrastructure
+       configure cluster addons for an existing kubernetes cluster
 
 OPTIONS
        -h, --help
@@ -38,11 +38,11 @@ OPTIONS
               update ansible collections
 
 EXAMPLE
-       # configure a cluster with automatic approval
-       rock8s cluster configure --cluster mycluster --yes
+       # configure addons for a cluster with automatic approval
+       rock8s cluster addons --cluster mycluster --yes
 
-       # configure a cluster with a custom kubeconfig
-       rock8s cluster configure --cluster mycluster --kubeconfig /path/to/kubeconfig
+       # configure addons for a cluster with a custom kubeconfig
+       rock8s cluster addons --cluster mycluster --kubeconfig /path/to/kubeconfig
 
 SEE ALSO
        rock8s cluster apply --help
@@ -144,9 +144,11 @@ _main() {
     export TF_VAR_entrypoint="$(get_entrypoint)"
     export TF_VAR_kubeconfig="$_CLUSTER_DIR/kube.yaml"
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
-    export TF_VAR_ingress_nginx_load_balancer="$([ "$(get_external_network)" = "1" ] && echo "0" || echo "1")"
+    _LOAD_BALANCER_ENABLED="$([ "$(get_external_network)" = "1" ] && echo "0" || echo "1")"
+    export TF_VAR_ingress_nginx="{\"load_balancer\":$_LOAD_BALANCER_ENABLED}"
     _CONFIG_JSON="$(get_config_json)"
-    echo "$_CONFIG_JSON" | jq -r '.addons * {registries: .registries}' > "$_ADDONS_DIR/terraform.tfvars.json"
+    _CONFIG_JSON=$(echo "$_CONFIG_JSON" | jq --arg lb "$_LOAD_BALANCER_ENABLED" '.addons.ingress_nginx = {"load_balancer": ($lb == "1")}')
+    echo "$_CONFIG_JSON" | jq -r '.addons' > "$_ADDONS_DIR/terraform.tfvars.json"
     chmod 600 "$_ADDONS_DIR/terraform.tfvars.json"
     cd "$_ADDONS_DIR/terraform"
     if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \

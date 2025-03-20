@@ -36,8 +36,9 @@ EXAMPLE
        rock8s cluster scale --cluster mycluster --tenant mytenant
 
 SEE ALSO
-       rock8s cluster configure --help
-       rock8s nodes apply --help
+       rock8s cluster node --help
+       rock8s cluster addons --help
+       rock8s cluster apply --help
 EOF
 }
 

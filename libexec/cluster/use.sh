@@ -41,7 +41,7 @@ EXAMPLE
 
 SEE ALSO
        rock8s cluster install --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
        rock8s cluster login --help
 EOF
 }

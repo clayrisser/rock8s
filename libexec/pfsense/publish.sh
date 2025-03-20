@@ -43,7 +43,7 @@ EXAMPLE
 
 SEE ALSO
        rock8s pfsense configure --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
 EOF
 }
 

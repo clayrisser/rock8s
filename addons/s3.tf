@@ -2,8 +2,8 @@ module "s3" {
   source  = "./modules/s3"
   enabled = local.s3
   values  = <<EOF
-endpoint: ${var.s3_endpoint}
-accessKey: ${var.s3_access_key}
-secretKey: ${var.s3_secret_key}
+endpoint: ${try(var.s3.endpoint, "")}
+accessKey: ${try(var.s3.access_key, "")}
+secretKey: ${try(var.s3.secret_key, "")}
 EOF
 }

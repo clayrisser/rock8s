@@ -36,13 +36,13 @@ _rock8s_completion() {
         words=("${COMP_WORDS[@]}")
         cword="${COMP_CWORD}"
     fi
-    local commands="nodes cluster pfsense completion"
+    local commands="nodes cluster pfsense completion version"
     local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster"
     local nodes_cmds="ls apply destroy ssh pubkey"
-    local cluster_cmds="configure login reset use apply install upgrade node scale"
+    local cluster_cmds="addons login reset use apply install upgrade node scale"
     local pfsense_cmds="configure apply destroy publish"
     local completion_cmds="bash zsh"
-    local node_types="master worker"
+    local node_types="master worker pfsense"
     if [[ ${cword} -eq 1 ]]; then
         COMPREPLY=($(compgen -W "${commands} ${global_opts}" -- "${cur}"))
         return 0
@@ -70,6 +70,12 @@ _rock8s_completion() {
                 if [[ ${cword} -eq 2 ]]; then
                     COMPREPLY=($(compgen -W "${nodes_cmds}" -- "${cur}"))
                 elif [[ ${cword} -eq 3 && ${words[2]} == "ssh" ]]; then
+                    COMPREPLY=($(compgen -W "${node_types}" -- "${cur}"))
+                elif [[ ${cword} -eq 3 && ${words[2]} == "destroy" ]]; then
+                    COMPREPLY=($(compgen -W "${node_types}" -- "${cur}"))
+                elif [[ ${cword} -eq 3 && ${words[2]} == "apply" ]]; then
+                    COMPREPLY=($(compgen -W "${node_types}" -- "${cur}"))
+                elif [[ ${cword} -eq 3 && ${words[2]} == "pubkey" ]]; then
                     COMPREPLY=($(compgen -W "${node_types}" -- "${cur}"))
                 elif [[ ${cword} -eq 4 && ${words[2]} == "ssh" ]]; then
                     local node_numbers="1 2 3"
@@ -120,8 +126,9 @@ _rock8s() {
     local line state
     local -a node_types
     node_types=(
-        'master:Master node'
-        'worker:Worker node'
+        'master:list only master nodes'
+        'worker:list only worker nodes'
+        'pfsense:list only pfsense nodes'
     )
     _arguments -C \
         '-h[Show help message]' \
@@ -158,19 +165,26 @@ _rock8s() {
                 'nodes[Create and manage cluster nodes]' \
                 'cluster[Create kubernetes clusters]' \
                 'pfsense[Configure and manage pfsense firewall]' \
-                'completion[Generate shell completion scripts]'
+                'completion[Generate shell completion scripts]' \
+                'version[Display rock8s version information]'
             ;;
         args)
             case $line[1] in
                 nodes)
                     if (( CURRENT == 2 )); then
                         _values 'nodes subcommand' \
-                            'ls[List nodes]' \
-                            'apply[Create or update nodes]' \
-                            'destroy[Destroy nodes]' \
-                            'ssh[SSH into a node]' \
+                            'ls[List nodes in the cluster]' \
+                            'apply[Create new cluster nodes or update existing ones]' \
+                            'destroy[Destroy cluster nodes for a specific purpose]' \
+                            'ssh[SSH into a specific node in the cluster]' \
                             'pubkey[Get public SSH key for nodes]'
                     elif (( CURRENT == 3 )) && [[ $line[2] == "ssh" ]]; then
+                        _describe -t node_types "node type" node_types
+                    elif (( CURRENT == 3 )) && [[ $line[2] == "destroy" ]]; then
+                        _describe -t node_types "node type" node_types
+                    elif (( CURRENT == 3 )) && [[ $line[2] == "apply" ]]; then
+                        _describe -t node_types "node type" node_types
+                    elif (( CURRENT == 3 )) && [[ $line[2] == "pubkey" ]]; then
                         _describe -t node_types "node type" node_types
                     elif (( CURRENT == 4 )) && [[ $line[2] == "ssh" ]]; then
                         local cluster=""
@@ -187,8 +201,9 @@ _rock8s() {
                 cluster)
                     if (( CURRENT == 2 )); then
                         _values 'cluster subcommand' \
-                            'configure[Configure a cluster]' \
-                            'apply[Create nodes, install and configure in one step]' \
+                            'addons[Configure cluster addons for an existing kubernetes cluster]' \
+                            'apply[Create nodes, install and configure a kubernetes cluster in one step]' \
+                            'init[Initialize cluster configuration]' \
                             'install[Install kubernetes on a cluster]' \
                             'login[Login to a kubernetes cluster]' \
                             'reset[Reset/remove the cluster]' \
@@ -203,8 +218,8 @@ _rock8s() {
                     ;;
                 pfsense)
                     _values 'pfsense subcommand' \
-                        'configure[Configure pfsense]' \
-                        'apply[Create and configure pfsense firewall]' \
+                        'configure[Configure pfsense settings and rules]' \
+                        'apply[Create and configure pfsense firewall nodes]' \
                         'destroy[Destroy pfsense firewall nodes]' \
                         'publish[Publish haproxy configuration]'
                     ;;

@@ -21,14 +21,14 @@
 
 module "ingress-nginx" {
   source        = "./modules/ingress_nginx"
-  enabled       = var.ingress_nginx
+  enabled       = var.ingress_nginx != null
   replicas      = 0
   ingress_ports = local.ingress_ports
-  load_balancer = var.ingress_nginx_load_balancer
+  load_balancer = try(var.ingress_nginx.load_balancer, false)
 }
 
 data "kubernetes_service" "ingress_nginx" {
-  count = var.ingress_nginx ? 1 : 0
+  count = var.ingress_nginx != null ? 1 : 0
   metadata {
     name      = "ingress-nginx-controller"
     namespace = "ingress-nginx"
@@ -39,7 +39,7 @@ data "kubernetes_service" "ingress_nginx" {
 }
 
 resource "null_resource" "wait-for-ingress-nginx" {
-  count = var.ingress_nginx ? 1 : 0
+  count = var.ingress_nginx != null ? 1 : 0
   provisioner "local-exec" {
     command     = <<EOF
 s=5

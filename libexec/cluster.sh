@@ -32,8 +32,11 @@ COMMANDS
        apply
               create nodes, install and configure a kubernetes cluster in one step
 
-       configure
-              configure an existing cluster with operators
+       addons
+              configure cluster addons for an existing kubernetes cluster
+
+       init
+              initialize cluster configuration
 
        install
               install kubernetes on a cluster
@@ -60,11 +63,14 @@ EXAMPLE
        # create and setup a new kubernetes cluster in one step
        rock8s cluster apply --cluster mycluster --yes
 
+       # initialize a new cluster configuration
+       rock8s cluster init --cluster mycluster
+
        # install kubernetes on existing nodes
        rock8s cluster install --cluster mycluster --yes
 
-       # configure with operators after installation
-       rock8s cluster configure --cluster mycluster
+       # configure addons after installation
+       rock8s cluster addons --cluster mycluster
 
        # set a default cluster for other commands
        rock8s cluster use mycluster mytenant
@@ -74,7 +80,8 @@ EXAMPLE
 
 SEE ALSO
        rock8s cluster apply --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
+       rock8s cluster init --help
        rock8s cluster install --help
        rock8s cluster upgrade --help
        rock8s cluster node --help
@@ -121,7 +128,7 @@ _main() {
                         ;;
                 esac
                 ;;
-            apply|configure|install|upgrade|node|scale|login|reset|use)
+            apply|addons|init|install|upgrade|node|scale|login|reset|use)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

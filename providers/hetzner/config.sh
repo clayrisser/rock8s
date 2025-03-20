@@ -36,7 +36,7 @@ _DEFAULT_NETWORK="172.20.0.0/16"
 _DEFAULT_PFSENSE_TYPE="cx22"
 _DEFAULT_MASTER_TYPE="cx32"
 _DEFAULT_WORKER_TYPE="cpx51"
-_DEFAULT_WORKER_COUNT="2"
+_DEFAULT_WORKER_COUNT="3"
 
 : "${LOCATION:=$_DEFAULT_LOCATION}"
 : "${NETWORK:=$_DEFAULT_NETWORK}"
@@ -57,9 +57,8 @@ _MASTER_TYPE="$(prompt_select "Select master node type" "MASTER_TYPE" "$_DEFAULT
 _WORKER_TYPE="$(prompt_select "Select worker node type" "WORKER_TYPE" "$_DEFAULT_WORKER_TYPE" $_AVAILABLE_SERVER_TYPES)"
 _WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "WORKER_COUNT" "$_DEFAULT_WORKER_COUNT" 1)"
 
-_TENANT_CONFIG_FILE="$(get_tenant_config_file)"
-
-cat <<EOF > "$_TENANT_CONFIG_FILE"
+_TENANT_TMP_CONFIG_FILE="$(get_tenant_config_file).tmp"
+cat <<EOF > "$_TENANT_TMP_CONFIG_FILE"
 image: debian-12
 location: $_LOCATION
 network:

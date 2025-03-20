@@ -49,7 +49,7 @@ EXAMPLE
 
 SEE ALSO
        rock8s cluster apply --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
        rock8s cluster upgrade --help
 EOF
 }

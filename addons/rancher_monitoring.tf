@@ -1,5 +1,5 @@
 resource "kubernetes_namespace" "rancher_monitoring" {
-  count = var.rancher_monitoring ? 1 : 0
+  count = var.rancher_monitoring != null ? 1 : 0
   metadata {
     name = "cattle-monitoring-system"
   }
@@ -7,7 +7,7 @@ resource "kubernetes_namespace" "rancher_monitoring" {
 
 module "rancher-monitoring" {
   source                  = "./modules/rancher_monitoring"
-  enabled                 = var.rancher_monitoring
+  enabled                 = var.rancher_monitoring != null
   create_namespace        = false
   namespace               = try(kubernetes_namespace.rancher_monitoring[0].metadata[0].name, "")
   endpoint                = "s3.us-east-1.amazonaws.com"

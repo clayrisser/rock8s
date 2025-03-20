@@ -1,20 +1,20 @@
 module "external-dns" {
   source  = "./modules/external_dns"
-  enabled = var.external_dns
+  enabled = local.external_dns
   default_targets = [
-    var.entrypoint
+    local.entrypoint
   ]
   dns_providers = {
     pdns = {
-      api_url = var.pdns_api_url
-      api_key = var.pdns_api_key
+      api_url = try(var.external_dns.powerdns.api_url, "")
+      api_key = try(var.external_dns.powerdns.api_key, "")
     }
     hetzner = {
-      api_key = var.hetzner_api_key
+      api_key = try(var.external_dns.hetzner.api_key, "")
     }
     cloudflare = {
-      api_key = var.cloudflare_api_key
-      email   = var.cloudflare_email
+      api_key = try(var.external_dns.cloudflare.api_key, "")
+      email   = try(var.external_dns.cloudflare.email, "")
     }
   }
 }

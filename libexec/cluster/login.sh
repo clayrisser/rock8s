@@ -58,8 +58,9 @@ EXAMPLE
        rock8s cluster login --cluster mycluster 192.168.1.10
 
 SEE ALSO
-       rock8s cluster configure --help
-       rock8s cluster use --help
+       rock8s cluster install --help
+       rock8s cluster addons --help
+       rock8s cluster upgrade --help
 EOF
 }
 

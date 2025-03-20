@@ -1,6 +1,6 @@
 module "kyverno" {
   source  = "./modules/kyverno"
-  enabled = var.kyverno
+  enabled = var.kyverno != null
   values  = <<EOF
 backgroundController:
   rbac:
