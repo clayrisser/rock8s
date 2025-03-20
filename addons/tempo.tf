@@ -10,7 +10,7 @@ module "tempo" {
   access_key         = ""
   secret_key         = ""
   grafana_repo       = ""
-  retention          = "720h"
+  retention          = "${length(try(var.tempo.retention_hours, "")) > 0 ? try(var.tempo.retention_hours, "720") : "720"}h"
   depends_on = [
     kubernetes_namespace.rancher_monitoring
   ]

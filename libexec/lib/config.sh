@@ -61,12 +61,13 @@ get_tenant_config_file() {
         _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
         if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_TENANT_CONFIG_FILE" ]; then
             . "$_PROVIDER_DIR/config.sh"
-            if [ -f "$_TENANT_CONFIG_FILE" ]; then
+            if [ -f "$_TENANT_CONFIG_FILE.tmp" ]; then
                 . "$ROCK8S_LIB_PATH/providers/addons.sh"
             fi
-            if [ ! -f "$_TENANT_CONFIG_FILE" ]; then
+            if [ ! -f "$_TENANT_CONFIG_FILE.tmp" ]; then
                 fail "provider config script failed to create config file"
             fi
+            mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
             { echo "provider: $_PROVIDER"; cat "$_TENANT_CONFIG_FILE"; } > "$_TENANT_CONFIG_FILE.tmp" && mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
         fi
         if [ ! -f "$_TENANT_CONFIG_FILE" ]; then

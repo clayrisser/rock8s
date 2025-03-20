@@ -2,16 +2,16 @@ module "rancher" {
   source                 = "./modules/rancher"
   enabled                = local.rancher
   kubeconfig             = local.kubeconfig
-  letsencrypt_email      = var.email
-  rancher_admin_password = var.rancher_admin_password
+  letsencrypt_email      = local.email
+  rancher_admin_password = try(var.rancher.admin_password, "rancherP@ssw0rd")
   rancher_cluster_id     = local.rancher_cluster_id
-  rancher_hostname       = var.rancher_hostname
-  rancher_token          = var.rancher_token
+  rancher_hostname       = try(var.rancher.hostname, "")
+  rancher_token          = try(var.rancher.token, "")
 }
 
 provider "rancher2" {
   api_url   = try(module.rancher.api_url, null)
-  token_key = var.rancher_token != "" ? var.rancher_token : try(module.rancher.token, "")
+  token_key = try(var.rancher.token, "") != "" ? try(var.rancher.token, "") : try(module.rancher.token, "")
 }
 
 resource "rancher2_catalog_v2" "grafana" {

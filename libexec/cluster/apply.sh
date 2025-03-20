@@ -58,7 +58,7 @@ EXAMPLE
 
 SEE ALSO
        rock8s cluster install --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
        rock8s cluster upgrade --help
 EOF
 }
@@ -217,7 +217,7 @@ _main() {
                 $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--pfsense-ssh-password") >/dev/null
         fi
     fi
-    sh "$ROCK8S_LIB_PATH/libexec/cluster/configure.sh" \
+    sh "$ROCK8S_LIB_PATH/libexec/cluster/addons.sh" \
         --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \

@@ -1,5 +1,5 @@
 resource "kubectl_manifest" "namespace" {
-  count     = var.enabled ? 1 : 0
+  count     = var.enabled ? 0 : (var.enabled ? 1 : 0)
   yaml_body = <<EOF
 apiVersion: v1
 kind: Namespace
@@ -9,7 +9,7 @@ EOF
 }
 
 resource "kubernetes_config_map" "init" {
-  count = var.enabled ? 1 : 0
+  count = var.enabled ? 0 : (var.enabled ? 1 : 0)
   metadata {
     name      = "init"
     namespace = var.namespace

@@ -2,6 +2,8 @@
 
 set -e
 
+export ROCK8S_VERSION="0.2.0"
+
 if [ -f "$(pwd)/libexec/lib.sh" ]; then
     : "${ROCK8S_LIB_PATH:=$(pwd)}"
     ROCK8S_DEBUG=1
@@ -29,6 +31,29 @@ export ANSIBLE_NOCOWS=1
 if [ "$(id -u)" = "0" ]; then
     fail "cannot run as root"
 fi
+
+_version() {
+    while test $# -gt 0; do
+        case "$1" in
+            -o|--output|-o=*|--output=*)
+                case "$1" in
+                    *=*)
+                        _OUTPUT="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _OUTPUT="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    printf '{"version":"%s"}\n' "$ROCK8S_VERSION" | format_output "$_OUTPUT"
+}
 
 _help() {
     cat <<EOF >&2
@@ -73,9 +98,12 @@ COMMANDS
        completion
               generate shell completion scripts
 
+       version
+              display rock8s version information
+
 EXAMPLE
        # create a cluster
-       rock8s cluster configure --cluster mycluster --yes
+       rock8s cluster addons --cluster mycluster --yes
 
        # list nodes in a cluster
        rock8s nodes ls --cluster mycluster
@@ -92,12 +120,16 @@ EXAMPLE
        # enable completions in your shell
        source <(rock8s completion)
 
+       # show version information
+       rock8s version
+
 SEE ALSO
        rock8s nodes --help
        rock8s cluster --help
        rock8s pfsense --help
        rock8s kubectl --help
        rock8s completion --help
+       rock8s version --help
 EOF
 }
 
@@ -187,6 +219,11 @@ _main() {
                 shift
                 _CMD_ARGS="$*"
                 break
+                ;;
+            version)
+                shift
+                _version "$@"
+                exit
                 ;;
             *)
                 _help

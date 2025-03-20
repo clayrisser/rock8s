@@ -1,10 +1,10 @@
 module "longhorn" {
   source        = "./modules/longhorn"
-  enabled       = var.longhorn
-  s3_endpoint   = var.longhorn_s3_endpoint != "" ? var.longhorn_s3_endpoint : var.s3_endpoint
-  s3_access_key = var.longhorn_s3_access_key != "" ? var.longhorn_s3_access_key : var.s3_access_key
-  s3_secret_key = var.longhorn_s3_secret_key != "" ? var.longhorn_s3_secret_key : var.s3_secret_key
-  s3_bucket     = var.longhorn_s3_bucket
+  enabled       = var.longhorn != null
+  s3_endpoint   = try(var.longhorn.s3_endpoint, "") != "" ? try(var.longhorn.s3_endpoint, "") : try(var.s3.endpoint, "")
+  s3_access_key = try(var.longhorn.s3_access_key, "") != "" ? try(var.longhorn.s3_access_key, "") : try(var.s3.access_key, "")
+  s3_secret_key = try(var.longhorn.s3_secret_key, "") != "" ? try(var.longhorn.s3_secret_key, "") : try(var.s3.secret_key, "")
+  s3_bucket     = try(var.longhorn.s3_bucket, "")
   depends_on = [
     module.rancher
   ]

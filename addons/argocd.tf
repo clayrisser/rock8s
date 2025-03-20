@@ -1,6 +1,6 @@
 module "argocd" {
   source  = "./modules/argocd"
-  enabled = var.argocd
+  enabled = var.argocd != null
 }
 
 data "kubernetes_secret" "argocd-initial-admin-secret" {
@@ -26,15 +26,15 @@ provider "argocd" {
 }
 
 # resource "argocd_repository" "git" {
-#   count    = (var.argocd && var.git_repo != "") ? 1 : 0
-#   repo     = var.git_repo
-#   username = local.git_username
-#   password = local.git_password
+#   count    = (var.argocd != null && try(var.argocd.git.repo, "") != "") ? 1 : 0
+#   repo     = local.git.repo
+#   username = local.git.username
+#   password = local.git.password
 #   insecure = false
 # }
 
 # resource "argocd_application" "apps" {
-#   count = length(argocd_repository.git)
+#   count = (var.argocd != null && local.git.repo != "") ? 1 : 0
 #   metadata {
 #     name      = "apps"
 #     namespace = "argocd"
@@ -42,7 +42,7 @@ provider "argocd" {
 #   spec {
 #     project = "default"
 #     source {
-#       repo_url        = argocd_repository.git[0].repo
+#       repo_url        = local.git.repo
 #       target_revision = "main"
 #       path            = "apps"
 #       directory {
