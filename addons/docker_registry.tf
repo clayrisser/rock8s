@@ -20,6 +20,11 @@ resource "kubernetes_secret" "registry" {
       }
     })
   }
+  lifecycle {
+    ignore_changes = [
+      metadata[0].labels
+    ]
+  }
 }
 
 resource "kubectl_manifest" "sync-registry" {
@@ -28,29 +33,27 @@ resource "kubectl_manifest" "sync-registry" {
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: ${kubernetes_secret.registry[0].metadata.0.name}
+  name: sync-registry
 spec:
   background: true
   mutateExistingOnPolicyUpdate: true
   rules:
     - name: sync-registry
       match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      mutate:
-        targets:
-          - apiVersion: v1
-            kind: Pod
-        patchStrategicMerge:
-          spec:
-            imagePullSecrets:
-              - name: ${kubernetes_secret.registry[0].metadata.0.name}
-            containers:
-              - (name): "*"
-                imagePullSecrets:
-                  - namespace: ${kubernetes_secret.registry[0].metadata.0.namespace}
-                    name: ${kubernetes_secret.registry[0].metadata.0.name}
+        resources:
+          kinds:
+            - Namespace
+      generate:
+        apiVersion: v1
+        kind: Secret
+        name: ${kubernetes_secret.registry[0].metadata.0.name}
+        namespace: '{{request.object.metadata.name}}'
+        synchronize: true
+        clone:
+          namespace: ${kubernetes_secret.registry[0].metadata.0.namespace}
+          name: ${kubernetes_secret.registry[0].metadata.0.name}
 EOF
+  depends_on = [
+    module.kyverno,
+  ]
 }

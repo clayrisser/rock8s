@@ -21,7 +21,7 @@
 
 data "kubectl_path_documents" "olm-crds" {
   count   = var.enabled ? 1 : 0
-  pattern = "${path.module}/artifacts/olm/crds.yaml"
+  pattern = "${path.module}/../../../artifacts/olm/crds.yaml"
 }
 
 resource "kubectl_manifest" "olm-crds" {
@@ -39,7 +39,7 @@ resource "kubectl_manifest" "olm-crds" {
 
 data "kubectl_path_documents" "olm" {
   count   = var.enabled ? 1 : 0
-  pattern = "${path.module}/artifacts/olm/olm.yaml"
+  pattern = "${path.module}/../../../artifacts/olm/olm.yaml"
 }
 
 resource "kubectl_manifest" "olm" {
