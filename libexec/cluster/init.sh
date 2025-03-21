@@ -116,8 +116,8 @@ _main() {
     if [ ! -f "$_CONFIG_FILE" ]; then
         get_tenant_config_file >/dev/null
     fi
-    printf '{"cluster":"%s","tenant":"%s","config_file":"%s"}\n' \
-        "$_CLUSTER" "$_TENANT" "$_CONFIG_FILE" | \
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s","config_file":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" "$_CONFIG_FILE" | \
         format_output "$_OUTPUT"
 }
 

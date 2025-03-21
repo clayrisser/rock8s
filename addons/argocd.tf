@@ -25,38 +25,49 @@ provider "argocd" {
   }
 }
 
-# resource "argocd_repository" "git" {
-#   count    = (var.argocd != null && try(var.argocd.git.repo, "") != "") ? 1 : 0
-#   repo     = local.git.repo
-#   username = local.git.username
-#   password = local.git.password
-#   insecure = false
-# }
+resource "argocd_repository" "git" {
+  count    = (var.argocd != null && try(var.argocd.git.repo, "") != "") ? 1 : 0
+  repo     = local.git.repo
+  username = local.git.username
+  password = local.git.password
+  insecure = false
+}
 
-# resource "argocd_application" "apps" {
-#   count = (var.argocd != null && local.git.repo != "") ? 1 : 0
-#   metadata {
-#     name      = "apps"
-#     namespace = "argocd"
-#   }
-#   spec {
-#     project = "default"
-#     source {
-#       repo_url        = local.git.repo
-#       target_revision = "main"
-#       path            = "apps"
-#       directory {
-#         recurse = false
-#       }
-#     }
-#     destination {
-#       server    = "https://kubernetes.default.svc"
-#       namespace = "argocd"
-#     }
-#     sync_policy {
-#       sync_options = [
-#         "CreateNamespace=true"
-#       ]
-#     }
-#   }
-# }
+resource "time_sleep" "wait" {
+  count           = (var.argocd != null && try(var.argocd.git.repo, "") != "") ? 1 : 0
+  create_duration = "10s"
+  depends_on = [
+    argocd_repository.git
+  ]
+}
+
+resource "argocd_application" "apps" {
+  count = (var.argocd != null && local.git.repo != "") ? 1 : 0
+  metadata {
+    name      = "apps"
+    namespace = "argocd"
+  }
+  spec {
+    project = "default"
+    source {
+      repo_url        = local.git.repo
+      target_revision = "main"
+      path            = "apps"
+      directory {
+        recurse = false
+      }
+    }
+    destination {
+      server    = "https://kubernetes.default.svc"
+      namespace = "argocd"
+    }
+    sync_policy {
+      sync_options = [
+        "CreateNamespace=true"
+      ]
+    }
+  }
+  depends_on = [
+    time_sleep.wait
+  ]
+}

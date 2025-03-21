@@ -191,7 +191,9 @@ EOF
         -e "@$_PFSENSE_DIR/vars.publish.yml" \
         $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
         "$_PFSENSE_DIR/ansible/playbooks/publish.yml" -v >&2
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT"
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

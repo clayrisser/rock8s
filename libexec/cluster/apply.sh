@@ -223,7 +223,9 @@ _main() {
         --tenant="$_TENANT" \
         $([ "$_UPDATE" = "1" ] && echo "--update") \
         $([ "$_YES" = "1" ] && echo "--yes") >/dev/null
-    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_OUTPUT"
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

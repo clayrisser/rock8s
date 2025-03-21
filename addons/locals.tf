@@ -15,8 +15,16 @@ locals {
   rancher_cluster_id = try(var.rancher.cluster_id, "local")
   rancher_project_id = try(module.rancher.system_project_id, "")
   git = {
-    repo     = try(var.argocd.git.repo, "")
-    username = try(var.argocd.git.username, "") != "" ? try(var.argocd.git.username, "") : (can(regex("gitlab.com", try(var.argocd.git.repo, ""))) && contains(keys(var.registries), "registry.gitlab.com") ? try(var.registries["registry.gitlab.com"].username, "") : "")
-    password = try(var.argocd.git.password, "") != "" ? try(var.argocd.git.password, "") : (can(regex("gitlab.com", try(var.argocd.git.repo, ""))) && contains(keys(var.registries), "registry.gitlab.com") ? try(var.registries["registry.gitlab.com"].password, "") : "")
+    repo = try(var.argocd.git.repo, "")
+    username = try(coalesce(var.argocd.git.username, ""), "") != "" ? var.argocd.git.username : (
+      (can(regex("gitlab.com", try(var.argocd.git.repo, ""))) &&
+      contains(keys(var.registries), "registry.gitlab.com")) ?
+      try(var.registries["registry.gitlab.com"].username, "") : ""
+    )
+    password = try(coalesce(var.argocd.git.password, ""), "") != "" ? var.argocd.git.password : (
+      (can(regex("gitlab.com", try(var.argocd.git.repo, ""))) &&
+      contains(keys(var.registries), "registry.gitlab.com")) ?
+      try(var.registries["registry.gitlab.com"].password, "") : ""
+    )
   }
 }

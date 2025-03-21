@@ -127,7 +127,9 @@ _main() {
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/reset.yml" -b -v >&2
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT" cluster
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

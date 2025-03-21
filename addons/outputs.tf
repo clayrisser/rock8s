@@ -1,3 +1,3 @@
-output "load_balancer" {
-  value = local.load_balancer
+output "entrypoint" {
+  value = local.entrypoint
 }
