@@ -4,6 +4,8 @@ set -e
 
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
+OLM_VERSION="0.25.0"
+
 _help() {
     cat <<EOF >&2
 NAME
@@ -158,6 +160,13 @@ _main() {
         (find "$ROCK8S_LIB_PATH/addons" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
         terraform init -upgrade -backend=true -backend-config="path=$_ADDONS_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
+    fi
+    mkdir -p "$_ADDONS_DIR/artifacts/olm"
+    if [ ! -f "$_ADDONS_DIR/artifacts/olm/crds.yaml" ]; then
+        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${OLM_VERSION}/crds.yaml" > "$_ADDONS_DIR/artifacts/olm/crds.yaml"
+    fi
+    if [ ! -f "$_ADDONS_DIR/artifacts/olm/olm.yaml" ]; then
+        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${OLM_VERSION}/olm.yaml" > "$_ADDONS_DIR/artifacts/olm/olm.yaml"
     fi
     terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
     terraform output -json > "$_ADDONS_DIR/output.json"
