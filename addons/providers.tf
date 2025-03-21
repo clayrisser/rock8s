@@ -43,8 +43,8 @@ terraform {
       version = "~> 0.9.6"
     }
     argocd = {
-      source = "argoproj-labs/argocd"
-      version = "~> 7.3.1"
+      source  = "argoproj-labs/argocd"
+      version = "~> 7.5.0"
     }
   }
 }
@@ -52,26 +52,16 @@ terraform {
 provider "helm" {
   kubernetes {
     config_path = var.kubeconfig
-    # config_context = "terraform"
   }
 }
 
 provider "kubernetes" {
-  # host     = local.cluster_endpoint
-  # insecure = true
   config_path = var.kubeconfig
-  # config_context = "terraform"
 }
 
 provider "kubectl" {
-  # host     = local.cluster_endpoint
   insecure    = true
   config_path = var.kubeconfig
-  # exec {
-  #   api_version = local.user_exec.api_version
-  #   command     = local.user_exec.command
-  #   args        = local.user_exec.args
-  # }
 }
 
 provider "tls" {}

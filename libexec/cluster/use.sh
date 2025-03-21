@@ -99,9 +99,9 @@ _main() {
     mkdir -p "$ROCK8S_STATE_HOME"
     echo "tenant=\"$ROCK8S_TENANT\"" > "$ROCK8S_STATE_HOME/current"
     echo "cluster=\"$ROCK8S_CLUSTER\"" >> "$ROCK8S_STATE_HOME/current"
-    printf '{"cluster":"%s","tenant":"%s"}\n' \
-        "$ROCK8S_CLUSTER" "$ROCK8S_TENANT" | \
-        format_output "$_OUTPUT" "cluster"
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$ROCK8S_CLUSTER" "$(get_provider)" "$ROCK8S_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

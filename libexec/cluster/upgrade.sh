@@ -248,7 +248,9 @@ EOF
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         --kubeconfig "$(get_cluster_dir)/kube.yaml" >/dev/null
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT" cluster
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"
