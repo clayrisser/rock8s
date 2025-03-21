@@ -309,4 +309,6 @@ EOF
 done
     cat <<EOF >> "$_TENANT_TMP_CONFIG_FILE"
   email:$([ -n "$_EMAIL" ] && echo " $_EMAIL" || echo "")
+  repo: https://gitlab.com/bitspur/rock8s/addons.git
+  version: main
 EOF

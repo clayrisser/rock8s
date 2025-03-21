@@ -58,7 +58,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in

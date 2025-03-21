@@ -161,7 +161,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -d|--debug)
                 ROCK8S_DEBUG=1
