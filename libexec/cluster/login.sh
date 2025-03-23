@@ -58,8 +58,9 @@ EXAMPLE
        rock8s cluster login --cluster mycluster 192.168.1.10
 
 SEE ALSO
-       rock8s cluster configure --help
-       rock8s cluster use --help
+       rock8s cluster install --help
+       rock8s cluster addons --help
+       rock8s cluster upgrade --help
 EOF
 }
 
@@ -74,7 +75,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -205,11 +206,11 @@ _main() {
     kubectl --kubeconfig="$_KUBECONFIG" config use-context "$_CONTEXT_NAME" >&2
     _cleanup
     if [ -n "$_BASTION" ]; then
-        printf '{"name":"%s","kubeconfig":"%s"}\n' \
-            "$_CLUSTER" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
+        printf '{"cluster":"%s","provider":"%s","tenant":"%s","kubeconfig":"%s"}\n' \
+            "$_CLUSTER" "$(get_provider)" "$_TENANT" "$_KUBECONFIG" | format_output "$_OUTPUT"
     else
-        printf '{"name":"%s","entrypoint":"%s","master_ip":"%s","kubeconfig":"%s"}\n' \
-            "$_CLUSTER" "$_ENTRYPOINT" "$_FIRST_MASTER_PRIVATE_IPV4" "$_KUBECONFIG" | format_output "$_OUTPUT" cluster
+        printf '{"cluster":"%s","provider":"%s","tenant":"%s","entrypoint":"%s","kubeconfig":"%s"}\n' \
+            "$_CLUSTER" "$(get_provider)" "$_TENANT" "$_ENTRYPOINT" "$_KUBECONFIG" | format_output "$_OUTPUT"
     fi
 }
 

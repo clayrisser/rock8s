@@ -61,12 +61,13 @@ get_tenant_config_file() {
         _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
         if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_TENANT_CONFIG_FILE" ]; then
             . "$_PROVIDER_DIR/config.sh"
-            if [ -f "$_TENANT_CONFIG_FILE" ]; then
+            if [ -f "$_TENANT_CONFIG_FILE.tmp" ]; then
                 . "$ROCK8S_LIB_PATH/providers/addons.sh"
             fi
-            if [ ! -f "$_TENANT_CONFIG_FILE" ]; then
+            if [ ! -f "$_TENANT_CONFIG_FILE.tmp" ]; then
                 fail "provider config script failed to create config file"
             fi
+            mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
             { echo "provider: $_PROVIDER"; cat "$_TENANT_CONFIG_FILE"; } > "$_TENANT_CONFIG_FILE.tmp" && mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
         fi
         if [ ! -f "$_TENANT_CONFIG_FILE" ]; then
@@ -153,4 +154,30 @@ get_entrypoint_ipv6() {
     fi
     _ENTRYPOINT_IPV6="$(_resolve_hostname "$(get_entrypoint)" "ipv6")"
     echo "$_ENTRYPOINT_IPV6"
+}
+
+get_addons_repo() {
+    if [ -n "$_ADDONS_REPO" ]; then
+        echo "$_ADDONS_REPO"
+        return
+    fi
+    _CONFIG_JSON="$(get_config_json)"
+    _ADDONS_REPO="$(echo "$_CONFIG_JSON" | jq -r '.addons.repo // ""')"
+    if [ -z "$_ADDONS_REPO" ]; then
+        _ADDONS_REPO="https://gitlab.com/bitspur/rock8s/addons.git"
+    fi
+    echo "$_ADDONS_REPO"
+}
+
+get_addons_version() {
+    if [ -n "$_ADDONS_VERSION" ]; then
+        echo "$_ADDONS_VERSION"
+        return
+    fi
+    _CONFIG_JSON="$(get_config_json)"
+    _ADDONS_VERSION="$(echo "$_CONFIG_JSON" | jq -r '.addons.version // ""')"
+    if [ -z "$_ADDONS_VERSION" ]; then
+        _ADDONS_VERSION="0.1.0"
+    fi
+    echo "$_ADDONS_VERSION"
 }

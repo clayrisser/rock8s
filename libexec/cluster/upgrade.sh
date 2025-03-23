@@ -52,7 +52,7 @@ EXAMPLE
 
 SEE ALSO
        rock8s cluster install --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
        rock8s cluster login --help
 EOF
 }
@@ -69,7 +69,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -248,7 +248,9 @@ EOF
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         --kubeconfig "$(get_cluster_dir)/kube.yaml" >/dev/null
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT" cluster
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"
