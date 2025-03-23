@@ -1,6 +1,6 @@
-rock8s (0.1.2-0~1.gbpf3d118) UNRELEASED; urgency=medium
+rock8s (0.2.0-0~1.gbpb44816) UNRELEASED; urgency=medium
 
-  ** SNAPSHOT build @f3d1187cf5d656db821ab98d7a1216c73c18096f **
+  ** SNAPSHOT build @b448163eabff744f1eaa7e30c0c3b7a2ddb32fcc **
 
   [ Clay Risser ]
   * Initial commit
@@ -395,5 +395,10 @@ rock8s (0.1.2-0~1.gbpf3d118) UNRELEASED; urgency=medium
   * Add 'rm' subcommand for node management and enhance manpage generation
   * Update kubeconfig retrieval path and enhance context management in login script; add 'mycluster' to project words list; change ls.sh permissions
   * Released 0.1.1
+  * Released 0.1.2
+  * Add version command and enhance cluster management scripts
+  * Update Terraform provider versions, enhance ArgoCD configuration, and refactor output formatting
+  * Enhance Docker registry configuration and remove unused module files
+  * Remove unused addons and update Makefile for installation process
 
- -- Clay Risser <clay@clayrisser.com>  Wed, 19 Mar 2025 11:44:15 -0500
+ -- Clay Risser <clay@clayrisser.com>  Sun, 23 Mar 2025 02:31:43 -0500
