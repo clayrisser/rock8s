@@ -61,7 +61,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -126,7 +126,9 @@ _main() {
         $([ "$_YES" = "1" ] && echo "--yes") \
         $([ "$_FORCE" = "1" ] && echo "--force") \
         pfsense >/dev/null
-    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_OUTPUT"
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

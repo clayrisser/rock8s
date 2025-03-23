@@ -58,7 +58,7 @@ EXAMPLE
 
 SEE ALSO
        rock8s cluster install --help
-       rock8s cluster configure --help
+       rock8s cluster addons --help
        rock8s cluster upgrade --help
 EOF
 }
@@ -75,7 +75,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -217,13 +217,15 @@ _main() {
                 $([ "$_PFSENSE_SSH_PASSWORD" = "1" ] && echo "--pfsense-ssh-password") >/dev/null
         fi
     fi
-    sh "$ROCK8S_LIB_PATH/libexec/cluster/configure.sh" \
+    sh "$ROCK8S_LIB_PATH/libexec/cluster/addons.sh" \
         --output="$_OUTPUT" \
         --cluster="$_CLUSTER" \
         --tenant="$_TENANT" \
         $([ "$_UPDATE" = "1" ] && echo "--update") \
         $([ "$_YES" = "1" ] && echo "--yes") >/dev/null
-    printf '{"name":"%s","tenant":"%s"}\n' "$_CLUSTER" "$_TENANT" | format_output "$_OUTPUT"
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

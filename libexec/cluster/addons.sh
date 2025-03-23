@@ -4,16 +4,18 @@ set -e
 
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
+OLM_VERSION="0.25.0"
+
 _help() {
     cat <<EOF >&2
 NAME
-       rock8s cluster configure
+       rock8s cluster addons
 
 SYNOPSIS
-       rock8s cluster configure [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--cluster <cluster>] [--kubeconfig <path>] [--update]
+       rock8s cluster addons [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--cluster <cluster>] [--kubeconfig <path>] [--update]
 
 DESCRIPTION
-       configure an existing kubernetes cluster with the necessary infrastructure
+       configure cluster addons for an existing kubernetes cluster
 
 OPTIONS
        -h, --help
@@ -35,14 +37,14 @@ OPTIONS
               automatically approve operations
 
        --update
-              update ansible collections
+              update ansible collections and addons repository
 
 EXAMPLE
-       # configure a cluster with automatic approval
-       rock8s cluster configure --cluster mycluster --yes
+       # configure addons for a cluster with automatic approval
+       rock8s cluster addons --cluster mycluster --yes
 
-       # configure a cluster with a custom kubeconfig
-       rock8s cluster configure --cluster mycluster --kubeconfig /path/to/kubeconfig
+       # configure addons for a cluster with a custom kubeconfig
+       rock8s cluster addons --cluster mycluster --kubeconfig /path/to/kubeconfig
 
 SEE ALSO
        rock8s cluster apply --help
@@ -62,7 +64,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -138,24 +140,50 @@ _main() {
     _CLUSTER_DIR="$(get_cluster_dir)"
     _ADDONS_DIR="$_CLUSTER_DIR/addons"
     mkdir -p "$_ADDONS_DIR"
-    rm -rf "$_ADDONS_DIR/terraform"
-    cp -r "$ROCK8S_LIB_PATH/addons" "$_ADDONS_DIR/terraform"
+    _ADDONS_REPO="$(get_addons_repo)"
+    _ADDONS_VERSION="$(get_addons_version)"
+    if [ ! -d "$_ADDONS_DIR/terraform" ]; then
+        rm -rf "$_ADDONS_DIR/terraform"
+        git clone --depth 1 --branch "$_ADDONS_VERSION" "$_ADDONS_REPO" "$_ADDONS_DIR/terraform" >&2
+    else
+        cd "$_ADDONS_DIR/terraform"
+        if [ "$_UPDATE" = "1" ]; then
+            git pull >&2
+        else
+            git remote update origin --prune >/dev/null 2>&1
+            _LOCAL="$(git rev-parse @)"
+            _REMOTE="$(git rev-parse @{u} 2>/dev/null || echo "")"
+            if [ -n "$_REMOTE" ] && [ "$_LOCAL" != "$_REMOTE" ]; then
+                git pull >&2
+            fi
+        fi
+    fi
     export TF_VAR_cluster_name="$_CLUSTER"
     export TF_VAR_entrypoint="$(get_entrypoint)"
     export TF_VAR_kubeconfig="$_CLUSTER_DIR/kube.yaml"
     export TF_DATA_DIR="$_ADDONS_DIR/.terraform"
-    export TF_VAR_ingress_nginx_load_balancer="$([ "$(get_external_network)" = "1" ] && echo "0" || echo "1")"
+    _LOAD_BALANCER_ENABLED="$([ "$(get_external_network)" = "1" ] && echo "0" || echo "1")"
+    export TF_VAR_ingress_nginx="{\"load_balancer\":$_LOAD_BALANCER_ENABLED}"
     _CONFIG_JSON="$(get_config_json)"
-    echo "$_CONFIG_JSON" | jq -r '.addons * {registries: .registries}' > "$_ADDONS_DIR/terraform.tfvars.json"
+    _CONFIG_JSON=$(echo "$_CONFIG_JSON" | jq --arg lb "$_LOAD_BALANCER_ENABLED" '.addons.ingress_nginx = {"load_balancer": ($lb == "1")}')
+    echo "$_CONFIG_JSON" | jq 'del(.addons.version, .addons.repo) | .addons' > "$_ADDONS_DIR/terraform.tfvars.json"
     chmod 600 "$_ADDONS_DIR/terraform.tfvars.json"
     cd "$_ADDONS_DIR/terraform"
-    if [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
-        [ ! -f "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" ] || \
+    if [ "$_UPDATE" = "1" ] || \
+        [ ! -f "$TF_DATA_DIR/terraform.tfstate" ] || \
+        [ ! -f "$_ADDONS_DIR/terraform/.terraform.lock.hcl" ] || \
         [ ! -d "$TF_DATA_DIR/providers" ] || \
-        [ "$ROCK8S_LIB_PATH/addons/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
-        (find "$ROCK8S_LIB_PATH/addons" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
+        [ "$_ADDONS_DIR/terraform/.terraform.lock.hcl" -nt "$TF_DATA_DIR/terraform.tfstate" ] || \
+        (find "$_ADDONS_DIR/terraform" -type f -name "*.tf" -newer "$TF_DATA_DIR/terraform.tfstate" 2>/dev/null | grep -q .); then
         terraform init -upgrade -backend=true -backend-config="path=$_ADDONS_DIR/terraform.tfstate" >&2
         touch -m "$TF_DATA_DIR/terraform.tfstate"
+    fi
+    mkdir -p "$_ADDONS_DIR/artifacts/olm"
+    if [ ! -f "$_ADDONS_DIR/artifacts/olm/crds.yaml" ]; then
+        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${OLM_VERSION}/crds.yaml" > "$_ADDONS_DIR/artifacts/olm/crds.yaml"
+    fi
+    if [ ! -f "$_ADDONS_DIR/artifacts/olm/olm.yaml" ]; then
+        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${OLM_VERSION}/olm.yaml" > "$_ADDONS_DIR/artifacts/olm/olm.yaml"
     fi
     terraform apply $([ "$_YES" = "1" ] && echo "-auto-approve") -var-file="$_ADDONS_DIR/terraform.tfvars.json" >&2
     terraform output -json > "$_ADDONS_DIR/output.json"

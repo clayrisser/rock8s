@@ -58,7 +58,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -141,7 +141,9 @@ _main() {
         -e "node=$_NODE" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/remove-node.yml" -b -v >&2
-    printf '{"cluster":"%s","node":"%s"}\n' "$_CLUSTER" "$_NODE" | format_output "$_OUTPUT" node
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s","node":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" "$_NODE" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

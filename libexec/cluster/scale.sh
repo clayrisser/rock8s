@@ -36,8 +36,9 @@ EXAMPLE
        rock8s cluster scale --cluster mycluster --tenant mytenant
 
 SEE ALSO
-       rock8s cluster configure --help
-       rock8s nodes apply --help
+       rock8s cluster node --help
+       rock8s cluster addons --help
+       rock8s cluster apply --help
 EOF
 }
 
@@ -49,7 +50,7 @@ _main() {
         case "$1" in
             -h|--help)
                 _help
-                exit 0
+                exit
                 ;;
             -o|--output|-o=*|--output=*)
                 case "$1" in
@@ -118,7 +119,9 @@ _main() {
         -i "$_CLUSTER_DIR/inventory/inventory.ini" \
         -u admin --become --become-user=root \
         "$_KUBESPRAY_DIR/scale.yml" -b -v >&2
-    printf '{"name":"%s"}\n' "$_CLUSTER" | format_output "$_OUTPUT" cluster
+    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
+        format_output "$_OUTPUT"
 }
 
 _main "$@"

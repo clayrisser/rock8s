@@ -21,12 +21,6 @@ users:
     shell: /bin/bash
     ssh_authorized_keys:
       - $_SSH_PUBLIC_KEY
-write_files:
-  - content: |
-      vm.nr_hugepages = 1024
-    path: /etc/sysctl.d/60-hugepages.conf
-    owner: root:root
-    permissions: '0644'
 env:
   PATH: /usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/games:/usr/games
 bootcmd:
@@ -51,7 +45,6 @@ bootcmd:
     echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/60-lan")
   - systemctl restart networking
 runcmd:
-  - sysctl -p /etc/sysctl.d/60-hugepages.conf
   - systemctl enable iscsid
   - systemctl start iscsid
   - apt-get update
