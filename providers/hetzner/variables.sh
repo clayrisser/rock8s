@@ -23,6 +23,10 @@ users:
       - $_SSH_PUBLIC_KEY
 env:
   PATH: /usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/games:/usr/games
+write_files:
+  - path: /etc/sysctl.d/99-k8s.conf
+    content: |
+      fs.file-max=262144
 bootcmd:
   - modprobe dm_thin_pool
   - modprobe dm_snapshot
@@ -44,6 +48,7 @@ bootcmd:
     echo \"  up route add default gw $_IPV4_GATEWAY\" >> /etc/network/interfaces.d/60-lan
     echo \"  dns-nameservers 185.12.64.2 185.12.64.1\" >> /etc/network/interfaces.d/60-lan")
   - systemctl restart networking
+  - sysctl -p /etc/sysctl.d/99-k8s.conf
 runcmd:
   - systemctl enable iscsid
   - systemctl start iscsid

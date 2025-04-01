@@ -149,7 +149,8 @@ resource "hcloud_server" "nodes" {
       image,
       iso,
       network,
-      rescue
+      rescue,
+      user_data
     ]
   }
   depends_on = [hcloud_network_subnet.lan, hcloud_network_subnet.sync]
