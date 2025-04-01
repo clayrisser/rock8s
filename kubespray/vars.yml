@@ -5,9 +5,10 @@ helm_enabled: true
 metrics_server_enabled: true
 csi_snapshot_controller_enabled: true
 cert_manager_enabled: true
-kube_network_plugin: calico
 nat_outgoing_ipv6: true
 nat_outgoing: true
+kube_network_plugin: calico
+calico_network_backend: vxlan
 
 metallb_speaker_enabled: "{{ metallb_enabled }}"
 metallb_namespace: metallb-system

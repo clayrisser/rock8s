@@ -172,7 +172,7 @@ kube_proxy_strict_arp: $([ -n "$_LAN_METALLB" ] && echo "true" || echo "false")
 enable_dual_stack_networks: $([ "$_ENABLE_DUALSTACK" = "1" ] && echo "true" || echo "false")
 supplementary_addresses_in_ssl_keys: [$(get_supplementary_addresses)]
 calico_mtu: $_MTU
-calico_veth_mtu: $(($_MTU - 50 + 50))
+calico_veth_mtu: $(($_MTU - 50))
 metallb: "$_LAN_METALLB"
 EOF
     _MASTER_ANSIBLE_PRIVATE_HOSTS="$(get_master_ansible_private_hosts)"
