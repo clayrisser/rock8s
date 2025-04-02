@@ -36,11 +36,13 @@ _rock8s_completion() {
         words=("${COMP_WORDS[@]}")
         cword="${COMP_CWORD}"
     fi
-    local commands="nodes cluster pfsense completion version"
+    local commands="nodes cluster pfsense backup restore completion version"
     local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster"
     local nodes_cmds="ls apply destroy ssh pubkey"
     local cluster_cmds="addons login reset use apply install upgrade node scale"
     local pfsense_cmds="configure apply destroy publish"
+    local backup_cmds="-n --namespace -a --all -o --output"
+    local restore_cmds="-n --namespace -b --backup"
     local completion_cmds="bash zsh"
     local node_types="master worker pfsense"
     if [[ ${cword} -eq 1 ]]; then
@@ -104,6 +106,16 @@ _rock8s_completion() {
                     COMPREPLY=($(compgen -W "${pfsense_cmds}" -- "${cur}"))
                 fi
                 ;;
+            backup)
+                if [[ ${cword} -eq 2 ]]; then
+                    COMPREPLY=($(compgen -W "${backup_cmds}" -- "${cur}"))
+                fi
+                ;;
+            restore)
+                if [[ ${cword} -eq 2 ]]; then
+                    COMPREPLY=($(compgen -W "${restore_cmds}" -- "${cur}"))
+                fi
+                ;;
             completion)
                 if [[ ${cword} -eq 2 ]]; then
                     COMPREPLY=($(compgen -W "${completion_cmds}" -- "${cur}"))
@@ -165,6 +177,8 @@ _rock8s() {
                 'nodes[Create and manage cluster nodes]' \
                 'cluster[Create kubernetes clusters]' \
                 'pfsense[Configure and manage pfsense firewall]' \
+                'backup[Backup cluster data and configurations]' \
+                'restore[Restore cluster data and configurations]' \
                 'completion[Generate shell completion scripts]' \
                 'version[Display rock8s version information]'
             ;;
@@ -222,6 +236,22 @@ _rock8s() {
                         'apply[Create and configure pfsense firewall nodes]' \
                         'destroy[Destroy pfsense firewall nodes]' \
                         'publish[Publish haproxy configuration]'
+                    ;;
+                backup)
+                    _values 'backup options' \
+                        '-n[Namespace to backup]:namespace' \
+                        '--namespace=[Namespace to backup]:namespace' \
+                        '-a[Backup all namespaces]' \
+                        '--all[Backup all namespaces]' \
+                        '-o[Output directory]:directory:_files -/' \
+                        '--output=[Output directory]:directory:_files -/'
+                    ;;
+                restore)
+                    _values 'restore options' \
+                        '-n[Namespace to restore]:namespace' \
+                        '--namespace=[Namespace to restore]:namespace' \
+                        '-b[Backup to restore from]:backup:_files -/' \
+                        '--backup=[Backup to restore from]:backup:_files -/'
                     ;;
                 completion)
                     _values 'completion subcommand' 'bash' 'zsh'
