@@ -92,6 +92,12 @@ COMMANDS
        pfsense
               configure and manage pfsense firewall
 
+       backup
+              backup cluster data and configurations
+
+       restore
+              restore cluster data and configurations
+
        kubectl
               run kubectl commands using the cluster's kube.yaml file
 
@@ -204,6 +210,12 @@ _main() {
                 esac
                 ;;
             nodes|cluster|pfsense)
+                _CMD="$1"
+                shift
+                _CMD_ARGS="$*"
+                break
+                ;;
+            backup|restore)
                 _CMD="$1"
                 shift
                 _CMD_ARGS="$*"

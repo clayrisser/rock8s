@@ -60,6 +60,9 @@ ensure_system() {
     command -v kubectl >/dev/null 2>&1 || {
         fail "kubectl is not installed"
     }
+    command -v helm >/dev/null 2>&1 || {
+        fail "helm is not installed"
+    }
     command -v whiptail >/dev/null 2>&1 || {
         fail "whiptail is not installed"
     }
@@ -120,4 +123,22 @@ EOF
     done
     _RESULT="$_RESULT]"
     echo "$_RESULT"
+}
+
+try() {
+    _I=0
+    trap 'exit 130' INT
+    while [ $_I -lt $RETRIES ]; do
+        _I=$((_I + 1))
+        if [ $_I -gt 1 ]; then
+            echo "retry $_I..."
+            sleep 1
+        fi
+        if eval "$@"; then
+            trap - INT
+            return 0
+        fi
+    done
+    trap - INT
+    return 1
 }
