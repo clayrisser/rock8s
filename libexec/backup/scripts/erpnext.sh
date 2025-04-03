@@ -4,8 +4,7 @@ set -e
 
 DEPLOYMENT_NAMES=$(kubectl get deployment -n "$NAMESPACE" | grep -E 'release-worker-(d|l|s)' | cut -d' ' -f1)
 if [ -z "$DEPLOYMENT_NAMES" ]; then
-    echo "no deployment found" >&2
-    exit 1
+    fail "no deployment found"
 fi
 DEPLOYMENT_NAME=""
 POD_NAME=""
@@ -17,48 +16,41 @@ for _deployment_name in $DEPLOYMENT_NAMES; do
     fi
 done
 if [ "$POD_NAME" = "" ]; then
-    echo "no running pod found for deployments $DEPLOYMENT_NAMES" >&2
-    exit 1
+    fail "no running pod found for deployments $DEPLOYMENT_NAMES"
 fi
-
-SITES="$(kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-    "find ./sites -maxdepth 1 -name assets -prune -o -type d -print | sed 's|^\./sites/\?||g'" | sed '/^$/d')"
+_BACKUP_TMP="/home/frappe/.rock8s_backup"
+try "kubectl exec $POD_NAME -n $NAMESPACE -- sh -c \"rm -rf $_BACKUP_TMP* || true\""
+try "kubectl exec $POD_NAME -n $NAMESPACE -- sh -c \"mkdir -p $_BACKUP_TMP\""
+SITES="$(kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c "find /home/frappe/frappe-bench/sites -maxdepth 1 -name assets -prune -o -name _backup_tmp -prune -o -type d -print | sed 's|^/home/frappe/frappe-bench/sites/\?||g'" | sed '/^$/d')"
 if [ -z "$SITES" ]; then
-    echo "no sites found" >&2
-    exit 1
+    fail "no sites found"
 fi
-
-BACKUPS=""
-for s in $SITES; do
-    _BACKUP_NAME=
-    _SITE_PATH="/home/frappe/frappe-bench/sites/$s"
-    kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-        "rm -rf \"$_SITE_PATH/private/backups\""
-    _STDOUT="$(kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c "bench --site $s backup --with-files" 2>&1 || true)"
-    echo "$_STDOUT"
-    for f in $(printf "%s\n" "$_STDOUT" | grep '^Config\|^Database\|^Public\|^Private *: \./' | sed 's|^[^ ]* *: \.||g' | cut -d' ' -f1); do
-        if echo "$f" | grep -qE '\-site_config_backup\.json$'; then
-            _BACKUP_NAME="$(echo "$f" | sed 's|.*\/\([0-9]\+_[0-9]\+-.*\)-site_config_backup\.json$|\1|g')"
-        fi
-        if echo "$f" | grep -q 'private/backups'; then
-            BACKUPS="$BACKUPS
-$(echo /home/frappe/frappe-bench/sites$f)"
-        fi
-    done
-    if [ -z "$_BACKUP_NAME" ]; then
-        echo "failed to detect backup name for site $s" >&2
-        exit 1
-    fi
+for _S in $SITES; do
+    log "backing up erpnext site $NAMESPACE/$_S"
+    try "kubectl exec -i $POD_NAME -n $NAMESPACE -- sh -c \"cd /home/frappe/frappe-bench && bench --site $_S backup --with-files --backup-path $_BACKUP_TMP\""
 done
-if [ -z "$BACKUPS" ]; then
-    echo "no backups found" >&2
-    exit 1
+try "kubectl exec $POD_NAME -n $NAMESPACE -- sh -c \"cd $_BACKUP_TMP && tar czf ${_BACKUP_TMP}.tar.gz *\""
+SIZE=$(kubectl exec "$POD_NAME" -n "$NAMESPACE" -- sh -c "wc -c < ${_BACKUP_TMP}.tar.gz")
+mkdir -p "$BACKUP_DIR"
+cd "$BACKUP_DIR"
+try "kubectl cp --retries=$RETRIES $NAMESPACE/$POD_NAME:${_BACKUP_TMP}.tar.gz ./erpnext.tar.gz" >/dev/null 2>&1 &
+_START_TIME=$(date +%s)
+_LAST_SIZE=0
+while [ ! -f ./erpnext.tar.gz ] || [ "$(wc -c < ./erpnext.tar.gz)" -lt "$SIZE" ]; do
+    [ -f ./erpnext.tar.gz ] && _CURRENT_SIZE=$(wc -c < ./erpnext.tar.gz) || _CURRENT_SIZE=0
+    _ELAPSED=$(($(date +%s) - _START_TIME))
+    [ $_ELAPSED -eq 0 ] && _RATE=0 || _RATE=$((_CURRENT_SIZE / _ELAPSED))
+    _PERCENT=$((_CURRENT_SIZE * 100 / SIZE))
+    show_progress "$NAMESPACE/erpnext" $_CURRENT_SIZE $SIZE $_RATE $_PERCENT
+    _LAST_SIZE=$_CURRENT_SIZE
+    sleep 1
+done
+wait
+if [ ! -f ./erpnext.tar.gz ] || [ "$(wc -c < ./erpnext.tar.gz)" -ne "$SIZE" ]; then
+    rm -f erpnext.tar.gz
+    fail "failed to download erpnext backup"
 fi
-
-for b in $BACKUPS; do
-    kubectl cp --retries="$RETRIES" "$NAMESPACE/$POD_NAME:$b" "$BACKUP_DIR/$(echo $b | grep -oE '[^/]+$')"
-    if echo "$b" | grep -q 'private/backups'; then
-        kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c \
-            "rm -rf $b"
-    fi
-done
+printf "\033[2K\r%s %s %s\n" "$NAMESPACE/erpnext" "████████████████████" "$(format_size $SIZE)" >&2
+try "tar xzf erpnext.tar.gz"
+rm -f erpnext.tar.gz
+try "kubectl exec $POD_NAME -n $NAMESPACE -- sh -c \"rm -rf $_BACKUP_TMP*\""

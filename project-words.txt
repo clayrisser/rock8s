@@ -67,7 +67,10 @@ kubeconfig
 kubespray
 kustomization
 kyverno
+ldapi
 ldaps
+ldapsearch
+ldif
 libexec
 logincss
 mconfalonieri
@@ -135,6 +138,7 @@ snmp
 sprintf
 sshpass
 startswith
+statefulset
 staticroutes
 stty
 subcmd
@@ -164,9 +168,12 @@ syscalld
 terraformrc
 tfstate
 tfvars
+tojson
 tollerations
+tostring
 traceroute
 usenetwork
+userpassword
 venv
 veth
 virtio
