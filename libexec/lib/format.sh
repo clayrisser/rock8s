@@ -92,9 +92,12 @@ format_json_table() {
 $(echo "$_DATA")
 EOF
     _SEP=$(printf "%${_MAX_LENGTH}s" | tr ' ' '-')
-    echo "$_HEADER"
-    echo "$_SEP"
-    echo "$_DATA"
+    width=$(tput cols)
+    {
+        echo "$_HEADER"
+        echo "$_SEP"
+        echo "$_DATA"
+    } | while IFS= read -r line;do printf "%.${width}s\n" "$line";done
     rm -f "$_TEMP_FILE"
 }
 
@@ -135,4 +138,37 @@ format_output() {
             return 1
             ;;
     esac
+}
+
+format_size() {
+    _SIZE=$1
+    if [ $_SIZE -ge 1073741824 ]; then
+        printf "%.2fG" "$(echo "scale=2; $_SIZE / 1073741824" | bc)"
+    elif [ $_SIZE -ge 1048576 ]; then
+        printf "%.2fM" "$(echo "scale=2; $_SIZE / 1048576" | bc)"
+    else
+        printf "%.2fK" "$(echo "scale=2; $_SIZE / 1024" | bc)"
+    fi
+}
+
+show_progress() {
+    _NAME=$1
+    _CURRENT=$2
+    _TOTAL=$3
+    _RATE=$4
+    _PERCENT=$5
+    [ $_PERCENT -gt 100 ] && _PERCENT=99
+    _BAR_WIDTH=20
+    _FILLED=$((_PERCENT * _BAR_WIDTH / 100))
+    _I=0
+    _BAR=""
+    while [ $_I -lt $_BAR_WIDTH ]; do
+        if [ $_I -lt $_FILLED ]; then
+            _BAR="${_BAR}█"
+        else
+            _BAR="${_BAR}░"
+        fi
+        _I=$((_I + 1))
+    done
+    printf "\033[2K\r%s %s %s/%s %s/s" "$_NAME" "$_BAR" "$(format_size $_CURRENT)" "$(format_size $_TOTAL)" "$(format_size $_RATE)" >&2
 }
