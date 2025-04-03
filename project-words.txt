@@ -21,6 +21,8 @@ createorig
 crossplane
 czvf
 dashboardcolumns
+datistemplate
+datname
 defaultno
 delnode
 descr
@@ -77,6 +79,8 @@ mjson
 mkpm
 myaml
 mycluster
+mynamespace
+mytenant
 natport
 ncdu
 netcommon
