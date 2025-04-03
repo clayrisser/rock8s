@@ -80,6 +80,7 @@ metallb
 mirrorsite
 mjson
 mkpm
+mongodump
 myaml
 mycluster
 mynamespace
