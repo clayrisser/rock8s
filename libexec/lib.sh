@@ -17,5 +17,6 @@ NC='\033[0m'
 . "$ROCK8S_LIB_PATH/libexec/lib/pfsense.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/master.sh"
 . "$ROCK8S_LIB_PATH/libexec/lib/worker.sh"
+. "$ROCK8S_LIB_PATH/libexec/lib/kube.sh"
 
 ensure_system

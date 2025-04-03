@@ -12,7 +12,7 @@ handle_sigint() {
 trap handle_sigint INT
 
 _help() {
-    cat <<EOF
+    cat <<EOF >&2
 NAME
        rock8s backup
 
@@ -25,14 +25,38 @@ DESCRIPTION
 OPTIONS
        -h, --help
               show this help message
+
        -n, --namespace <namespace>
-              namespace to backup
+              namespace to backup (default: current namespace)
+
        -a, --all
               backup all namespaces
+
        -o, --output <dir>
               output directory for backups (default: $ROCK8S_STATE_HOME/backups)
+
        --retries <n>
               number of retries for kubectl cp (default: 3)
+
+EXAMPLE
+       # backup current namespace
+       rock8s backup
+
+       # backup specific namespace
+       rock8s backup -n mynamespace
+
+       # backup all namespaces
+       rock8s backup -a
+
+       # specify output directory
+       rock8s backup -o /path/to/backups
+
+       # specify number of retries
+       rock8s backup --retries 5
+
+SEE ALSO
+       rock8s restore
+              restore cluster data and configurations from backup
 EOF
 }
 
@@ -130,6 +154,67 @@ _backup_charts() {
 
 _main() {
     : "${RETRIES:=9}"
+    command -v helm >/dev/null 2>&1 || {
+        fail "helm is not installed"
+    }
+    _NAMESPACE=""
+    _OUTPUT_DIR=""
+    _ALL=""
+    while test $# -gt 0; do
+        case "$1" in
+            -h|--help)
+                _help
+                exit 0
+                ;;
+            -n|--namespace|-n=*|--namespace=*)
+                case "$1" in
+                    *=*)
+                        _NAMESPACE="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _NAMESPACE="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -a|--all)
+                _ALL="1"
+                shift
+                ;;
+            -o|--output|-o=*|--output=*)
+                case "$1" in
+                    *=*)
+                        _OUTPUT_DIR="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _OUTPUT_DIR="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --retries|--retries=*)
+                case "$1" in
+                    *=*)
+                        RETRIES="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        RETRIES="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -*)
+                echo "invalid option $1" >&2
+                exit 1
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
     export RETRIES
     export BACKUP_NAME="$(date +'%s')_$(date +'%Y-%m-%d_%H-%M-%S')"
     export KUBE_CONTEXT="$(kubectl config current-context)"
@@ -139,57 +224,7 @@ _main() {
         _backup_namespace
         _remove_empty_folders "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME"
         (cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT" && try tar -czf "$BACKUP_NAME.tar.gz" -C "$BACKUP_NAME" .)
-        echo "backup completed for namespace $NAMESPACE"
     fi
 }
 
-while test $# -gt 0; do
-    case "$1" in
-        -h|--help)
-            _help
-            exit 0
-            ;;
-        -n|--namespace)
-            shift
-            export _NAMESPACE=$1
-            shift
-            ;;
-        -a|--all)
-            shift
-            export _ALL="1"
-            ;;
-        -o|--output|-o=*|--output=*)
-            case "$1" in
-                *=*)
-                    export _OUTPUT_DIR="${1#*=}"
-                    shift
-                    ;;
-                *)
-                    export _OUTPUT_DIR="$2"
-                    shift 2
-                    ;;
-            esac
-            ;;
-        --retries|--retries=*)
-            case "$1" in
-                *=*)
-                    RETRIES="${1#*=}"
-                    shift
-                    ;;
-                *)
-                    RETRIES="$2"
-                    shift 2
-                    ;;
-            esac
-            ;;
-        -*)
-            echo "invalid option $1" >&2
-            exit 1
-            ;;
-        *)
-            break
-            ;;
-    esac
-done
-
-_main
+_main "$@"
