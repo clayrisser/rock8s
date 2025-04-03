@@ -41,7 +41,7 @@ _rock8s_completion() {
     local nodes_cmds="ls apply destroy ssh pubkey"
     local cluster_cmds="addons login reset use apply install upgrade node scale"
     local pfsense_cmds="configure apply destroy publish"
-    local backup_cmds="-n --namespace -a --all -o --output"
+    local backup_cmds="-h --help -b --bundle -a --all -o --output -d --output-dir --retries --skip --skip-volumes --no-skip-volumes"
     local restore_cmds="-n --namespace -b --backup"
     local completion_cmds="bash zsh"
     local node_types="master worker pfsense"
@@ -238,13 +238,21 @@ _rock8s() {
                         'publish[Publish haproxy configuration]'
                     ;;
                 backup)
-                    _values 'backup options' \
-                        '-n[Namespace to backup]:namespace' \
-                        '--namespace=[Namespace to backup]:namespace' \
-                        '-a[Backup all namespaces]' \
-                        '--all[Backup all namespaces]' \
-                        '-o[Output directory]:directory:_files -/' \
-                        '--output=[Output directory]:directory:_files -/'
+                    _values 'backup options'\
+                    '-h[Show help message]'\
+                    '--help[Show help message]'\
+                    '-b[Bundle specified namespaces into a single backup]'\
+                    '--bundle[Bundle specified namespaces into a single backup]'\
+                    '-a[Backup each namespace separately]'\
+                    '--all[Backup each namespace separately]'\
+                    '-o[Output format]:format:(json yaml text)'\
+                    '--output=[Output format]:format:(json yaml text)'\
+                    '-d[Output directory]:directory:_files -/'\
+                    '--output-dir=[Output directory]:directory:_files -/'\
+                    '--retries=[Number of retries for kubectl operations]:number'\
+                    '--skip=[Components to skip]:components:(configmaps charts secrets releases volumes)'\
+                    '--skip-volumes=[Pattern for volumes to skip]:pattern'\
+                    '--no-skip-volumes[Disable default volume skipping behavior]'
                     ;;
                 restore)
                     _values 'restore options' \
