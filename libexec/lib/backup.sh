@@ -74,7 +74,8 @@ backup_compress_temp() {
     if [ -n "$_CONTAINER" ]; then
         _CMD="$_CMD -c $_CONTAINER"
     fi
-    $_CMD -- sh -c "cd $_TEMP_PATH && tar czf ${_TEMP_PATH}.tar.gz $_ARCHIVE_NAME"
+    log "compressing $_NAMESPACE/$_POD_NAME"
+    try "$_CMD -- sh -c \"cd $_TEMP_PATH && tar cf ${_TEMP_PATH}.tar.gz --use-compress-program='gzip -9' $_ARCHIVE_NAME\""
 }
 
 backup_extract_archive() {

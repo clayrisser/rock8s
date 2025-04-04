@@ -18,7 +18,7 @@ NAME
        rock8s backup
 
 SYNOPSIS
-       rock8s backup [-h] [-b|--bundle] [-a|--all] [-o <format>] [-d <dir>] [--retries <n>] [--skip <components>] [--skip-volumes <pattern>] [--no-skip-volumes] [namespace...]
+       rock8s backup [-h] [-b|--bundle] [-a|--all] [-o <format>] [-d <dir>] [--retries <n>] [--skip <components>] [--skip-volumes <pattern>] [--skip-namespaces <pattern>] [--no-skip-volumes] [namespace...]
 
 DESCRIPTION
        backup cluster data and configurations
@@ -47,6 +47,9 @@ OPTIONS
 
        --skip-volumes <pattern>
               regex pattern for volume names to skip (default: redis|cache|temp|tmp|logs|sessions|queue)
+
+       --skip-namespaces <pattern>
+              regex pattern for namespaces to skip when using --all (default: olm|operators|kube-node-lease|flux-system|cattle-monitoring-system)
 
        --no-skip-volumes
               disable default volume skipping behavior
@@ -93,10 +96,10 @@ _backup_volumes() {
     if [ "$_NO_SKIP_VOLUMES" = "1" ]; then
         _SKIP_VOLUMES=""
     else
-        : "${_SKIP_VOLUMES:=redis|cache|temp|tmp|logs|sessions|queue}"
+        : "${_SKIP_VOLUMES:=(redis|cache|temp|tmp|logs|sessions|queue)}"
     fi
-    for _PVC in $(kubectl get pvc -n "$NAMESPACE" -o name|cut -d/ -f2);do
-        if [ -n "$_SKIP_VOLUMES" ] && echo "$_PVC"|grep -E -q "$_SKIP_VOLUMES";then
+    for _PVC in $(kubectl get pvc -n "$NAMESPACE" -o name | cut -d/ -f2);do
+        if [ -n "$_SKIP_VOLUMES" ] && echo "$_PVC" | grep -E -i -q "$_SKIP_VOLUMES";then
             warn "skipping volume $NAMESPACE/$_PVC"
             continue
         fi
@@ -113,40 +116,119 @@ _backup_volumes() {
         [ -z "$_VOLUME_NAME" ] && continue
         _CONTAINER_NAME=$(kubectl get pod "$_POD_NAME" -n "$NAMESPACE" -o jsonpath="{.spec.containers[0].name}")
         [ -z "$_CONTAINER_NAME" ] && continue
-        _MOUNT_PATH=$(kubectl get pod "$_POD_NAME" -n "$NAMESPACE" -o jsonpath="{.spec.containers[0].volumeMounts[?(@.name=='$_VOLUME_NAME')].mountPath}")
-        [ -z "$_MOUNT_PATH" ] && continue
-        _RAW_SIZE=$(kubectl exec "$_POD_NAME" -c "$_CONTAINER_NAME" -n "$NAMESPACE" -- sh -c "cd '$_MOUNT_PATH' && du -sb . | cut -f1")
-        _EST_SIZE=$((_RAW_SIZE / 10))
-        rm -f "$_PVC.tar.gz"
-        _I=0
-        while [ $_I -lt $RETRIES ]; do
-            _I=$((_I+1))
-            if [ $_I -gt 1 ]; then
-                warn "retrying backup of volume $NAMESPACE/$_PVC $_I/$RETRIES"
-                sleep 1
-            fi
-            (kubectl exec "$_POD_NAME" -c "$_CONTAINER_NAME" -n "$NAMESPACE" -- /bin/sh -c "cd '$_MOUNT_PATH' && tar -cf - . 2>/dev/null | gzip -9" > "$_PVC.tar.gz") &
-            _PID=$!
-            _START_TIME=$(date +%s)
-            _LAST_SIZE=0
-            while ! [ -f "$_PVC.tar.gz" ]; do
-                sleep 1
-            done
-            while kill -0 $_PID 2>/dev/null; do
-                _CURRENT_SIZE=$(wc -c < "$_PVC.tar.gz")
-                if [ $_CURRENT_SIZE -gt $_LAST_SIZE ]; then
-                    _ELAPSED=$(($(date +%s) - _START_TIME))
-                    [ $_ELAPSED -eq 0 ] && _RATE=0 || _RATE=$((_CURRENT_SIZE / _ELAPSED))
-                    _PERCENT=$((_CURRENT_SIZE * 100 / _EST_SIZE))
-                    show_progress "$NAMESPACE/$_PVC" $_CURRENT_SIZE $_EST_SIZE $_RATE $_PERCENT
-                    _LAST_SIZE=$_CURRENT_SIZE
+        _MOUNT_PATHS=$(kubectl get pod "$_POD_NAME" -n "$NAMESPACE" -o jsonpath="{.spec.containers[0].volumeMounts[?(@.name=='$_VOLUME_NAME')].mountPath}")
+        [ -z "$_MOUNT_PATHS" ] && continue
+        _VALID_MOUNT_PATHS=""
+        _VALID_PATH_SIZES=""
+        _VALID_PATHS=0
+        for _MOUNT_PATH in $_MOUNT_PATHS; do
+            _SHOULD_SKIP=0
+            _PATH_COPY="$_MOUNT_PATH"
+            while [ "$_PATH_COPY" != "/" ] && [ "$_PATH_COPY" != "." ]; do
+                _PATH_BASE=$(basename "$_PATH_COPY")
+                if [ -n "$_SKIP_VOLUMES" ] && echo "$_PATH_BASE"|grep -E -i -q "$_SKIP_VOLUMES";then
+                    warn "skipping mount path $NAMESPACE/$_PVC:$_MOUNT_PATH (matched $_PATH_BASE)"
+                    _SHOULD_SKIP=1
+                    break
                 fi
-                sleep 1
+                _PATH_COPY=$(dirname "$_PATH_COPY")
             done
-            wait $_PID && break
+            [ $_SHOULD_SKIP -eq 1 ] && continue
+            _RAW_SIZE=$(kubectl exec "$_POD_NAME" -c "$_CONTAINER_NAME" -n "$NAMESPACE" -- sh -c "cd '$_MOUNT_PATH' && du -sb . | cut -f1" || echo 0)
+            [ -z "$_RAW_SIZE" ] && _RAW_SIZE=0
+            [ "$_RAW_SIZE" -eq 0 ] && _RAW_SIZE=1024
+            _VALID_MOUNT_PATHS="$_VALID_MOUNT_PATHS $_MOUNT_PATH"
+            _VALID_PATH_SIZES="$_VALID_PATH_SIZES $_RAW_SIZE"
+            _VALID_PATHS=$((_VALID_PATHS + 1))
         done
-        if [ $_I -eq $RETRIES ]; then
-            fail "failed to backup volume $NAMESPACE/$_PVC"
+        [ $_VALID_PATHS -eq 0 ] && continue
+        if [ $_VALID_PATHS -eq 1 ]; then
+            _MOUNT_PATH=$(echo "$_VALID_MOUNT_PATHS" | tr ' ' '\n' | head -n1)
+            _PATH_BASE=$(basename "$_MOUNT_PATH")
+            _RAW_SIZE=$(echo "$_VALID_PATH_SIZES" | tr ' ' '\n' | head -n1)
+            _EST_SIZE=$((_RAW_SIZE * 2 / 3))
+            [ "$_EST_SIZE" -lt 1024 ] && _EST_SIZE=1024
+            _I=0
+            while [ $_I -lt $RETRIES ]; do
+                _I=$((_I+1))
+                if [ $_I -gt 1 ]; then
+                    warn "retrying backup of volume $NAMESPACE/$_PVC:$_PATH_BASE $_I/$RETRIES"
+                    sleep 1
+                fi
+                kubectl exec "$_POD_NAME" -c "$_CONTAINER_NAME" -n "$NAMESPACE" -- /bin/sh -c "cd '$_MOUNT_PATH' && tar cf - . 2>/dev/null | gzip -9" > "$_PVC.tar.gz" &
+                _PID=$!
+                _START_TIME=$(date +%s)
+                _LAST_SIZE=0
+                while kill -0 $_PID 2>/dev/null; do
+                    if [ -f "$_PVC.tar.gz" ]; then
+                        _CURRENT_SIZE=$(wc -c < "$_PVC.tar.gz" || echo 0)
+                        _ELAPSED=$(($(date +%s) - _START_TIME))
+                        [ $_ELAPSED -eq 0 ] && _RATE=0 || _RATE=$((_CURRENT_SIZE / _ELAPSED))
+                        _PERCENT=$((_CURRENT_SIZE * 100 / _EST_SIZE))
+                        [ $_PERCENT -gt 100 ] && _PERCENT=99
+                        show_progress "$NAMESPACE/$_PVC:$_PATH_BASE" $_CURRENT_SIZE $_EST_SIZE $_RATE $_PERCENT
+                        _LAST_SIZE=$_CURRENT_SIZE
+                    fi
+                    sleep 1
+                done
+                wait $_PID
+                if [ $? -eq 0 ]; then
+                    break
+                fi
+                rm -f "$_PVC.tar.gz"
+            done
+            if [ $_I -eq $RETRIES ]; then
+                fail "failed to backup volume $NAMESPACE/$_PVC:$_PATH_BASE"
+            fi
+        else
+            _TEMP_DIR="$_PVC.tmp"
+            mkdir -p "$_TEMP_DIR"
+            _TOTAL_SIZE=0
+            _INDEX=1
+            for _MOUNT_PATH in $_VALID_MOUNT_PATHS; do
+                _PATH_BASE=$(basename "$_MOUNT_PATH")
+                _RAW_SIZE=$(echo "$_VALID_PATH_SIZES" | cut -d' ' -f$_INDEX)
+                _EST_SIZE=$((_RAW_SIZE * 2 / 3))
+                [ "$_EST_SIZE" -lt 1024 ] && _EST_SIZE=1024
+                _I=0
+                while [ $_I -lt $RETRIES ]; do
+                    _I=$((_I+1))
+                    if [ $_I -gt 1 ]; then
+                        warn "retrying backup of volume $NAMESPACE/$_PVC:$_PATH_BASE $_I/$RETRIES"
+                        sleep 1
+                    fi
+                    kubectl exec "$_POD_NAME" -c "$_CONTAINER_NAME" -n "$NAMESPACE" -- /bin/sh -c "cd '$_MOUNT_PATH' && tar cf - . 2>/dev/null | gzip -9" > "$_TEMP_DIR/$_PATH_BASE.tar.gz" &
+                    _PID=$!
+                    _START_TIME=$(date +%s)
+                    _LAST_SIZE=0
+                    while kill -0 $_PID 2>/dev/null; do
+                        if [ -f "$_TEMP_DIR/$_PATH_BASE.tar.gz" ]; then
+                            _CURRENT_SIZE=$(wc -c < "$_TEMP_DIR/$_PATH_BASE.tar.gz" || echo 0)
+                            _ELAPSED=$(($(date +%s) - _START_TIME))
+                            [ $_ELAPSED -eq 0 ] && _RATE=0 || _RATE=$((_CURRENT_SIZE / _ELAPSED))
+                            _PERCENT=$((_CURRENT_SIZE * 100 / _EST_SIZE))
+                            [ $_PERCENT -gt 100 ] && _PERCENT=99
+                            show_progress "$NAMESPACE/$_PVC:$_PATH_BASE" $_CURRENT_SIZE $_EST_SIZE $_RATE $_PERCENT
+                            _LAST_SIZE=$_CURRENT_SIZE
+                        fi
+                        sleep 1
+                    done
+                    wait $_PID
+                    if [ $? -eq 0 ]; then
+                        break
+                    fi
+                    rm -f "$_TEMP_DIR/$_PATH_BASE.tar.gz"
+                done
+                if [ $_I -eq $RETRIES ]; then
+                    rm -rf "$_TEMP_DIR"
+                    fail "failed to backup volume $NAMESPACE/$_PVC:$_PATH_BASE"
+                fi
+                _INDEX=$((_INDEX + 1))
+            done
+            cd "$_TEMP_DIR"
+            tar cf "../$_PVC.tar.gz" --use-compress-program='gzip -9' .
+            cd ..
+            rm -rf "$_TEMP_DIR"
         fi
         _FINAL_SIZE=$(wc -c < "$_PVC.tar.gz")
         printf "\033[2K\r%s %s %s\n" "$NAMESPACE/$_PVC" "████████████████████" "$(format_size $_FINAL_SIZE)" >&2
@@ -156,82 +238,68 @@ _backup_volumes() {
 }
 
 _backup_namespace() {
+    _CWD="$(pwd)"
     export NAMESPACE="$1"
     KUBE_CONTEXT="$(kubectl config current-context)"
     BACKUP_DIR="${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME/$NAMESPACE"
     mkdir -p "$BACKUP_DIR"
     SECRETS="$(kubectl get secrets -n "$NAMESPACE" 2>/dev/null || true)"
     DEPLOYMENTS="$(kubectl get deployments -n "$NAMESPACE" 2>/dev/null || true)"
-    _PIDS=""
     if ! echo "$_SKIP_COMPONENTS" | grep -q "releases"; then
-        (trap 'exit' INT; _backup_releases) &
-        _PIDS="$_PIDS $!"
+        _backup_releases
     fi
     if ! echo "$_SKIP_COMPONENTS" | grep -q "configmaps"; then
-        (trap 'exit' INT; _backup_configmaps) &
-        _PIDS="$_PIDS $!"
+        _backup_configmaps
     fi
     if ! echo "$_SKIP_COMPONENTS" | grep -q "secrets"; then
-        (trap 'exit' INT; _backup_secrets) &
-        _PIDS="$_PIDS $!"
+        _backup_secrets
     fi
     if ! echo "$_SKIP_COMPONENTS" | grep -q "charts"; then
-        (trap 'exit' INT; _backup_charts) &
-        _PIDS="$_PIDS $!"
+        _backup_charts
     fi
-    wait $_PIDS || return 1
     _SKIP_VOLUMES=0
     if (echo "$SECRETS" | grep -q postgres-postgres-secret) && \
-       (echo "$DEPLOYMENTS" | grep -qE '^postgres$'); then
-        (trap 'exit' INT; . "$ROCK8S_LIB_PATH/libexec/backup/scripts/postgres.sh") &
-        _PID=$!
+       (echo "$DEPLOYMENTS" | grep -q 'postgres '); then
+        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/postgres.sh"
         _SKIP_VOLUMES=1
     elif (echo "$DEPLOYMENTS" | grep -q release-gunicorn) && \
          (echo "$DEPLOYMENTS" | grep -q release-worker-d) && \
          (echo "$DEPLOYMENTS" | grep -q release-worker-l) && \
          (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
-        (trap 'exit' INT; . "$ROCK8S_LIB_PATH/libexec/backup/scripts/erpnext.sh") &
-        _PID=$!
+        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/erpnext.sh"
         _SKIP_VOLUMES=1
     elif (echo "$SECRETS" | grep -q openldap); then
-        (trap 'exit' INT; . "$ROCK8S_LIB_PATH/libexec/backup/scripts/openldap.sh") &
-        _PID=$!
+        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/openldap.sh"
         _SKIP_VOLUMES=1
     elif (echo "$SECRETS" | grep -q mongodb) && \
          (kubectl get statefulset mongodb-rs0 -n "$NAMESPACE" >/dev/null 2>&1); then
-        (trap 'exit' INT; . "$ROCK8S_LIB_PATH/libexec/backup/scripts/mongo.sh") &
-        _PID=$!
+        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/mongo.sh"
         _SKIP_VOLUMES=1
     fi
-    wait $_PID || return 1
     if [ $_SKIP_VOLUMES -eq 0 ] && ! echo "$_SKIP_COMPONENTS" | grep -q "volumes"; then
         _backup_volumes
     fi
-}
-
-_remove_empty_folders() {
-    _DIR="$1"
-    [ -z "$_DIR" ] && return 1
-    find "$_DIR" -type d -empty -not -path "*/volumes/*" -not -path "$_DIR" -delete
-    return 0
+    cd "$_CWD"
+    cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME"
+    try "tar cf ${NAMESPACE}.tar.gz --use-compress-program='gzip -9' $NAMESPACE"
 }
 
 _backup_all_namespaces() {
     for _N in $(kubectl get ns | tail -n +2 | cut -d' ' -f1); do
+        if [ -n "$_SKIP_NAMESPACES" ] && echo "$_N" | grep -E -i -q "$_SKIP_NAMESPACES"; then
+            warn "skipping namespace $_N"
+            continue
+        fi
         _backup_namespace "$_N"
     done
-    KUBE_CONTEXT="$(kubectl config current-context)"
-    _remove_empty_folders "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME"
-    if [ "$_BUNDLE" = "1" ]; then
-        cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT"
-        sleep 1
-        try "tar czf $BACKUP_NAME.tar.gz -C $BACKUP_NAME ."
-    fi
-    printf '{"context":"%s","backup_name":"%s","backup_path":"%s","type":"all_namespaces","bundle":%s}\n' \
+    cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT"
+    try "tar cf $BACKUP_NAME.tar.gz --use-compress-program='gzip -1' -C $BACKUP_NAME *.tar.gz"
+    printf '{"context":"%s","backup_name":"%s","backup_path":"%s","namespaces":%s}\n' \
         "$KUBE_CONTEXT" \
         "$BACKUP_NAME" \
-        "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME" \
-        "${_BUNDLE:-0}" | format_output "$_OUTPUT"
+        "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME.tar.gz" \
+        "$(printf '%s' "$_NAMESPACES" | jq -R 'split(" ") | map(select(length > 0))')" \
+        | format_output "$_OUTPUT"
 }
 
 _backup_secrets() {
@@ -275,11 +343,6 @@ _backup_releases() {
 
 _backup_charts() {
     mkdir -p "$BACKUP_DIR/charts"
-    if ! helm list -n "$NAMESPACE" >/dev/null 2>&1; then
-        log "no helm releases found in namespace $NAMESPACE"
-        rm -rf "$BACKUP_DIR/charts"
-        return
-    fi
     for _N in $(helm list -n "$NAMESPACE" -q 2>/dev/null || true); do
         log "backing up chart $NAMESPACE/$_N"
         try "helm get all -n $NAMESPACE $_N 2>/dev/null" | sed '/^MANIFEST:$/,$d' > "$BACKUP_DIR/charts/$_N.yaml" || true
@@ -295,11 +358,11 @@ _main() {
     _OUTPUT="${ROCK8S_OUTPUT:-text}"
     _OUTPUT_DIR=""
     _ALL=""
-    _BUNDLE=""
     _NAMESPACES=""
     _SKIP_COMPONENTS=""
     _SKIP_VOLUMES=""
     _NO_SKIP_VOLUMES=""
+    _SKIP_NAMESPACES=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -310,10 +373,6 @@ _main() {
                 _ALL="1"
                 shift
                 ;;
-            -b|--bundle)
-                _BUNDLE="1"
-                shift
-                ;;
             --skip|--skip=*)
                 case "$1" in
                     *=*)
@@ -322,6 +381,18 @@ _main() {
                         ;;
                     *)
                         _SKIP_COMPONENTS="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --skip-namespaces|--skip-namespaces=*)
+                case "$1" in
+                    *=*)
+                        _SKIP_NAMESPACES="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        _SKIP_NAMESPACES="$2"
                         shift 2
                         ;;
                 esac
@@ -394,53 +465,43 @@ _main() {
     if [ "$_ALL" = "1" ]; then
         _backup_all_namespaces
     elif [ -n "$_NAMESPACES" ]; then
+        _NS_COUNT=$(printf '%s' "$_NAMESPACES" | wc -w)
         for _N in $_NAMESPACES; do
             if ! kubectl get namespace "$_N" >/dev/null 2>&1; then
                 fail "namespace $_N does not exist"
             fi
             _backup_namespace "$_N"
         done
-        _remove_empty_folders "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME"
-        if [ "$_BUNDLE" = "1" ]; then
+        if [ "$_NS_COUNT" -gt 1 ]; then
             cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT"
-            sleep 1
-            try "tar czf $BACKUP_NAME.tar.gz -C $BACKUP_NAME ."
-        fi
-        _NS_COUNT=$(printf '%s' "$_NAMESPACES" | wc -w)
-        if [ "$_NS_COUNT" -eq 1 ]; then
-            printf '{"context":"%s","backup_name":"%s","backup_path":"%s","namespace":"%s"}\n' \
-                "$KUBE_CONTEXT" \
-                "$BACKUP_NAME" \
-                "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME" \
-                "$(printf '%s' "$_NAMESPACES" | tr -d ' ')" \
-                | format_output "$_OUTPUT"
-        else
+            try "tar cf $BACKUP_NAME.tar.gz --use-compress-program='gzip -9' -C $BACKUP_NAME *.tar.gz"
             printf '{"context":"%s","backup_name":"%s","backup_path":"%s","namespaces":%s}\n' \
                 "$KUBE_CONTEXT" \
                 "$BACKUP_NAME" \
-                "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME" \
+                "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME.tar.gz" \
                 "$(printf '%s' "$_NAMESPACES" | jq -R 'split(" ") | map(select(length > 0))')" \
+                | format_output "$_OUTPUT"
+        else
+            printf '{"context":"%s","backup_name":"%s","backup_path":"%s","namespace":"%s"}\n' \
+                "$KUBE_CONTEXT" \
+                "$BACKUP_NAME" \
+                "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME/${_NAMESPACES}.tar.gz" \
+                "$(printf '%s' "$_NAMESPACES" | tr -d ' ')" \
                 | format_output "$_OUTPUT"
         fi
     else
         _CURRENT_NS="$(kubectl config view --minify --output 'jsonpath={..namespace}')"
         if [ -z "$_CURRENT_NS" ]; then
-            fail "no namespace specified and no current namespace set"
+            _CURRENT_NS="default"
         fi
         if ! kubectl get namespace "$_CURRENT_NS" >/dev/null 2>&1; then
             fail "current namespace $_CURRENT_NS does not exist"
         fi
         _backup_namespace "$_CURRENT_NS"
-        _remove_empty_folders "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME"
-        if [ "$_BUNDLE" = "1" ]; then
-            cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT"
-            sleep 1
-            try "tar czf $BACKUP_NAME.tar.gz -C $BACKUP_NAME ."
-        fi
         printf '{"context":"%s","backup_name":"%s","backup_path":"%s","namespace":"%s"}\n' \
             "$KUBE_CONTEXT" \
             "$BACKUP_NAME" \
-            "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME" \
+            "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME/${_CURRENT_NS}.tar.gz" \
             "$_CURRENT_NS" \
             | format_output "$_OUTPUT"
     fi
