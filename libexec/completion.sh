@@ -41,7 +41,7 @@ _rock8s_completion() {
     local nodes_cmds="ls apply destroy ssh pubkey"
     local cluster_cmds="addons login reset use apply install upgrade node scale"
     local pfsense_cmds="configure apply destroy publish"
-    local backup_cmds="-h --help -b --bundle -a --all -o --output -d --output-dir --retries --skip --skip-volumes --no-skip-volumes"
+    local backup_cmds="-h --help -a --all -o --output -d --output-dir --retries --skip --skip-volumes --skip-namespaces --no-skip-volumes"
     local restore_cmds="-n --namespace -b --backup"
     local completion_cmds="bash zsh"
     local node_types="master worker pfsense"
@@ -109,6 +109,10 @@ _rock8s_completion() {
             backup)
                 if [[ ${cword} -eq 2 ]]; then
                     COMPREPLY=($(compgen -W "${backup_cmds}" -- "${cur}"))
+                elif [[ ${prev} == "--skip" ]]; then
+                    COMPREPLY=($(compgen -W "configmaps charts secrets releases volumes" -- "${cur}"))
+                elif [[ ${prev} == "--skip-namespaces" ]]; then
+                    COMPREPLY=($(compgen -W "olm operators kube-node-lease flux-system cattle-monitoring-system" -- "${cur}"))
                 fi
                 ;;
             restore)
@@ -241,8 +245,6 @@ _rock8s() {
                     _values 'backup options'\
                     '-h[Show help message]'\
                     '--help[Show help message]'\
-                    '-b[Bundle specified namespaces into a single backup]'\
-                    '--bundle[Bundle specified namespaces into a single backup]'\
                     '-a[Backup each namespace separately]'\
                     '--all[Backup each namespace separately]'\
                     '-o[Output format]:format:(json yaml text)'\
@@ -252,6 +254,7 @@ _rock8s() {
                     '--retries=[Number of retries for kubectl operations]:number'\
                     '--skip=[Components to skip]:components:(configmaps charts secrets releases volumes)'\
                     '--skip-volumes=[Pattern for volumes to skip]:pattern'\
+                    '--skip-namespaces=[Pattern for namespaces to skip when using --all]:pattern:(olm|operators|kube-node-lease|flux-system|cattle-monitoring-system)'\
                     '--no-skip-volumes[Disable default volume skipping behavior]'
                     ;;
                 restore)
