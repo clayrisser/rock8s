@@ -15,7 +15,7 @@ backup_download_with_progress() {
     fi
     SIZE=$($_CMD -- sh -c "wc -c < $_REMOTE_PATH")
     rm -f "$_LOCAL_PATH"
-    _CP_CMD="kubectl cp $_NAMESPACE/$_POD_NAME:$_REMOTE_PATH $_LOCAL_PATH"
+    _CP_CMD="kubectl cp --retries=$RETRIES $_NAMESPACE/$_POD_NAME:$_REMOTE_PATH $_LOCAL_PATH"
     if [ -n "$_CONTAINER" ]; then
         _CP_CMD="$_CP_CMD -c $_CONTAINER"
     fi

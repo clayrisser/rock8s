@@ -181,7 +181,8 @@ _backup_namespace() {
     fi
     wait $_PIDS || return 1
     _SKIP_VOLUMES=0
-    if echo "$SECRETS" | grep -q postgres-postgres-secret; then
+    if (echo "$SECRETS" | grep -q postgres-postgres-secret) && \
+       (echo "$DEPLOYMENTS" | grep -qE '^postgres$'); then
         (trap 'exit' INT; . "$ROCK8S_LIB_PATH/libexec/backup/scripts/postgres.sh") &
         _PID=$!
         _SKIP_VOLUMES=1
