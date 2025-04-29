@@ -282,6 +282,7 @@ _backup_namespace() {
     cd "$_CWD"
     cd "${_OUTPUT_DIR:-$ROCK8S_STATE_HOME/backups}/$KUBE_CONTEXT/$BACKUP_NAME"
     try "tar cf ${NAMESPACE}.tar.gz --use-compress-program='gzip -9' $NAMESPACE"
+    cd "$_CWD"
 }
 
 _backup_all_namespaces() {
