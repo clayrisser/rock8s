@@ -1,6 +1,6 @@
-rock8s (0.2.0-0~1.gbpb44816) UNRELEASED; urgency=medium
+rock8s (0.2.0-0) sid; urgency=medium
 
-  ** SNAPSHOT build @b448163eabff744f1eaa7e30c0c3b7a2ddb32fcc **
+  ** SNAPSHOT build @ea5554495094f38300aba39ce94b4bea36616f61 **
 
   [ Clay Risser ]
   * Initial commit
@@ -400,5 +400,8 @@ rock8s (0.2.0-0~1.gbpb44816) UNRELEASED; urgency=medium
   * Update Terraform provider versions, enhance ArgoCD configuration, and refactor output formatting
   * Enhance Docker registry configuration and remove unused module files
   * Remove unused addons and update Makefile for installation process
+  * Bookworm release
+  * Fixed merge conflicts
+  * Released 0.2.0
 
- -- Clay Risser <clay@clayrisser.com>  Sun, 23 Mar 2025 02:31:43 -0500
+ -- Clay Risser <clay@clayrisser.com>  Wed, 20 Aug 2025 01:51:33 -0500
