@@ -10,7 +10,7 @@ rock8s is a CLI for provisioning and managing Kubernetes clusters on cloud infra
 | Kubernetes | k3s (via k3sup) |
 | IaC | OpenTofu |
 | Load balancing | MetalLB (LAN IPs) |
-| Cloud providers | Hetzner, AWS, Azure, GCP, DigitalOcean, OVH, Vultr, libvirt |
+| Cloud providers | Hetzner, AWS, Azure, GCP, DigitalOcean, OVH, Vultr, libvirt, Proxmox |
 
 ## Network model
 
@@ -23,7 +23,6 @@ rock8s.sh              # entry point
 lib/                   # sourced shell libraries (/usr/lib/rock8s)
   lib.sh               # library loader
   utils.sh, config.sh  # shared functions
-  backup/              # backup driver scripts (sourced)
 libexec/               # executed subcommands (/usr/libexec/rock8s)
   cluster/             # cluster subcommands
   nodes/               # node subcommands (master, worker)

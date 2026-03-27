@@ -2,7 +2,9 @@
 
 ## Design
 
-rock8s v2 operates in config-first mode. There are no interactive prompts. If required configuration is missing or invalid, the CLI fails immediately with a clear error message.
+rock8s v2 operates in config-first mode. If required configuration is missing or invalid, the CLI fails immediately with a clear error message.
+
+The one exception is `rock8s init`, which uses `dialog` to interactively generate a starter `rock8s.yaml`. This must be run explicitly — it is never triggered automatically.
 
 ## Config file
 
