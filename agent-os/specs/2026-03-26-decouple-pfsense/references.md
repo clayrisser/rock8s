@@ -17,21 +17,21 @@
 - **`libexec/cluster/apply.sh`** — orchestrates pfsense apply → nodes → pfsense publish → k3s (lines 167-216)
 - **`libexec/pfsense/apply.sh`** — calls `nodes apply pfsense` then `configure.sh`
 - **`libexec/pfsense/publish.sh`** — pushes HAProxy rules using cluster node IPs
-- **`libexec/lib/pfsense.sh`** — 352 lines of helpers, reads from `$CLUSTER_DIR/pfsense/output.json`
+- **`lib/pfsense.sh`** — 352 lines of helpers, reads from `$CLUSTER_DIR/pfsense/output.json`
 
 ### Provider code (Hetzner)
 
-- **`providers/hetzner/main.tf`** — network/subnet/route created only when `purpose == "pfsense"`, data lookup otherwise
-- **`providers/hetzner/locals.tf`** — `pfsense_lan_*`, `pfsense_sync_*` IP calculations
-- **`providers/hetzner/variables.tf`** — purpose enum includes `pfsense`, `pfsense_iso` variable
-- **`providers/hetzner/variables.sh`** — conditional cloud-init based on `purpose != "pfsense"` and NAT flag
-- **`providers/hetzner/tfvars.sh`** — maps `pfsense` config key to `nodes` for purpose=pfsense
-- **`providers/hetzner/config.sh`** — interactive config generator includes pfsense node type/hostnames
+- **`providers/hetzner/main.tf`** — network/subnet/route created by `purpose == "master"`, data lookup for worker
+- **`providers/hetzner/locals.tf`** — gateway IP calculated from subnet for default route
+- **`providers/hetzner/variables.tf`** — purpose enum: `master`, `worker` only
+- **`providers/hetzner/tfvars.sh`** — maps `masters`/`workers` config key to `nodes`
+- **`providers/hetzner/config.sh`** — interactive config generator for cluster (masters/workers)
+- **`providers/hetzner/pfsense_config.sh`** — interactive config for standalone pfSense (hostname + network only, no VM provisioning)
 
 ### Dead code enabled by LAN-only
 
-- **`get_external_network()`** in `libexec/lib/network.sh` — returns "1" for hetzner, "0" otherwise; drives MetalLB/ingress branching
-- **`get_lan_ipv4_nat()`** in `libexec/lib/network.sh` — reads `network.lan.ipv4.nat` config toggle
+- **`get_external_network()`** in `lib/network.sh` — returns "1" for hetzner, "0" otherwise; drives MetalLB/ingress branching
+- **`get_lan_ipv4_nat()`** in `lib/network.sh` — reads `network.lan.ipv4.nat` config toggle
 - **`get_master_public_ipv4s()` / `get_worker_public_ipv4s()`** — nodes never have public IPs
 - **`bastion` argument in `libexec/cluster/login.sh`** — LAN-only means direct SSH to master private IP
 - **`public_net` conditionals in `main.tf`** — master/worker always `ipv4_enabled = false`

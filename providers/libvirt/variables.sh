@@ -2,24 +2,24 @@
 
 set -e
 
-export TF_VAR_libvirt_uri="$(get_config '.providers.libvirt.uri // ""' "qemu:///system")"
+export TF_VAR_libvirt_uri="$(get_config '.provider.uri // ""' "qemu:///system")"
 
 _ARCH="$(uname -m)"
 case "$_ARCH" in
-    aarch64|arm64)
-        export TF_VAR_firmware="${TF_VAR_firmware:-/usr/share/AAVMF/AAVMF_CODE.fd}"
-        export TF_VAR_arch="aarch64"
-        export TF_VAR_machine="virt"
-        _DEFAULT_IMAGE="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-arm64.qcow2"
-        ;;
-    x86_64|amd64)
-        export TF_VAR_arch="x86_64"
-        export TF_VAR_machine="pc"
-        _DEFAULT_IMAGE="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
-        ;;
-    *)
-        fail "unsupported architecture: $_ARCH"
-        ;;
+aarch64 | arm64)
+    export TF_VAR_firmware="${TF_VAR_firmware:-/usr/share/AAVMF/AAVMF_CODE.fd}"
+    export TF_VAR_arch="aarch64"
+    export TF_VAR_machine="virt"
+    _DEFAULT_IMAGE="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-arm64.qcow2"
+    ;;
+x86_64 | amd64)
+    export TF_VAR_arch="x86_64"
+    export TF_VAR_machine="pc"
+    _DEFAULT_IMAGE="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+    ;;
+*)
+    fail "unsupported architecture: $_ARCH"
+    ;;
 esac
 
 if [ -c /dev/kvm ] && [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
@@ -31,5 +31,5 @@ else
 fi
 
 if [ -z "$TF_VAR_image" ] || [ "$TF_VAR_image" = "null" ]; then
-    export TF_VAR_image="$(get_config '.providers.libvirt.image // ""' "$_DEFAULT_IMAGE")"
+    export TF_VAR_image="$(get_config '.provider.image // ""' "$_DEFAULT_IMAGE")"
 fi

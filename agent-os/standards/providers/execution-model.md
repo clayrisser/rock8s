@@ -21,8 +21,8 @@ config.yaml → get_config_json → resolve_refs → jq merge → tfvars.sh (std
 ### `tfvars.sh`
 
 - Reads JSON on **stdin**, reshapes it, writes JSON to **stdout**
-- Purpose-specific: maps `pfsense` → `.pfsense`, `master` → `.masters`, `worker` → `.workers`
-- Strips keys OpenTofu doesn't need (`.provider`, `.providers`, `.registries`, `.addons`)
+- Purpose-specific: maps `master` → `.masters`, `worker` → `.workers`
+- Strips keys OpenTofu doesn't need (`.provider`, `.registries`, `.addons`)
 
 ### `variables.sh`
 

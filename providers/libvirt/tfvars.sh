@@ -3,14 +3,14 @@
 set -e
 
 case "$TF_VAR_purpose" in
-    master)
-        yaml2json | jq '. + {nodes: .masters} | del(.pfsense, .masters, .workers, .provider, .providers, .registries, .addons, .image, .location)'
-        ;;
-    worker)
-        yaml2json | jq '. + {nodes: .workers} | del(.pfsense, .masters, .workers, .provider, .providers, .registries, .addons, .image, .location)'
-        ;;
-    *)
-        echo "invalid purpose $TF_VAR_purpose" >&2
-        exit 1
-        ;;
+master)
+    yaml2json | jq '. + {nodes: .masters} | del(.masters, .workers, .provider, .registries, .addons, .image, .location)'
+    ;;
+worker)
+    yaml2json | jq '. + {nodes: .workers} | del(.masters, .workers, .provider, .registries, .addons, .image, .location)'
+    ;;
+*)
+    echo "invalid purpose $TF_VAR_purpose" >&2
+    exit 1
+    ;;
 esac

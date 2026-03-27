@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -10,7 +10,7 @@ NAME
        rock8s nodes ssh
 
 SYNOPSIS
-       rock8s nodes ssh [-h] [-c|--cluster <cluster>] [-t|--tenant <tenant>] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]
+       rock8s nodes ssh [-h] [-c|--cluster <cluster>] (<purpose> <number> | <node_name> | <ip>) [<ssh_args>]
 
 DESCRIPTION
        ssh into a specific node in the cluster
@@ -24,9 +24,6 @@ OPTIONS
 
        -c, --cluster <cluster>
               cluster name
-
-       -t, --tenant <tenant>
-              tenant name
 
        <purpose> <number>
               node purpose and number
@@ -64,10 +61,10 @@ _show_available_nodes() {
     purpose="$1"
     if [ -n "$purpose" ]; then
         echo "Available ${purpose} nodes:" >&2
-        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" "$purpose" | cat >&2
+        sh "$ROCK8S_LIBEXEC_PATH/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" "$purpose" >&2
     else
         echo "Available nodes:" >&2
-        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" | cat >&2
+        sh "$ROCK8S_LIBEXEC_PATH/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" >&2
     fi
 }
 
@@ -83,12 +80,12 @@ fail_with_nodes() {
 _count_nodes() {
     node_type="$1"
     case "$node_type" in
-        master)
-            get_master_private_ipv4s | wc -w
-            ;;
-        worker)
-            get_worker_private_ipv4s | wc -w
-            ;;
+    master)
+        get_master_private_ipv4s | wc -w
+        ;;
+    worker)
+        get_worker_private_ipv4s | wc -w
+        ;;
     esac
 }
 
@@ -99,80 +96,44 @@ _main() {
     node_ip=""
     ssh_args=""
     cluster="$ROCK8S_CLUSTER"
-    tenant="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            master|worker)
-                purpose="$1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
                 ;;
             *)
-                if [ -n "$purpose" ]; then
-                    if echo "$1" | grep -q '^[0-9]\+$'; then
-                        node_num="$1"
-                        shift
-                        if [ $# -gt 0 ]; then
-                            ssh_args="$*"
-                        fi
-                        break
-                    else
-                        _help
-                        exit 1
-                    fi
-                elif echo "$1" | grep -q '^[a-z]\+-[0-9]\+$'; then
-                    purpose="${1%%-*}"
-                    node_num="${1##*-}"
-                    case "$purpose" in
-                        master|worker) ;;
-                        *) fail_with_nodes "invalid node name: $1 (must be master-N or worker-N)" ;;
-                    esac
-                    shift
-                    if [ $# -gt 0 ]; then
-                        ssh_args="$*"
-                    fi
-                    break
-                elif echo "$1" | grep -q '^[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+$'; then
-                    node_ip="$1"
+                output="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
+                ;;
+            *)
+                cluster="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        master | worker)
+            purpose="$1"
+            shift
+            ;;
+        *)
+            if [ -n "$purpose" ]; then
+                if echo "$1" | grep -q '^[0-9]\+$'; then
+                    node_num="$1"
                     shift
                     if [ $# -gt 0 ]; then
                         ssh_args="$*"
@@ -182,10 +143,32 @@ _main() {
                     _help
                     exit 1
                 fi
-                ;;
+            elif echo "$1" | grep -q '^[a-z]\+-[0-9]\+$'; then
+                purpose="${1%%-*}"
+                node_num="${1##*-}"
+                case "$purpose" in
+                master | worker) ;;
+                *) fail_with_nodes "invalid node name: $1 (must be master-N or worker-N)" ;;
+                esac
+                shift
+                if [ $# -gt 0 ]; then
+                    ssh_args="$*"
+                fi
+                break
+            elif echo "$1" | grep -q '^[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+$'; then
+                node_ip="$1"
+                shift
+                if [ $# -gt 0 ]; then
+                    ssh_args="$*"
+                fi
+                break
+            else
+                _help
+                exit 1
+            fi
+            ;;
         esac
     done
-    export ROCK8S_TENANT="$tenant"
     export ROCK8S_CLUSTER="$cluster"
     export ROCK8S_OUTPUT="$output"
     if [ -z "$ROCK8S_CLUSTER" ]; then
@@ -227,21 +210,21 @@ _main() {
         fi
     fi
     case "$purpose" in
-        master)
-            ssh_key="$(get_master_ssh_private_key)"
-            private_ips="$(get_master_private_ipv4s)"
-            ;;
-        worker)
-            ssh_key="$(get_worker_ssh_private_key)"
-            private_ips="$(get_worker_private_ipv4s)"
-            ;;
+    master)
+        ssh_key="$(get_master_ssh_private_key)"
+        private_ips="$(get_master_private_ipv4s)"
+        ;;
+    worker)
+        ssh_key="$(get_worker_ssh_private_key)"
+        private_ips="$(get_worker_private_ipv4s)"
+        ;;
     esac
     [ -z "$ssh_key" ] && fail_with_nodes "ssh key not found for $purpose nodes" "$purpose"
     if [ -z "$node_ip" ]; then
         node_ip="$(echo "$private_ips" | tr ' ' '\n' | sed -n "${node_num}p")"
         [ -z "$node_ip" ] && fail_with_nodes "$purpose-$node_num not found" "$purpose"
     fi
-    exec ssh -i "$ssh_key" "admin@$node_ip" $ssh_args
+    exec ssh -i "$ssh_key" "$(get_node_ssh_user)@$node_ip" $ssh_args
 }
 
 _main "$@"

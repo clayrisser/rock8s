@@ -2,14 +2,19 @@
 
 CLI entry: `rock8s.sh` → `libexec/<group>.sh` → `libexec/<group>/<cmd>.sh`
 
+## Path variables
+
+- `ROCK8S_LIB_PATH` — sourced shell libraries (`lib/` in dev, `/usr/lib/rock8s` installed)
+- `ROCK8S_LIBEXEC_PATH` — executed subcommands (`libexec/` in dev, `/usr/libexec/rock8s` installed)
+
 ## Dispatch chain
 
 1. `rock8s.sh` parses global flags (`-o`, `-c`, `-t`), matches command name, `exec sh` to router
-2. Router (`cluster.sh`, `nodes.sh`, `pfsense.sh`) parses group-level flags, matches subcommand, `exec sh` to command script
+2. Router (`cluster.sh`, `nodes.sh`) parses group-level flags, matches subcommand, `exec sh` to command script
 3. Command script (`cluster/init.sh`, `nodes/apply.sh`, etc.) does the actual work
 
 ```sh
-_SUBCMD="$ROCK8S_LIB_PATH/libexec/<group>/$_CMD.sh"
+_SUBCMD="$ROCK8S_LIBEXEC_PATH/<group>/$_CMD.sh"
 if [ ! -f "$_SUBCMD" ]; then
     fail "unknown command: $_CMD"
 fi
@@ -18,7 +23,7 @@ exec sh "$_SUBCMD" $_CMD_ARGS
 
 - Use `exec sh` — replaces the process, no subshell overhead
 - Every script starts with `#!/bin/sh` and `set -e`
-- Every script sources `lib.sh` for shared functions
+- Every script sources `lib.sh` for shared functions: `. "$ROCK8S_LIB_PATH/lib.sh"`
 
 ## Adding a new subcommand
 

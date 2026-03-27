@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -18,9 +18,6 @@ DESCRIPTION
 OPTIONS
        -o, --output=<format>
               output format
-
-       -t, --tenant <tenant>
-              tenant name
 
        -c, --cluster <cluster>
               cluster name
@@ -67,70 +64,56 @@ _main() {
     output="${ROCK8S_OUTPUT}"
     cmd=""
     cmd_args=""
-    tenant="$ROCK8S_TENANT"
     cluster="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            apply|destroy|ls|ssh|pubkey)
-                cmd="$1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
-                cmd_args="$*"
-                break
                 ;;
             *)
-                _help
-                exit 1
+                output="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
+                ;;
+            *)
+                cluster="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        apply | destroy | ls | ssh | pubkey)
+            cmd="$1"
+            shift
+            cmd_args="$*"
+            break
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
     if [ -z "$cmd" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_TENANT="$tenant"
     export ROCK8S_CLUSTER="$cluster"
     export ROCK8S_OUTPUT="$output"
-    subcmd="$ROCK8S_LIB_PATH/libexec/nodes/$cmd.sh"
+    subcmd="$ROCK8S_LIBEXEC_PATH/nodes/$cmd.sh"
     if [ ! -f "$subcmd" ]; then
         fail "unknown command: $cmd"
     fi

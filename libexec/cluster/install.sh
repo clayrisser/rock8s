@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -10,7 +10,7 @@ NAME
        rock8s cluster install
 
 SYNOPSIS
-       rock8s cluster install [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes]
+       rock8s cluster install [-h] [-o <format>] [--cluster <cluster>] [-y|--yes]
 
 DESCRIPTION
        install kubernetes cluster using k3s
@@ -22,9 +22,6 @@ OPTIONS
        -o, --output=<format>
               output format
 
-       -t, --tenant <tenant>
-              tenant name
-
        -c, --cluster <cluster>
               cluster name
 
@@ -35,9 +32,6 @@ EXAMPLE
        # install kubernetes on existing nodes with automatic approval
        rock8s cluster install --cluster mycluster --yes
 
-       # install kubernetes with a specific tenant
-       rock8s cluster install --cluster mycluster --tenant mytenant
-
 SEE ALSO
        rock8s cluster apply --help
        rock8s cluster addons --help
@@ -47,66 +41,52 @@ EOF
 
 _main() {
     output="${ROCK8S_OUTPUT}"
-    tenant="$ROCK8S_TENANT"
     cluster="$ROCK8S_CLUSTER"
     yes="0"
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -y|--yes)
-                yes="1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
                 ;;
-            -*)
-                _help
-                exit 1
+            *)
+                output="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
                 ;;
             *)
-                _help
-                exit 1
+                cluster="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -y | --yes)
+            yes="1"
+            shift
+            ;;
+        -*)
+            _help
+            exit 1
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
-    export ROCK8S_TENANT="$tenant"
     export ROCK8S_CLUSTER="$cluster"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
@@ -117,6 +97,7 @@ _main() {
     master_ssh_key="$(get_master_ssh_private_key)"
     worker_private_ipv4s="$(get_worker_private_ipv4s)"
     worker_ssh_key="$(get_worker_ssh_private_key)"
+    node_ssh_user="$(get_node_ssh_user)"
     k3s_extra_args="$(get_k3s_server_extra_args)"
     if [ -z "$first_master" ]; then
         fail "no master nodes found"
@@ -126,7 +107,7 @@ _main() {
         log "installing k3s in HA mode with $master_count server nodes"
         k3sup install \
             --ip "$first_master" \
-            --user admin \
+            --user "$node_ssh_user" \
             --ssh-key "$master_ssh_key" \
             --cluster \
             --k3s-version "$K3S_VERSION" \
@@ -137,7 +118,7 @@ _main() {
             k3sup join \
                 --ip "$ip" \
                 --server-ip "$first_master" \
-                --user admin \
+                --user "$node_ssh_user" \
                 --ssh-key "$master_ssh_key" \
                 --server \
                 --k3s-version "$K3S_VERSION" \
@@ -147,7 +128,7 @@ _main() {
         log "installing k3s single server"
         k3sup install \
             --ip "$first_master" \
-            --user admin \
+            --user "$node_ssh_user" \
             --ssh-key "$master_ssh_key" \
             --k3s-version "$K3S_VERSION" \
             --k3s-extra-args "$k3s_extra_args" \
@@ -158,17 +139,16 @@ _main() {
         k3sup join \
             --ip "$ip" \
             --server-ip "$first_master" \
-            --user admin \
+            --user "$node_ssh_user" \
             --ssh-key "$worker_ssh_key" \
             --k3s-version "$K3S_VERSION" >&2
     done
-    sh "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
+    sh "$ROCK8S_LIBEXEC_PATH/cluster/login.sh" \
         --output="$output" \
         --cluster="$cluster" \
-        --tenant="$tenant" \
         --kubeconfig "$cluster_dir/kube.yaml" >/dev/null
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$cluster" "$(get_provider)" "$tenant" | \
+    printf '{"cluster":"%s","provider":"%s"}\n' \
+        "$cluster" "$(get_provider)" |
         format_output "$output"
 }
 

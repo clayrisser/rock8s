@@ -2,6 +2,7 @@
 /man
 /.build
 /backups
+/addons
 
 # ansible
 *.retry

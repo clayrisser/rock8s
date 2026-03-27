@@ -6,10 +6,6 @@ output "node_private_ipv4s" {
   value = local.node_private_ipv4s
 }
 
-output "node_sync_ipv4s" {
-  value = local.node_sync_ipv4s
-}
-
 output "node_ssh_private_key" {
   value     = tls_private_key.node.private_key_pem
   sensitive = true

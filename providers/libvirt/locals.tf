@@ -1,6 +1,5 @@
 locals {
-  cluster = local.tenant == "" ? var.cluster_name : "${local.tenant}-${var.cluster_name}"
-  tenant  = var.tenant == "" || var.tenant == null || var.tenant == "default" ? "" : var.tenant
+  cluster = var.cluster_name
 
   cloud_init = <<-EOT
 #cloud-config
@@ -43,7 +42,7 @@ EOT
 
   network = {
     lan = {
-      name   = local.tenant == "" ? "${var.cluster_name}-lan" : "${local.tenant}-${var.cluster_name}-lan"
+      name   = "${var.cluster_name}-lan"
       subnet = var.network.lan.ipv4.subnet
     }
   }
@@ -64,7 +63,7 @@ EOT
           1
         )
         ) : {
-        name = "${local.tenant == "" ? "" : "${local.tenant}-"}${var.cluster_name}-${var.purpose}-${i + 1}"
+        name = "${var.cluster_name}-${var.purpose}-${i + 1}"
         size = local.node_sizes[group.type]
         ipv4 = try(group.ipv4s[i], null)
       }
@@ -86,5 +85,4 @@ EOT
   }
 
   node_public_ipv4s = local.node_private_ipv4s
-  node_sync_ipv4s   = {}
 }

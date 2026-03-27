@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -10,7 +10,7 @@ NAME
        rock8s nodes pubkey
 
 SYNOPSIS
-       rock8s nodes pubkey [-h] [-c|--cluster <cluster>] [-t|--tenant <tenant>] [<purpose>]
+       rock8s nodes pubkey [-h] [-c|--cluster <cluster>] <purpose>
 
 DESCRIPTION
        get public ssh key for nodes
@@ -25,11 +25,8 @@ OPTIONS
        -c, --cluster <cluster>
               cluster name
 
-       -t, --tenant <tenant>
-              tenant name
-
        <purpose>
-              node purpose
+              node purpose (master or worker)
 
 EXAMPLE
        # get public key for master nodes
@@ -37,9 +34,6 @@ EXAMPLE
 
        # get public key for worker nodes
        rock8s nodes pubkey worker
-
-       # get public key for all node types
-       rock8s nodes pubkey
 
 SEE ALSO
        rock8s nodes ls --help
@@ -53,64 +47,50 @@ _main() {
     output="${ROCK8S_OUTPUT}"
     purpose=""
     cluster="$ROCK8S_CLUSTER"
-    tenant="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            master|worker)
-                purpose="$1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
                 ;;
             *)
-                _help
-                exit 1
+                output="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
+                ;;
+            *)
+                cluster="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        master | worker)
+            purpose="$1"
+            shift
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
     if [ -z "$purpose" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_TENANT="$tenant"
     export ROCK8S_CLUSTER="$cluster"
     export ROCK8S_OUTPUT="$output"
     if [ -z "$ROCK8S_CLUSTER" ]; then
@@ -119,7 +99,7 @@ _main() {
     purpose_dir="$(get_cluster_dir)/$purpose"
     output_file="$purpose_dir/output.json"
     if [ -f "$output_file" ]; then
-        public_key="$(jq -r '.node_ssh_public_key.value // empty' < "$output_file")"
+        public_key="$(jq -r '.node_ssh_public_key.value // empty' <"$output_file")"
         if [ -z "$public_key" ]; then
             fail "no public key found in output for $purpose nodes"
         fi

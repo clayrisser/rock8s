@@ -15,7 +15,7 @@ All shell scripts MUST be POSIX-compliant `/bin/sh`.
 
 ## Known violations to fix
 
-- `libexec/lib/utils.sh` `parse_node_groups` uses `read -r -a` and `"${pairs[@]}"` — bash array syntax under `#!/bin/sh`
+- `lib/utils.sh` `parse_node_groups` uses `read -r -a` and `"${pairs[@]}"` — bash array syntax under `#!/bin/sh`
 
 ## Strict mode
 

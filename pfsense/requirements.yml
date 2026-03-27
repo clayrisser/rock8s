@@ -1,6 +1,0 @@
----
-collections:
-  - name: ansible.netcommon
-    version: ">=2.5.0"
-  - name: pfsensible.core
-    version: ">=0.6.2"

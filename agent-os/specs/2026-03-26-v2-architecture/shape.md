@@ -12,10 +12,10 @@ Complete architectural rewrite of rock8s core. No backward compatibility with v1
 - Secret provider credentials come from environment variables (AWS_ACCESS_KEY_ID, VAULT_TOKEN, etc.)
 - OpenTofu state backend configurable (local or S3/GCS/Azure) from config `state:` section
 - SSH keys managed as OpenTofu resources (in state), not local files
-- pfSense auto-detects provisioned vs existing from `pfsense[].type` field presence
+- pfSense fully decoupled — managed in a separate project/repo
+- Gateway is optional — clusters work on public networks or behind any LAN gateway
 - k3s replaces kubespray
 - Multi-arch: provider exports arch hints, runtime fallback via `uname -m`
-- pfSense image parameterized for future ARM support
 - All shell remains POSIX `/bin/sh` compliant
 
 ## Secret Providers
@@ -37,22 +37,17 @@ Fragment (`#key`) extracts a field from JSON responses.
 ## Config Model
 
 ```yaml
-provider: hetzner
+provider:
+  type: hetzner
+  token: ref+secretsmanager://rock8s/hetzner-token
 state:
   backend: local    # or s3, gcs, azblob
 network:
   entrypoint: cluster.example.com
+  gateway: 172.20.0.2
   lan:
     ipv4:
       subnet: 172.20.0.0/16
-providers:
-  hetzner:
-    token: ref+secretsmanager://rock8s/hetzner-token
-    location: nbg1
-pfsense:
-  - hostnames:
-      - pfsense1.example.com
-    ssh_private_key: ref+pass://rock8s/pfsense/ssh-key
 masters:
   - type: cx32
     count: 3

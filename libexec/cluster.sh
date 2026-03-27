@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 export K3S_VERSION="${K3S_VERSION:-v1.31.4+k3s1}"
 
@@ -34,9 +34,6 @@ COMMANDS
        addons
               configure cluster addons for an existing kubernetes cluster
 
-       init
-              initialize cluster configuration
-
        install
               install kubernetes on a cluster
 
@@ -55,15 +52,12 @@ COMMANDS
        reset
               reset/remove the cluster
 
-       use
-              select a default cluster for subsequent commands
+       rotate-certs
+              rotate k3s certificates on server nodes
 
 EXAMPLE
        # create and setup a new kubernetes cluster in one step
        rock8s cluster apply --cluster mycluster --yes
-
-       # initialize a new cluster configuration
-       rock8s cluster init --cluster mycluster
 
        # install kubernetes on existing nodes
        rock8s cluster install --cluster mycluster --yes
@@ -71,72 +65,70 @@ EXAMPLE
        # configure addons after installation
        rock8s cluster addons --cluster mycluster
 
-       # set a default cluster for other commands
-       rock8s cluster use mycluster mytenant
-
        # login to an existing cluster
        rock8s cluster login --cluster mycluster
+
+       # rotate k3s certificates
+       rock8s cluster rotate-certs --cluster mycluster
 
 SEE ALSO
        rock8s cluster apply --help
        rock8s cluster addons --help
-       rock8s cluster init --help
        rock8s cluster install --help
        rock8s cluster upgrade --help
        rock8s cluster node --help
        rock8s cluster scale --help
        rock8s cluster login --help
        rock8s cluster reset --help
-       rock8s cluster use --help
+       rock8s cluster rotate-certs --help
 EOF
 }
 
 _main() {
     output="${ROCK8S_OUTPUT}"
+    cluster="$ROCK8S_CLUSTER"
     cmd=""
     cmd_args=""
-    tenant="$ROCK8S_TENANT"
-    cluster="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            apply|addons|init|install|upgrade|node|scale|login|reset|use)
-                cmd="$1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
-                cmd_args="$*"
-                break
                 ;;
             *)
-                _help
-                exit 1
+                output="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
+                ;;
+            *)
+                cluster="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        apply | addons | install | upgrade | node | scale | login | reset | rotate-certs)
+            cmd="$1"
+            shift
+            cmd_args="$*"
+            break
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
     if [ -z "$cmd" ]; then
@@ -145,7 +137,7 @@ _main() {
     fi
     export ROCK8S_OUTPUT="$output"
     export ROCK8S_CLUSTER="$cluster"
-    subcmd="$ROCK8S_LIB_PATH/libexec/cluster/$cmd.sh"
+    subcmd="$ROCK8S_LIBEXEC_PATH/cluster/$cmd.sh"
     if [ ! -f "$subcmd" ]; then
         fail "unknown cluster command: $cmd"
     fi
