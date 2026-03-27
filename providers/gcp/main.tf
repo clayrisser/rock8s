@@ -122,6 +122,8 @@ resource "google_compute_instance" "nodes" {
   machine_type = local.node_configs[count.index].machine_type
   zone         = local.zone
 
+  deletion_protection = true
+
   tags = local.node_tags
 
   labels = {

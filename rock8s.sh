@@ -80,17 +80,14 @@ OPTIONS
               path to config file (default: rock8s.yaml in current directory)
 
 COMMANDS
+       init
+              initialize a new rock8s configuration file
+
        nodes
               create and manage cluster nodes
 
        cluster
               create kubernetes clusters
-
-       backup
-              backup cluster data and configurations
-
-       restore
-              restore cluster data and configurations
 
        kubectl
               run kubectl commands using the cluster's kube.yaml file
@@ -190,13 +187,7 @@ _main() {
                 ;;
             esac
             ;;
-        nodes | cluster)
-            cmd="$1"
-            shift
-            cmd_args="$*"
-            break
-            ;;
-        backup | restore)
+        init | nodes | cluster)
             cmd="$1"
             shift
             cmd_args="$*"

@@ -37,7 +37,7 @@ printf '%s\n' "$_JSON" | format_output "$_OUTPUT" nodes
 ## Retry helper
 
 ```sh
-try <command>    # uses $RETRIES (default varies: 3 for restore, 9 for backup)
+try <command>    # uses $RETRIES
 ```
 
 Retries with 1s sleep, traps INT → exit 130.

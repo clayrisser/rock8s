@@ -7,7 +7,7 @@ DOCDIR ?= $(PREFIX)/share/doc/rock8s
 DESTDIR ?=
 SHELL := /bin/bash
 COMMANDS := rock8s
-SUBCOMMANDS := nodes cluster backup restore completion
+SUBCOMMANDS := init nodes cluster completion
 SUB_SUBCOMMANDS_nodes := apply destroy ls pubkey ssh
 SUB_SUBCOMMANDS_cluster := addons apply install login node reset rotate-certs scale upgrade
 SUB_SUBCOMMANDS_completion := bash zsh
@@ -59,17 +59,18 @@ uninstall:
 reinstall: uninstall install
 
 SH_FILES := $(shell find lib libexec providers -name '*.sh' -type f) rock8s.sh manpages.sh
-TF_DIRS := $(shell find providers -name '*.tf' -exec dirname {} \; | sort -u)
 
 .PHONY: format
 format:
 	@shfmt -ln posix -i 4 -w $(SH_FILES)
 	@tofu fmt -recursive providers/
+	@tofu fmt -recursive addons/
 
 .PHONY: check-format
 check-format:
 	@shfmt -ln posix -i 4 -d $(SH_FILES)
 	@tofu fmt -recursive -check providers/
+	@tofu fmt -recursive -check addons/
 
 .PHONY: clean
 clean:

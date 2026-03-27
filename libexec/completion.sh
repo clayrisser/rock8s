@@ -36,12 +36,10 @@ _rock8s_completion() {
         words=("${COMP_WORDS[@]}")
         cword="${COMP_CWORD}"
     fi
-    local commands="nodes cluster backup restore kubectl completion version"
+    local commands="init nodes cluster kubectl completion version"
     local global_opts="-h --help -d --debug -o --output -c --cluster"
     local nodes_cmds="ls apply destroy ssh pubkey"
     local cluster_cmds="addons apply install login node reset rotate-certs scale upgrade"
-    local backup_cmds="-h --help -a --all -o --output -d --output-dir --retries --skip --skip-volumes --skip-namespaces --no-skip-volumes"
-    local restore_cmds="-n --namespace -b --backup"
     local completion_cmds="bash zsh"
     local node_types="master worker"
     if [[ ${cword} -eq 1 ]]; then
@@ -83,20 +81,6 @@ _rock8s_completion() {
                     COMPREPLY=($(compgen -W "${cluster_cmds}" -- "${cur}"))
                 elif [[ ${cword} -eq 3 && ${words[2]} == "node" ]]; then
                     COMPREPLY=($(compgen -W "rm" -- "${cur}"))
-                fi
-                ;;
-            backup)
-                if [[ ${cword} -eq 2 ]]; then
-                    COMPREPLY=($(compgen -W "${backup_cmds}" -- "${cur}"))
-                elif [[ ${prev} == "--skip" ]]; then
-                    COMPREPLY=($(compgen -W "configmaps charts secrets releases volumes" -- "${cur}"))
-                elif [[ ${prev} == "--skip-namespaces" ]]; then
-                    COMPREPLY=($(compgen -W "olm operators kube-node-lease flux-system cattle-monitoring-system" -- "${cur}"))
-                fi
-                ;;
-            restore)
-                if [[ ${cword} -eq 2 ]]; then
-                    COMPREPLY=($(compgen -W "${restore_cmds}" -- "${cur}"))
                 fi
                 ;;
             completion)
@@ -146,10 +130,9 @@ _rock8s() {
             ;;
         cmds)
             _values 'rock8s command' \
+                'init[Interactively generate a rock8s.yaml config file]' \
                 'nodes[Create and manage cluster nodes]' \
                 'cluster[Create kubernetes clusters]' \
-                'backup[Backup cluster data and configurations]' \
-                'restore[Restore cluster data and configurations]' \
                 'kubectl[Run kubectl commands using cluster kubeconfig]' \
                 'completion[Generate shell completion scripts]' \
                 'version[Display rock8s version information]'
@@ -200,29 +183,6 @@ _rock8s() {
                         _values 'node subcommand' \
                             'rm[Remove a node from the cluster]'
                     fi
-                    ;;
-                backup)
-                    _values 'backup options'\
-                    '-h[Show help message]'\
-                    '--help[Show help message]'\
-                    '-a[Backup each namespace separately]'\
-                    '--all[Backup each namespace separately]'\
-                    '-o[Output format]:format:(json yaml text)'\
-                    '--output=[Output format]:format:(json yaml text)'\
-                    '-d[Output directory]:directory:_files -/'\
-                    '--output-dir=[Output directory]:directory:_files -/'\
-                    '--retries=[Number of retries for kubectl operations]:number'\
-                    '--skip=[Components to skip]:components:(configmaps charts secrets releases volumes)'\
-                    '--skip-volumes=[Pattern for volumes to skip]:pattern'\
-                    '--skip-namespaces=[Pattern for namespaces to skip when using --all]:pattern:(olm|operators|kube-node-lease|flux-system|cattle-monitoring-system)'\
-                    '--no-skip-volumes[Disable default volume skipping behavior]'
-                    ;;
-                restore)
-                    _values 'restore options' \
-                        '-n[Namespace to restore]:namespace' \
-                        '--namespace=[Namespace to restore]:namespace' \
-                        '-b[Backup to restore from]:backup:_files -/' \
-                        '--backup=[Backup to restore from]:backup:_files -/'
                     ;;
                 completion)
                     _values 'completion subcommand' 'bash' 'zsh'
