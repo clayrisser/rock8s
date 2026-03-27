@@ -1,7 +1,3 @@
-variable "tenant" {
-  default = ""
-}
-
 variable "hetzner_token" {
   type      = string
   sensitive = true
@@ -10,13 +6,9 @@ variable "hetzner_token" {
 variable "purpose" {
   type = string
   validation {
-    condition     = contains(["pfsense", "master", "worker"], var.purpose)
+    condition     = contains(["master", "worker"], var.purpose)
     error_message = "invalid purpose"
   }
-}
-
-variable "pfsense_iso" {
-  default = "pfSense-CE-2.7.2-RELEASE-amd64.iso"
 }
 
 variable "cluster_name" {

@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -36,11 +36,10 @@ _rock8s_completion() {
         words=("${COMP_WORDS[@]}")
         cword="${COMP_CWORD}"
     fi
-    local commands="nodes cluster pfsense backup restore completion version"
-    local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster -p --pfsense"
+    local commands="nodes cluster backup restore kubectl completion version"
+    local global_opts="-h --help -d --debug -o --output -c --cluster"
     local nodes_cmds="ls apply destroy ssh pubkey"
-    local cluster_cmds="addons login reset use apply install upgrade node scale"
-    local pfsense_cmds="configure apply destroy publish"
+    local cluster_cmds="addons apply install login node reset rotate-certs scale upgrade"
     local backup_cmds="-h --help -a --all -o --output -d --output-dir --retries --skip --skip-volumes --skip-namespaces --no-skip-volumes"
     local restore_cmds="-n --namespace -b --backup"
     local completion_cmds="bash zsh"
@@ -52,15 +51,10 @@ _rock8s_completion() {
     if [[ ${prev} == "-o" || ${prev} == "--output" ]]; then
         COMPREPLY=($(compgen -W "json yaml text" -- "${cur}"))
         return 0
-    elif [[ ${prev} == "-t" || ${prev} == "--tenant" ]]; then
-        if [ -d "${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/tenants" ]; then
-            local tenants=$(find "${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/tenants" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null || echo "")
-            COMPREPLY=($(compgen -W "${tenants}" -- "${cur}"))
-        fi
-        return 0
     elif [[ ${prev} == "-c" || ${prev} == "--cluster" ]]; then
-        if [ -d "${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/clusters" ]; then
-            local clusters=$(find "${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/clusters" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null || echo "")
+        local clusters_dir="${XDG_CACHE_HOME:-$HOME/.cache}/rock8s/clusters"
+        if [ -d "$clusters_dir" ]; then
+            local clusters=$(find "$clusters_dir" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null || echo "")
             COMPREPLY=($(compgen -W "${clusters}" -- "${cur}"))
         fi
         return 0
@@ -81,16 +75,6 @@ _rock8s_completion() {
                     COMPREPLY=($(compgen -W "${node_types}" -- "${cur}"))
                 elif [[ ${cword} -eq 4 && ${words[2]} == "ssh" ]]; then
                     local node_numbers="1 2 3"
-                    local cluster=""
-                    for ((i=1; i<cword; i++)); do
-                        if [[ "${words[i]}" == "-c" || "${words[i]}" == "--cluster" ]]; then
-                            cluster="${words[i+1]}"
-                            break
-                        fi
-                    done
-                    if [[ -n "$cluster" && -d "${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/clusters/$cluster" ]]; then
-                        :
-                    fi
                     COMPREPLY=($(compgen -W "${node_numbers}" -- "${cur}"))
                 fi
                 ;;
@@ -99,17 +83,6 @@ _rock8s_completion() {
                     COMPREPLY=($(compgen -W "${cluster_cmds}" -- "${cur}"))
                 elif [[ ${cword} -eq 3 && ${words[2]} == "node" ]]; then
                     COMPREPLY=($(compgen -W "rm" -- "${cur}"))
-                fi
-                ;;
-            pfsense)
-                if [[ ${cword} -eq 2 ]]; then
-                    COMPREPLY=($(compgen -W "${pfsense_cmds}" -- "${cur}"))
-                elif [[ ${cword} -ge 3 ]]; then
-                    if [[ ${words[2]} == "publish" ]]; then
-                        COMPREPLY=($(compgen -W "-n --name -c --cluster" -- "${cur}"))
-                    else
-                        COMPREPLY=($(compgen -W "-n --name" -- "${cur}"))
-                    fi
                 fi
                 ;;
             backup)
@@ -158,25 +131,13 @@ _rock8s() {
         '--debug[Debug mode]' \
         '-o[Output format]:format:(json yaml text)' \
         '--output=[Output format]:format:(json yaml text)' \
-        '-t[Tenant name]:tenant:->tenants' \
-        '--tenant=[Tenant name]:tenant:->tenants' \
         '-c[Cluster name]:cluster:->clusters' \
         '--cluster=[Cluster name]:cluster:->clusters' \
-        '-p[pfSense name]:pfsense' \
-        '--pfsense=[pfSense name]:pfsense' \
         '1: :->cmds' \
         '*::arg:->args'
     case $state in
-        tenants)
-            local tenants_dir="${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/tenants"
-            if [[ -d "$tenants_dir" ]]; then
-                local tenant_list
-                tenant_list=( ${(f)"$(find "$tenants_dir" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null || echo "")"} )
-                _values 'tenants' $tenant_list
-            fi
-            ;;
         clusters)
-            local clusters_dir="${XDG_STATE_HOME:-$HOME/.local/state}/rock8s/clusters"
+            local clusters_dir="${XDG_CACHE_HOME:-$HOME/.cache}/rock8s/clusters"
             if [[ -d "$clusters_dir" ]]; then
                 local cluster_list
                 cluster_list=( ${(f)"$(find "$clusters_dir" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null || echo "")"} )
@@ -187,9 +148,9 @@ _rock8s() {
             _values 'rock8s command' \
                 'nodes[Create and manage cluster nodes]' \
                 'cluster[Create kubernetes clusters]' \
-                'pfsense[Configure and manage pfsense firewall]' \
                 'backup[Backup cluster data and configurations]' \
                 'restore[Restore cluster data and configurations]' \
+                'kubectl[Run kubectl commands using cluster kubeconfig]' \
                 'completion[Generate shell completion scripts]' \
                 'version[Display rock8s version information]'
             ;;
@@ -228,41 +189,16 @@ _rock8s() {
                         _values 'cluster subcommand' \
                             'addons[Configure cluster addons for an existing kubernetes cluster]' \
                             'apply[Create nodes, install and configure a kubernetes cluster in one step]' \
-                            'init[Initialize cluster configuration]' \
                             'install[Install kubernetes on a cluster]' \
                             'login[Login to a kubernetes cluster]' \
-                            'reset[Reset/remove the cluster]' \
-                            'use[Select a default cluster for subsequent commands]' \
-                            'upgrade[Upgrade an existing cluster]' \
                             'node[Manage cluster nodes]' \
-                            'scale[Scale cluster nodes]'
+                            'reset[Reset/remove the cluster]' \
+                            'rotate-certs[Rotate cluster certificates]' \
+                            'scale[Scale cluster nodes]' \
+                            'upgrade[Upgrade an existing cluster]'
                     elif (( CURRENT == 3 )) && [[ $line[2] == "node" ]]; then
                         _values 'node subcommand' \
                             'rm[Remove a node from the cluster]'
-                    fi
-                    ;;
-                pfsense)
-                    if (( CURRENT == 2 )); then
-                        _values 'pfsense subcommand' \
-                            'configure[Configure pfsense settings and rules]' \
-                            'apply[Create and configure pfsense firewall nodes]' \
-                            'destroy[Destroy pfsense firewall nodes]' \
-                            'publish[Publish haproxy configuration]'
-                    elif (( CURRENT >= 3 )); then
-                        case $line[2] in
-                            publish)
-                                _arguments \
-                                    '-n[pfSense name]:name' \
-                                    '--name=[pfSense name]:name' \
-                                    '-c[Cluster name]:cluster' \
-                                    '--cluster=[Cluster name]:cluster'
-                                ;;
-                            *)
-                                _arguments \
-                                    '-n[pfSense name]:name' \
-                                    '--name=[pfSense name]:name'
-                                ;;
-                        esac
                     fi
                     ;;
                 backup)
@@ -302,32 +238,32 @@ EOF
 _main() {
     if [ $# -eq 0 ]; then
         case "$SHELL" in
-            */zsh)
-                _zsh_completion
-                ;;
-            */bash)
-                _bash_completion
-                ;;
-            *)
-                echo "rock8s completion [bash|zsh]" >&2
-                exit 1
-                ;;
+        */zsh)
+            _zsh_completion
+            ;;
+        */bash)
+            _bash_completion
+            ;;
+        *)
+            echo "rock8s completion [bash|zsh]" >&2
+            exit 1
+            ;;
         esac
     else
         case "$1" in
-            bash)
-                _bash_completion
-                ;;
-            zsh)
-                _zsh_completion
-                ;;
-            -h|--help)
-                _help
-                ;;
-            *)
-                _help
-                exit 1
-                ;;
+        bash)
+            _bash_completion
+            ;;
+        zsh)
+            _zsh_completion
+            ;;
+        -h | --help)
+            _help
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     fi
 }

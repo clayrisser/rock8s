@@ -7,7 +7,7 @@ Replace Terraform with OpenTofu across the entire codebase. Drop-in CLI swap (`t
 ## Tasks
 
 1. Save spec documentation (this folder)
-2. Update `ensure_system` in `libexec/lib/utils.sh`: `terraform` to `tofu`
+2. Update `ensure_system` in `lib/utils.sh`: `terraform` to `tofu`
 3. Replace `terraform` with `tofu` in `libexec/nodes/apply.sh` (3 calls)
 4. Replace `terraform` with `tofu` in `libexec/nodes/destroy.sh` (2 calls), remove `provider.terraform` legacy migration
 5. Replace `terraform` with `tofu` in `libexec/cluster/addons.sh` (3 calls)

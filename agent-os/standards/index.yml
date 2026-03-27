@@ -1,15 +1,5 @@
 # Agent OS Standards Index
 
-ansible:
-  check-then-configure:
-    description: Two-phase idempotency pattern using embedded PHP + JSON diff on pfSense
-  conventions:
-    description: Ansible task composition, variable structure, module usage, and naming
-  firewall-rules-dsl:
-    description: Natural-language firewall rule syntax with service name map and IPv4/IPv6 split
-  ha-primary-secondary:
-    description: Boolean primary flag controlling NAT, HAProxy, CARP, and IP selection for HA
-
 build:
   editor-style:
     description: EditorConfig indentation and style rules per file type
@@ -18,7 +8,7 @@ build:
 
 global:
   architecture:
-    description: Repository layout, stack overview (k3s via k3sup, OpenTofu, Ansible for pfSense)
+    description: Repository layout, stack overview (k3s via k3sup, OpenTofu, MetalLB)
 
 providers:
   addon-registry:
@@ -26,13 +16,13 @@ providers:
   execution-model:
     description: Provider code copy, tfvars.sh/variables.sh flow, OpenTofu migration
   purpose-based-infra:
-    description: pfsense/master/worker purpose dirs with per-purpose state and init heuristics
+    description: master/worker purpose dirs with per-purpose state and init heuristics
 
 shell:
   config-state-layout:
-    description: XDG paths, tenant/cluster hierarchy, layered YAML config merge
+    description: XDG paths, cluster hierarchy, config discovery
   interactive-prompts:
-    description: dialog fd swap, NON_INTERACTIVE mode, env var overrides
+    description: Config-first design, ref+ secret resolution, fail-fast behavior
   output-error-handling:
     description: fail/error/warn/log/debug primitives, JSON/YAML/text format_output
   posix-compliance:

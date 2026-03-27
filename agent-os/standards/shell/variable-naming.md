@@ -5,9 +5,7 @@
 Exported variables prefixed with `ROCK8S_`:
 
 ```sh
-ROCK8S_CONFIG_HOME
-ROCK8S_STATE_HOME
-ROCK8S_TENANT
+ROCK8S_CACHE_HOME
 ROCK8S_CLUSTER
 ROCK8S_OUTPUT
 ROCK8S_LIB_PATH
@@ -39,7 +37,6 @@ Use `lower_case`, no prefix:
 ```sh
 output
 cluster
-tenant
 cmd
 line
 i
@@ -62,7 +59,6 @@ if [ "$yes" = "1" ]; then ...
 Use parameter expansion with `:` assignment:
 
 ```sh
-: "${ROCK8S_TENANT:=default}"
 : "${ROCK8S_OUTPUT:=text}"
 : "${RETRIES:=3}"
 ```

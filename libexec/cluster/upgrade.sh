@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -10,7 +10,7 @@ NAME
        rock8s cluster upgrade
 
 SYNOPSIS
-       rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes]
+       rock8s cluster upgrade [-h] [-o <format>] [--cluster <cluster>] [-y|--yes]
 
 DESCRIPTION
        upgrade an existing kubernetes cluster
@@ -21,9 +21,6 @@ OPTIONS
 
        -o, --output=<format>
               output format
-
-       -t, --tenant <tenant>
-              tenant name
 
        -c, --cluster <cluster>
               cluster name
@@ -48,79 +45,63 @@ EOF
 _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
-    tenant="$ROCK8S_TENANT"
     yes=""
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -y|--yes)
-                yes="1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
                 ;;
-            -*)
-                _help
-                exit 1
+            *)
+                output="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
                 ;;
             *)
-                _help
-                exit 1
+                cluster="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -y | --yes)
+            yes="1"
+            shift
+            ;;
+        -*)
+            _help
+            exit 1
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
     export ROCK8S_CLUSTER="$cluster"
-    export ROCK8S_TENANT="$tenant"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
+    sh "$ROCK8S_LIBEXEC_PATH/nodes/apply.sh" \
         --output="$output" \
         --cluster="$cluster" \
-        --tenant="$tenant" \
         $([ "$yes" = "1" ] && echo "--yes") \
         master >/dev/null
-    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
+    sh "$ROCK8S_LIBEXEC_PATH/nodes/apply.sh" \
         --output="$output" \
         --cluster="$cluster" \
-        --tenant="$tenant" \
         $([ "$yes" = "1" ] && echo "--yes") \
         worker >/dev/null
     cluster_dir="$(get_cluster_dir)"
@@ -134,21 +115,20 @@ _main() {
     k3s_install_url="https://get.k3s.io"
     for ip in $master_private_ipv4s; do
         log "upgrading server node $ip to $K3S_VERSION"
-        ssh -o StrictHostKeyChecking=no -i "$master_ssh_key" admin@"$ip" \
+        ssh -o StrictHostKeyChecking=no -i "$master_ssh_key" "$(get_node_ssh_user)@$ip" \
             "curl -sfL $k3s_install_url | INSTALL_K3S_VERSION=$K3S_VERSION sh -s - server" >&2
     done
     for ip in $worker_private_ipv4s; do
         log "upgrading agent node $ip to $K3S_VERSION"
-        ssh -o StrictHostKeyChecking=no -i "$worker_ssh_key" admin@"$ip" \
+        ssh -o StrictHostKeyChecking=no -i "$worker_ssh_key" "$(get_node_ssh_user)@$ip" \
             "curl -sfL $k3s_install_url | INSTALL_K3S_VERSION=$K3S_VERSION sh -s - agent" >&2
     done
-    sh "$ROCK8S_LIB_PATH/libexec/cluster/login.sh" \
+    sh "$ROCK8S_LIBEXEC_PATH/cluster/login.sh" \
         --output="$output" \
         --cluster="$cluster" \
-        --tenant="$tenant" \
         --kubeconfig "$cluster_dir/kube.yaml" >/dev/null
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$cluster" "$(get_provider)" "$tenant" | \
+    printf '{"cluster":"%s","provider":"%s"}\n' \
+        "$cluster" "$(get_provider)" |
         format_output "$output"
 }
 

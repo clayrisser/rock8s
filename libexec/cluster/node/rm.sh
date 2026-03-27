@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -10,7 +10,7 @@ NAME
        rock8s cluster node rm
 
 SYNOPSIS
-       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] <node>
+       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-y|--yes] <node>
 
 DESCRIPTION
        remove a node from a kubernetes cluster
@@ -25,9 +25,6 @@ OPTIONS
 
        -o, --output=<format>
               output format
-
-       -t, --tenant <tenant>
-              tenant name
 
        -c, --cluster <cluster>
               cluster name
@@ -51,72 +48,58 @@ EOF
 _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
-    tenant="$ROCK8S_TENANT"
     node=""
     yes=""
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -y|--yes)
-                yes="1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
                 ;;
-            -*)
-                _help
-                exit 1
+            *)
+                output="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
                 ;;
             *)
-                if [ -z "$node" ]; then
-                    node="$1"
-                    shift
-                else
-                    _help
-                    exit 1
-                fi
+                cluster="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -y | --yes)
+            yes="1"
+            shift
+            ;;
+        -*)
+            _help
+            exit 1
+            ;;
+        *)
+            if [ -z "$node" ]; then
+                node="$1"
+                shift
+            else
+                _help
+                exit 1
+            fi
+            ;;
         esac
     done
     export ROCK8S_CLUSTER="$cluster"
-    export ROCK8S_TENANT="$tenant"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
@@ -133,8 +116,8 @@ _main() {
         --ignore-daemonsets --delete-emptydir-data --force 2>&2 || true
     log "deleting node $node from cluster"
     kubectl --kubeconfig="$kube_config" delete node "$node" >&2 || true
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s","node":"%s"}\n' \
-        "$cluster" "$(get_provider)" "$tenant" "$node" | \
+    printf '{"cluster":"%s","provider":"%s","node":"%s"}\n' \
+        "$cluster" "$(get_provider)" "$node" |
         format_output "$output"
 }
 

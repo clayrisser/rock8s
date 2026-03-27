@@ -52,21 +52,21 @@ Separate pfSense into standalone shared infrastructure. Remove the `pfsense` pur
 
 ### Phase 5: LAN-only cleanup (remove dead code)
 
-24. Remove `get_external_network()` from `libexec/lib/network.sh`
-25. Remove `get_lan_ipv4_nat()` from `libexec/lib/network.sh`
+24. Remove `get_external_network()` from `lib/network.sh`
+25. Remove `get_lan_ipv4_nat()` from `lib/network.sh`
 26. Remove `get_lan_ingress_ipv4()` branching — always returns first MetalLB IP
 27. Update `get_lan_metallb()` — remove `external_network` guard, MetalLB is always enabled
 28. Update `libexec/cluster/addons.sh` — remove `get_external_network` call, `_LOAD_BALANCER_ENABLED` is always `"1"`
-29. Remove `get_master_public_ipv4s()` from `libexec/lib/master.sh`
-30. Remove `get_worker_public_ipv4s()` from `libexec/lib/worker.sh`
-31. Remove `get_pfsense_public_ipv4s()` from `libexec/lib/pfsense.sh` (pfSense WAN IPs are managed by pfSense standalone, not cluster)
-32. Update `libexec/lib/k3s.sh` `get_k3s_tls_sans()` — remove public IP SANs loop
+29. Remove `get_master_public_ipv4s()` from `lib/master.sh`
+30. Remove `get_worker_public_ipv4s()` from `lib/worker.sh`
+31. Remove `get_pfsense_public_ipv4s()` from `lib/pfsense.sh` (pfSense WAN IPs are managed by pfSense standalone, not cluster)
+32. Update `lib/k3s.sh` `get_k3s_tls_sans()` — remove public IP SANs loop
 33. Remove `bastion` argument from `libexec/cluster/login.sh` — always SSH to master private IP on LAN
 34. Simplify `login.sh` kubeconfig rewrite — server URL is always master private IP
 
 ### Phase 6: lib/pfsense.sh refactor
 
-35. Split `libexec/lib/pfsense.sh` into two concerns:
+35. Split `lib/pfsense.sh` into two concerns:
     - Helpers that derive pfSense info from cluster config (hostnames, LAN IPs from subnet) — stay in cluster lib, used by publish step
     - Helpers that read pfSense OpenTofu outputs (`get_pfsense_output_json`, `get_pfsense_ssh_private_key` from output.json) — move to pfSense standalone tool
 36. Remove `get_pfsense_output_json_file()` / `get_pfsense_output_json()` dependency on `$CLUSTER_DIR/pfsense/` — pfSense state is at its own path

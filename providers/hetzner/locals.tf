@@ -1,12 +1,8 @@
 locals {
-  cluster = local.tenant == "" ? var.cluster_name : "${local.tenant}-${var.cluster_name}"
-  tenant  = var.tenant == "" || var.tenant == null || var.tenant == "default" ? "" : var.tenant
-  gateway_parts  = var.purpose != "pfsense" ? split("/", var.network.lan.ipv4.subnet) : []
-  gateway_octets = length(local.gateway_parts) > 0 ? split(".", local.gateway_parts[0]) : []
-  gateway_ip = length(local.gateway_octets) == 4 ? format("%s.%s.%s.2",
-    local.gateway_octets[0], local.gateway_octets[1], local.gateway_octets[2]
-  ) : ""
-  cloud_init = <<-EOT
+  cluster     = var.cluster_name
+  gateway_ip  = try(var.network.gateway, "")
+  has_gateway = local.gateway_ip != ""
+  cloud_init  = <<-EOT
 #cloud-config
 users:
   - name: admin
@@ -38,8 +34,10 @@ bootcmd:
     done
     echo "auto $IFACE" > /etc/network/interfaces.d/60-lan
     echo "iface $IFACE inet dhcp" >> /etc/network/interfaces.d/60-lan
-    echo "  mtu 1450" >> /etc/network/interfaces.d/60-lan
+    echo "  mtu ${try(var.network.lan.mtu, 1450)}" >> /etc/network/interfaces.d/60-lan
+%{if local.has_gateway~}
     echo "  up route add default gw ${local.gateway_ip}" >> /etc/network/interfaces.d/60-lan
+%{endif~}
     echo "  dns-nameservers 185.12.64.2 185.12.64.1" >> /etc/network/interfaces.d/60-lan
   - systemctl restart networking
   - sysctl -p /etc/sysctl.d/99-k8s.conf
@@ -83,15 +81,10 @@ EOT
   }
   network = {
     lan = {
-      name   = local.tenant == "" ? "${var.cluster_name}-lan" : "${local.tenant}-${var.cluster_name}-lan"
+      name   = "${var.cluster_name}-lan"
       subnet = var.network.lan.ipv4.subnet
       zone   = lookup(local.location_zones, var.location, "eu-central")
     }
-    sync = var.purpose == "pfsense" && try(var.network.sync.ipv4.subnet, "") != "" ? {
-      name   = local.tenant == "" ? "${var.cluster_name}-sync" : "${local.tenant}-${var.cluster_name}-sync"
-      subnet = var.network.sync.ipv4.subnet
-      zone   = lookup(local.location_zones, var.location, "eu-central")
-    } : null
   }
   node_configs = flatten([
     for group in var.nodes : [
@@ -103,7 +96,7 @@ EOT
           1
         )
         ) : {
-        name        = "${local.tenant == "" ? "" : "${local.tenant}-"}${var.cluster_name}-${var.purpose}-${i + 1}"
+        name        = "${var.cluster_name}-${var.purpose}-${i + 1}"
         server_type = group.type
         image       = group.image
         ipv4        = try(group.ipv4s[i], null)
@@ -119,51 +112,11 @@ EOT
     for idx, server in hcloud_server.nodes :
     server.name => coalesce(
       try([for net in server.network : net.ip if net.network_id == (
-        var.purpose == "pfsense" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
+        var.purpose == "master" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
       )][0], null),
       tolist(server.network)[0].ip
     )
   }
-  lan_network_parts = var.purpose == "pfsense" ? split("/", var.network.lan.ipv4.subnet) : []
-  lan_network_base  = length(local.lan_network_parts) > 0 ? split(".", local.lan_network_parts[0]) : []
-  pfsense_lan_primary_ip = var.purpose == "pfsense" && length(local.lan_network_base) == 4 ? format("%s.%s.%s.2",
-    local.lan_network_base[0], local.lan_network_base[1],
-    local.lan_network_base[2]
-  ) : null
-  pfsense_lan_secondary_ip = (
-    var.purpose == "pfsense" &&
-    length(local.lan_network_base) == 4 &&
-    length(local.node_configs) > 1
-    ) ? format("%s.%s.%s.3",
-    local.lan_network_base[0], local.lan_network_base[1],
-    local.lan_network_base[2]
-  ) : null
-  node_sync_ipv4s = var.purpose == "pfsense" && local.network.sync != null ? {
-    for idx, server in hcloud_server.nodes :
-    server.name => coalesce(
-      try([for net in server.network : net.ip if net.network_id == hcloud_network.sync[0].id][0], null),
-      idx == 0 ? local.pfsense_sync_primary_ip : local.pfsense_sync_secondary_ip
-    )
-  } : {}
-  sync_network_parts = var.purpose == "pfsense" && local.network.sync != null ? split("/", local.network.sync.subnet) : []
-  sync_network_base  = length(local.sync_network_parts) > 0 ? split(".", local.sync_network_parts[0]) : []
-  pfsense_sync_primary_ip = (
-    var.purpose == "pfsense" &&
-    local.network.sync != null &&
-    length(local.sync_network_base) == 4
-    ) ? format("%s.%s.%s.2",
-    local.sync_network_base[0], local.sync_network_base[1],
-    local.sync_network_base[2]
-  ) : null
-  pfsense_sync_secondary_ip = (
-    var.purpose == "pfsense" &&
-    local.network.sync != null &&
-    length(local.sync_network_base) == 4 &&
-    length(local.node_configs) > 1
-    ) ? format("%s.%s.%s.3",
-    local.sync_network_base[0], local.sync_network_base[1],
-    local.sync_network_base[2]
-  ) : null
   node_architectures = {
     for idx, cfg in local.node_configs :
     cfg.name => cfg.arch

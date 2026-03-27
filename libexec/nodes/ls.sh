@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -24,9 +24,6 @@ OPTIONS
 
        -c, --cluster <cluster>
               cluster name
-
-       -t, --tenant <tenant>
-              tenant name
 
        <purpose>
               filter nodes by purpose:
@@ -53,61 +50,47 @@ EOF
 _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
-    tenant="$ROCK8S_TENANT"
     filter=""
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            master|worker)
-                filter="$1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
                 ;;
             *)
-                _help
-                exit 1
+                output="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
+                ;;
+            *)
+                cluster="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        master | worker)
+            filter="$1"
+            shift
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
-    export ROCK8S_TENANT="$tenant"
     export ROCK8S_CLUSTER="$cluster"
     export ROCK8S_OUTPUT="$output"
     if [ -z "$ROCK8S_CLUSTER" ]; then
@@ -136,36 +119,36 @@ _main() {
     done
     worker_nodes="$worker_nodes]"
     case "$filter" in
-        master)
-            printf '%s\n' "$master_nodes" | format_output "$output" nodes
-            ;;
-        worker)
-            printf '%s\n' "$worker_nodes" | format_output "$output" nodes
-            ;;
-        *)
-            all_nodes="["
-            node_count=0
-            first_master=1
-            for node in $master_private_ips; do
-                [ -z "$node" ] && continue
-                node_name="master-$first_master"
-                [ "$node_count" -gt 0 ] && all_nodes="$all_nodes,"
-                all_nodes="$all_nodes{\"purpose\":\"master\",\"name\":\"$node_name\",\"lan_ipv4\":\"$node\"}"
-                first_master=$((first_master + 1))
-                node_count=$((node_count + 1))
-            done
-            first_worker=1
-            for node in $worker_private_ips; do
-                [ -z "$node" ] && continue
-                node_name="worker-$first_worker"
-                [ "$node_count" -gt 0 ] && all_nodes="$all_nodes,"
-                all_nodes="$all_nodes{\"purpose\":\"worker\",\"name\":\"$node_name\",\"lan_ipv4\":\"$node\"}"
-                first_worker=$((first_worker + 1))
-                node_count=$((node_count + 1))
-            done
-            all_nodes="$all_nodes]"
-            printf '%s\n' "$all_nodes" | format_output "$output" nodes
-            ;;
+    master)
+        printf '%s\n' "$master_nodes" | format_output "$output" nodes
+        ;;
+    worker)
+        printf '%s\n' "$worker_nodes" | format_output "$output" nodes
+        ;;
+    *)
+        all_nodes="["
+        node_count=0
+        first_master=1
+        for node in $master_private_ips; do
+            [ -z "$node" ] && continue
+            node_name="master-$first_master"
+            [ "$node_count" -gt 0 ] && all_nodes="$all_nodes,"
+            all_nodes="$all_nodes{\"purpose\":\"master\",\"name\":\"$node_name\",\"lan_ipv4\":\"$node\"}"
+            first_master=$((first_master + 1))
+            node_count=$((node_count + 1))
+        done
+        first_worker=1
+        for node in $worker_private_ips; do
+            [ -z "$node" ] && continue
+            node_name="worker-$first_worker"
+            [ "$node_count" -gt 0 ] && all_nodes="$all_nodes,"
+            all_nodes="$all_nodes{\"purpose\":\"worker\",\"name\":\"$node_name\",\"lan_ipv4\":\"$node\"}"
+            first_worker=$((first_worker + 1))
+            node_count=$((node_count + 1))
+        done
+        all_nodes="$all_nodes]"
+        printf '%s\n' "$all_nodes" | format_output "$output" nodes
+        ;;
     esac
 }
 

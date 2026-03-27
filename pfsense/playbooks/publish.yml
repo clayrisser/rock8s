@@ -1,7 +1,0 @@
----
-- name: Configure pfSense
-  hosts: all
-  gather_facts: False
-  roles:
-    - firewall
-    - haproxy

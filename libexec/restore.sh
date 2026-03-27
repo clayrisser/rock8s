@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -46,23 +46,23 @@ EOF
 
 _restore_namespace() {
     if [ -z "$_BACKUP" ]; then
-        _BACKUP=$(ls -t "$ROCK8S_STATE_HOME/backups/$NAMESPACE" | head -n1)
+        _BACKUP=$(ls -t "$ROCK8S_CACHE_HOME/backups/$NAMESPACE" | head -n1)
     fi
-    export BACKUP_DIR="$ROCK8S_STATE_HOME/backups/$NAMESPACE/$_BACKUP"
+    export BACKUP_DIR="$ROCK8S_CACHE_HOME/backups/$NAMESPACE/$_BACKUP"
     if [ ! -d "$BACKUP_DIR" ]; then
         fail "backup not found: $BACKUP_DIR"
     fi
     SECRETS="$(kubectl get secrets -n "$NAMESPACE" 2>/dev/null || true)"
     DEPLOYMENTS="$(kubectl get deployments -n "$NAMESPACE" 2>/dev/null || true)"
     if echo "$SECRETS" | grep -q postgres-postgres-secret; then
-        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/postgres.sh"
-    elif (echo "$DEPLOYMENTS" | grep -q release-gunicorn) && \
-         (echo "$DEPLOYMENTS" | grep -q release-worker-d) && \
-         (echo "$DEPLOYMENTS" | grep -q release-worker-l) && \
-         (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
-        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/erpnext.sh"
+        . "$ROCK8S_LIB_PATH/backup/postgres.sh"
+    elif (echo "$DEPLOYMENTS" | grep -q release-gunicorn) &&
+        (echo "$DEPLOYMENTS" | grep -q release-worker-d) &&
+        (echo "$DEPLOYMENTS" | grep -q release-worker-l) &&
+        (echo "$DEPLOYMENTS" | grep -q release-worker-s); then
+        . "$ROCK8S_LIB_PATH/backup/erpnext.sh"
     elif (echo "$SECRETS" | grep -q openldap); then
-        . "$ROCK8S_LIB_PATH/libexec/backup/scripts/openldap.sh"
+        . "$ROCK8S_LIB_PATH/backup/openldap.sh"
     else
         warn "no restore scripts for namespace $NAMESPACE"
     fi
@@ -78,53 +78,53 @@ _main() {
     _BACKUP=""
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit 0
-                ;;
-            -n|--namespace|-n=*|--namespace=*)
-                case "$1" in
-                    *=*)
-                        namespace="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        namespace="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -b|--backup|-b=*|--backup=*)
-                case "$1" in
-                    *=*)
-                        _BACKUP="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        _BACKUP="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            --retries|--retries=*)
-                case "$1" in
-                    *=*)
-                        RETRIES="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        RETRIES="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -*)
-                echo "invalid option $1" >&2
-                exit 1
+        -h | --help)
+            _help
+            exit 0
+            ;;
+        -n | --namespace | -n=* | --namespace=*)
+            case "$1" in
+            *=*)
+                namespace="${1#*=}"
+                shift
                 ;;
             *)
-                break
+                namespace="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -b | --backup | -b=* | --backup=*)
+            case "$1" in
+            *=*)
+                _BACKUP="${1#*=}"
+                shift
+                ;;
+            *)
+                _BACKUP="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        --retries | --retries=*)
+            case "$1" in
+            *=*)
+                RETRIES="${1#*=}"
+                shift
+                ;;
+            *)
+                RETRIES="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        -*)
+            echo "invalid option $1" >&2
+            exit 1
+            ;;
+        *)
+            break
+            ;;
         esac
     done
     if [ -z "$namespace" ]; then

@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _OLM_VERSION="0.25.0"
 
@@ -12,7 +12,7 @@ NAME
        rock8s cluster addons
 
 SYNOPSIS
-       rock8s cluster addons [-h] [-o <format>] [-y|--yes] [-t <tenant>] [--cluster <cluster>] [--kubeconfig <path>] [--update]
+       rock8s cluster addons [-h] [-o <format>] [-y|--yes] [--cluster <cluster>] [--kubeconfig <path>] [--update]
 
 DESCRIPTION
        configure cluster addons for an existing kubernetes cluster
@@ -24,9 +24,6 @@ OPTIONS
        -o, --output=<format>
               output format
 
-       -t, --tenant <tenant>
-              tenant name
-
        -c, --cluster <cluster>
               cluster name
 
@@ -37,7 +34,7 @@ OPTIONS
               automatically approve operations
 
        --update
-              update ansible collections and addons repository
+              update addons repository
 
 EXAMPLE
        # configure addons for a cluster with automatic approval
@@ -55,84 +52,70 @@ EOF
 
 _main() {
     output="${ROCK8S_OUTPUT}"
-    tenant="$ROCK8S_TENANT"
     cluster="$ROCK8S_CLUSTER"
     yes="0"
     update=""
     kubeconfig=""
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -t|--tenant|-t=*|--tenant=*)
-                case "$1" in
-                    *=*)
-                        tenant="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        tenant="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -c|--cluster|-c=*|--cluster=*)
-                case "$1" in
-                    *=*)
-                        cluster="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        cluster="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            --kubeconfig|--kubeconfig=*)
-                case "$1" in
-                    *=*)
-                        kubeconfig="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        kubeconfig="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            -y|--yes)
-                yes="1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
-                ;;
-            --update)
-                update="1"
-                shift
-                ;;
-            -*)
-                _help
-                exit 1
                 ;;
             *)
-                _help
-                exit 1
+                output="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        -c | --cluster | -c=* | --cluster=*)
+            case "$1" in
+            *=*)
+                cluster="${1#*=}"
+                shift
+                ;;
+            *)
+                cluster="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        --kubeconfig | --kubeconfig=*)
+            case "$1" in
+            *=*)
+                kubeconfig="${1#*=}"
+                shift
+                ;;
+            *)
+                kubeconfig="$2"
+                shift 2
+                ;;
+            esac
+            ;;
+        -y | --yes)
+            yes="1"
+            shift
+            ;;
+        --update)
+            update="1"
+            shift
+            ;;
+        -*)
+            _help
+            exit 1
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
-    export ROCK8S_TENANT="$tenant"
     export ROCK8S_CLUSTER="$cluster"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
@@ -160,7 +143,7 @@ _main() {
     fi
     export TF_VAR_cluster_name="$cluster"
     export TF_VAR_entrypoint="$(get_entrypoint)"
-    export TF_VAR_kubeconfig="$cluster_dir/kube.yaml"
+    export TF_VAR_kubeconfig="${kubeconfig:-$cluster_dir/kube.yaml}"
     export TF_DATA_DIR="$addons_dir/.terraform"
     load_balancer_enabled="1"
     export TF_VAR_ingress_nginx="{\"load_balancer\":$load_balancer_enabled}"
@@ -170,23 +153,23 @@ _main() {
     if [ -n "$lan_metallb" ]; then
         config_json=$(echo "$config_json" | jq --arg range "$lan_metallb" 'if .addons.metallb != null and .addons.metallb != false then .addons.metallb.address_range //= $range else . end')
     fi
-    echo "$config_json" | jq 'del(.addons.version, .addons.repo) | .addons' > "$addons_dir/terraform.tfvars.json"
+    echo "$config_json" | jq 'del(.addons.version, .addons.repo) | .addons' >"$addons_dir/terraform.tfvars.json"
     chmod 600 "$addons_dir/terraform.tfvars.json"
     cd "$addons_dir/terraform"
-    state_key="$(get_state_key "$tenant" "$cluster" "addons")"
-    generate_backend_config "$state_key" "$addons_dir" > "$addons_dir/terraform/_backend.tf"
+    state_key="$(get_state_key "$cluster" "addons")"
+    generate_backend_config "$state_key" "$addons_dir" >"$addons_dir/terraform/_backend.tf"
     tofu init -upgrade -reconfigure >&2
     mkdir -p "$addons_dir/artifacts/olm"
     if [ ! -f "$addons_dir/artifacts/olm/crds.yaml" ]; then
-        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${_OLM_VERSION}/crds.yaml" > "$addons_dir/artifacts/olm/crds.yaml"
+        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${_OLM_VERSION}/crds.yaml" >"$addons_dir/artifacts/olm/crds.yaml"
     fi
     if [ ! -f "$addons_dir/artifacts/olm/olm.yaml" ]; then
-        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${_OLM_VERSION}/olm.yaml" > "$addons_dir/artifacts/olm/olm.yaml"
+        curl -sSL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v${_OLM_VERSION}/olm.yaml" >"$addons_dir/artifacts/olm/olm.yaml"
     fi
     tofu apply $([ "$yes" = "1" ] && echo "-auto-approve") -var-file="$addons_dir/terraform.tfvars.json" >&2
-    tofu output -json > "$addons_dir/output.json"
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$cluster" "$(get_provider)" "$tenant" | \
+    tofu output -json >"$addons_dir/output.json"
+    printf '{"cluster":"%s","provider":"%s"}\n' \
+        "$cluster" "$(get_provider)" |
         format_output "$output"
 }
 

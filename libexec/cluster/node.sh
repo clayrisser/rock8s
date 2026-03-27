@@ -2,7 +2,7 @@
 
 set -e
 
-. "$ROCK8S_LIB_PATH/libexec/lib.sh"
+. "$ROCK8S_LIB_PATH/lib.sh"
 
 _help() {
     cat <<EOF >&2
@@ -30,37 +30,36 @@ EOF
 
 _main() {
     output="${ROCK8S_OUTPUT}"
-    cluster="$ROCK8S_CLUSTER"
     cmd=""
     cmd_args=""
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                _help
-                exit
-                ;;
-            -o|--output|-o=*|--output=*)
-                case "$1" in
-                    *=*)
-                        output="${1#*=}"
-                        shift
-                        ;;
-                    *)
-                        output="$2"
-                        shift 2
-                        ;;
-                esac
-                ;;
-            rm)
-                cmd="$1"
+        -h | --help)
+            _help
+            exit
+            ;;
+        -o | --output | -o=* | --output=*)
+            case "$1" in
+            *=*)
+                output="${1#*=}"
                 shift
-                cmd_args="$*"
-                break
                 ;;
             *)
-                _help
-                exit 1
+                output="$2"
+                shift 2
                 ;;
+            esac
+            ;;
+        rm)
+            cmd="$1"
+            shift
+            cmd_args="$*"
+            break
+            ;;
+        *)
+            _help
+            exit 1
+            ;;
         esac
     done
     if [ -z "$cmd" ]; then
@@ -68,7 +67,7 @@ _main() {
         exit 1
     fi
     export ROCK8S_OUTPUT="$output"
-    subcmd="$ROCK8S_LIB_PATH/libexec/cluster/node/$cmd.sh"
+    subcmd="$ROCK8S_LIBEXEC_PATH/cluster/node/$cmd.sh"
     if [ ! -f "$subcmd" ]; then
         fail "unknown node command: $cmd"
     fi

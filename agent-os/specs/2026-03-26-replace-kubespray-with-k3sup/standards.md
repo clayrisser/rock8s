@@ -38,7 +38,7 @@ All shell scripts MUST be POSIX-compliant `/bin/sh`.
 
 ## providers/purpose-based-infra
 
-- Each cluster has purpose directories: pfsense → master → worker
+- Each cluster has purpose directories: master → worker
 - Each purpose gets its own SSH keypair, state, and outputs
-- Dependency order: pfsense first, then master, then worker
+- Dependency order: master first, then worker
 - k3sup uses master SSH keys for server nodes, worker SSH keys for agent nodes

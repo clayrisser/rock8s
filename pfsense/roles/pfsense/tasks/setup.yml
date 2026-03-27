@@ -1,7 +1,0 @@
----
-- name: Configure pfsense setup
-  pfsensible.core.pfsense_setup:
-    webguicss: "{{ primary | ternary(pfsense.dashboard.primary.theme, pfsense.dashboard.secondary.theme) }}"
-    logincss: "{{ primary | ternary(pfsense.dashboard.primary.login, pfsense.dashboard.secondary.login) }}"
-    hostname: "{{ primary | ternary('primary', 'secondary') }}"
-    domain: "{{ ansible_host }}"

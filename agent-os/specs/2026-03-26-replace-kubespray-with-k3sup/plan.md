@@ -1,12 +1,12 @@
 ---
 name: Replace kubespray with k3sup
-overview: "Replace Kubespray (Ansible-based Kubernetes installer) with k3sup (lightweight Go binary) for all cluster lifecycle operations: install, upgrade, scale, reset, and node removal. This eliminates the Python/venv/Ansible dependency chain for the Kubernetes step while keeping Ansible for pfSense only."
+overview: "Replace Kubespray (Ansible-based Kubernetes installer) with k3sup (lightweight Go binary) for all cluster lifecycle operations: install, upgrade, scale, reset, and node removal. This eliminates the Python/venv/Ansible dependency chain entirely."
 todos:
   - id: save-spec
     content: Save spec documentation to agent-os/specs/ (plan.md, shape.md, standards.md, references.md)
     status: in_progress
   - id: create-k3s-lib
-    content: Create libexec/lib/k3s.sh with helper functions, update libexec/lib.sh to source it
+    content: Create lib/k3s.sh with helper functions, update lib/lib.sh to source it
     status: pending
   - id: rewrite-cluster-sh
     content: "Update libexec/cluster.sh: replace KUBESPRAY_VERSION/KUBESPRAY_REPO with K3S_VERSION/K3S_CHANNEL"
@@ -36,7 +36,7 @@ todos:
     content: "Update Makefile: remove kubespray directory install targets"
     status: pending
   - id: remove-kubespray-dir
-    content: Remove kubespray/ directory (vars.yml, postinstall.yml) and libexec/lib/kubespray.sh
+    content: Remove kubespray/ directory (vars.yml, postinstall.yml) and lib/kubespray.sh
     status: pending
   - id: update-standards
     content: Update agent-os/standards/ docs and project-words.txt
@@ -105,7 +105,7 @@ flowchart LR
 
 - [kubespray/vars.yml](kubespray/vars.yml) -- entire file
 - [kubespray/postinstall.yml](kubespray/postinstall.yml) -- entire file
-- [libexec/lib/kubespray.sh](libexec/lib/kubespray.sh) -- replaced by k3s.sh
+- [lib/kubespray.sh](lib/kubespray.sh) -- replaced by k3s.sh
 
 ### Rewrite
 
@@ -119,13 +119,13 @@ flowchart LR
 
 - [libexec/cluster.sh](libexec/cluster.sh) -- replace `KUBESPRAY_VERSION`/`KUBESPRAY_REPO` with `K3S_VERSION`/`K3S_CHANNEL`
 - [libexec/cluster/apply.sh](libexec/cluster/apply.sh) -- rename `--skip-kubespray` to `--skip-k3s`, update `_SKIP_KUBESPRAY` to `_SKIP_K3S`
-- [libexec/lib.sh](libexec/lib.sh) -- source `lib/k3s.sh` instead of `lib/kubespray.sh`
+- [lib/lib.sh](lib/lib.sh) -- source `lib/k3s.sh` instead of `lib/kubespray.sh`
 - [libexec/nodes/destroy.sh](libexec/nodes/destroy.sh) -- update cleanup: `rm -rf "$_CLUSTER_DIR/kubespray"` no longer needed
 - [Makefile](Makefile) -- remove `kubespray` install directory and copy targets
 
 ### Create
 
-- `libexec/lib/k3s.sh` -- helper functions (e.g. `get_k3s_extra_args`, build `--tls-san` list)
+- `lib/k3s.sh` -- helper functions (e.g. `get_k3s_extra_args`, build `--tls-san` list)
 
 ### Update Standards/Docs
 

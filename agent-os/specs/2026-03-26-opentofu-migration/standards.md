@@ -35,10 +35,10 @@ Variable flow: `config.yaml` → `get_config_json` → `tfvars.sh` (stdin JSON �
 
 ## providers/purpose-based-infra
 
-Three purpose directories: `pfsense/`, `master/`, `worker/` — each with own state, `TF_DATA_DIR`, tfvars, SSH keys, outputs. Applied in order, destroyed in reverse.
+Two purpose directories: `master/`, `worker/` — each with own state, `TF_DATA_DIR`, tfvars, SSH keys, outputs. Applied in order, destroyed in reverse.
 
 ---
 
 ## global/architecture
 
-Stack: POSIX shell CLI, k3s (replacing kubespray), OpenTofu (replacing Terraform), Ansible for pfSense, Hetzner cloud.
+Stack: POSIX shell CLI, k3s (replacing kubespray), OpenTofu (replacing Terraform), Hetzner cloud.

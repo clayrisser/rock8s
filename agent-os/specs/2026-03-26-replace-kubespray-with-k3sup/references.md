@@ -4,7 +4,7 @@
 
 ### Current Kubespray integration
 
-- **Location:** `libexec/cluster/install.sh`, `libexec/cluster/upgrade.sh`, `libexec/cluster/scale.sh`, `libexec/cluster/reset.sh`, `libexec/cluster/node/rm.sh`, `libexec/lib/kubespray.sh`, `kubespray/vars.yml`, `kubespray/postinstall.yml`
+- **Location:** `libexec/cluster/install.sh`, `libexec/cluster/upgrade.sh`, `libexec/cluster/scale.sh`, `libexec/cluster/reset.sh`, `libexec/cluster/node/rm.sh`, `lib/kubespray.sh`, `kubespray/vars.yml`, `kubespray/postinstall.yml`
 - **Relevance:** This is what we're replacing. Understanding the current flow is essential.
 - **Key patterns:** Shell scripts orchestrate Ansible playbooks via SSH keys and IPs from OpenTofu outputs.
 
@@ -18,4 +18,3 @@
 - **k3sup**: https://github.com/alexellis/k3sup (7.2k stars, MIT, Go binary)
 - **k3s-ansible**: https://github.com/k3s-io/k3s-ansible (2.7k stars, considered but not chosen)
 - **Striveworks k3s provider**: https://github.com/Striveworks/terraform-provider-k3s (5 stars, considered but too immature)
-- **marshallford/pfsense provider**: https://github.com/marshallford/terraform-provider-pfsense (not ready to replace Ansible for pfSense)

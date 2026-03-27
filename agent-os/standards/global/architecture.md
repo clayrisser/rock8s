@@ -1,6 +1,6 @@
 # Architecture Overview
 
-rock8s is a CLI for provisioning and managing Kubernetes clusters on cloud infrastructure behind pfSense firewalls.
+rock8s is a CLI for provisioning and managing Kubernetes clusters on cloud infrastructure.
 
 ## Stack
 
@@ -9,40 +9,35 @@ rock8s is a CLI for provisioning and managing Kubernetes clusters on cloud infra
 | CLI | POSIX `/bin/sh` |
 | Kubernetes | k3s (via k3sup) |
 | IaC | OpenTofu |
-| Network gateway | pfSense (standalone, shared across clusters) |
-| Config management | Ansible (pfSense only) |
-| Load balancing | MetalLB (LAN IPs) + HAProxy (on pfSense) |
-| Cloud providers | Hetzner (extensible) |
+| Load balancing | MetalLB (LAN IPs) |
+| Cloud providers | Hetzner, AWS, Azure, GCP, DigitalOcean, OVH, Vultr, libvirt |
 
 ## Network model
 
-All cluster nodes are LAN-only behind pfSense. No public IPs on master/worker nodes. Access via VPN on pfSense or direct LAN connection. Services exposed through HAProxy on pfSense. MetalLB assigns LAN IPs to LoadBalancer services.
+Clusters can run with public IPs or behind a LAN gateway. When a gateway is configured (`network.gateway`), nodes are LAN-only with traffic routed through the gateway. When omitted, nodes get public IPs directly. MetalLB assigns LAN IPs to LoadBalancer services.
 
 ## Repository layout
 
 ```
 rock8s.sh              # entry point
-libexec/               # CLI implementation (POSIX shell)
-  lib/                 # shared libraries
+lib/                   # sourced shell libraries (/usr/lib/rock8s)
+  lib.sh               # library loader
+  utils.sh, config.sh  # shared functions
+  backup/              # backup driver scripts (sourced)
+libexec/               # executed subcommands (/usr/libexec/rock8s)
   cluster/             # cluster subcommands
   nodes/               # node subcommands (master, worker)
-  pfsense/             # pfsense subcommands (standalone)
-  backup/              # backup drivers
 providers/             # IaC per provider
   hetzner/             # OpenTofu modules + shell glue
-  addons.sh            # addon registry
-pfsense/               # Ansible roles for pfSense
-  playbooks/
-  roles/
-  image/               # Packer/Vagrant for pfSense image building
 ```
 
 ## Key principles
 
 - All shell is POSIX `/bin/sh` — no bashisms
-- Config is layered YAML merged with jq
-- State follows XDG conventions with tenant hierarchy
+- Config is a single YAML file (`rock8s.yaml`), checked into git
+- Secrets resolved at runtime via `ref+<scheme>://path` syntax
+- Cache follows XDG conventions (`~/.cache/rock8s/`); all local state is regenerable
+- Terraform state is offloaded to remote backends (S3, GCS, etc.)
 - Cluster infrastructure is purpose-based: master → worker
-- pfSense is standalone shared infrastructure (one pfSense serves many clusters)
 - Provider code is copied per-apply for reproducibility
-- Interactive prompts via dialog, skippable with `NON_INTERACTIVE=1`
+- Gateway/firewall is external — not managed by rock8s
