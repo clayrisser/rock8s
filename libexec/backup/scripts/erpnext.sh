@@ -8,8 +8,8 @@ if [ -z "$DEPLOYMENT_NAMES" ]; then
 fi
 DEPLOYMENT_NAME=""
 POD_NAME=""
-for _D in $DEPLOYMENT_NAMES; do
-    DEPLOYMENT_NAME="$_D"
+for d in $DEPLOYMENT_NAMES; do
+    DEPLOYMENT_NAME="$d"
     POD_NAME="$(wait_for_pod "$NAMESPACE" "app.kubernetes.io/instance=$DEPLOYMENT_NAME" "")"
     if [ -n "$POD_NAME" ]; then
         break
@@ -24,9 +24,9 @@ SITES=$(kubectl exec -i "$POD_NAME" -n "$NAMESPACE" -- sh -c "find /home/frappe/
 if [ -z "$SITES" ]; then
     fail "no sites found"
 fi
-for _S in $SITES; do
-    log "backing up erpnext site $NAMESPACE/$_S"
-    try "kubectl exec -i $POD_NAME -n $NAMESPACE -- sh -c \"cd /home/frappe/frappe-bench && bench --site $_S backup --with-files --backup-path $_BACKUP_TMP\""
+for s in $SITES; do
+    log "backing up erpnext site $NAMESPACE/$s"
+    try "kubectl exec -i $POD_NAME -n $NAMESPACE -- sh -c \"cd /home/frappe/frappe-bench && bench --site $s backup --with-files --backup-path $_BACKUP_TMP\""
 done
 backup_compress_temp "$POD_NAME" "$NAMESPACE" "" "$_BACKUP_TMP" "*"
 mkdir -p "$BACKUP_DIR"

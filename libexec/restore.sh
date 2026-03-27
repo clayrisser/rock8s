@@ -74,7 +74,7 @@ _main() {
     command -v helm >/dev/null 2>&1 || {
         fail "helm is not installed"
     }
-    _NAMESPACE=""
+    namespace=""
     _BACKUP=""
     while test $# -gt 0; do
         case "$1" in
@@ -85,11 +85,11 @@ _main() {
             -n|--namespace|-n=*|--namespace=*)
                 case "$1" in
                     *=*)
-                        _NAMESPACE="${1#*=}"
+                        namespace="${1#*=}"
                         shift
                         ;;
                     *)
-                        _NAMESPACE="$2"
+                        namespace="$2"
                         shift 2
                         ;;
                 esac
@@ -127,11 +127,11 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_NAMESPACE" ]; then
+    if [ -z "$namespace" ]; then
         fail "namespace is required"
     fi
     export RETRIES
-    export NAMESPACE="$_NAMESPACE"
+    export NAMESPACE="$namespace"
     _restore_namespace
 }
 

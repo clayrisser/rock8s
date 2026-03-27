@@ -16,7 +16,9 @@ fi
 : "${ROCK8S_STATE_HOME:=${XDG_STATE_HOME:-$HOME/.local/state}/rock8s}"
 : "${ROCK8S_STATE_ROOT:=/var/lib/rock8s}"
 : "${ROCK8S_TENANT:=default}"
+: "${ROCK8S_PFSENSE:=}"
 : "${ROCK8S_OUTPUT:=text}"
+: "${ROCK8S_CONFIG:=}"
 export ROCK8S_CONFIG_DIRS
 export ROCK8S_CONFIG_HOME
 export ROCK8S_DEBUG
@@ -25,6 +27,8 @@ export ROCK8S_OUTPUT
 export ROCK8S_STATE_HOME
 export ROCK8S_STATE_ROOT
 export ROCK8S_TENANT
+export ROCK8S_PFSENSE
+export ROCK8S_CONFIG
 export ANSIBLE_NOCOWS=1
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
@@ -38,11 +42,11 @@ _version() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -52,7 +56,7 @@ _version() {
                 ;;
         esac
     done
-    printf '{"version":"%s"}\n' "$ROCK8S_VERSION" | format_output "$_OUTPUT"
+    printf '{"version":"%s"}\n' "$ROCK8S_VERSION" | format_output "$output"
 }
 
 _help() {
@@ -81,6 +85,12 @@ OPTIONS
 
        -c, --cluster <cluster>
               cluster name
+
+       -p, --pfsense <name>
+              pfsense instance name
+
+       --config <path>
+              path to config file (overrides default config location)
 
 COMMANDS
        nodes
@@ -140,17 +150,17 @@ EOF
 }
 
 _kubectl() {
-    _CLUSTER_DIR="$(get_cluster_dir)"
-    _KUBE_CONFIG="$_CLUSTER_DIR/kube.yaml"
-    if [ ! -f "$_KUBE_CONFIG" ]; then
-        fail "kube.yaml not found at $_KUBE_CONFIG"
+    cluster_dir="$(get_cluster_dir)"
+    kube_config="$cluster_dir/kube.yaml"
+    if [ ! -f "$kube_config" ]; then
+        fail "kube.yaml not found at $kube_config"
     fi
-    kubectl --kubeconfig="$_KUBE_CONFIG" "$@"
+    kubectl --kubeconfig="$kube_config" "$@"
 }
 
 _main() {
-    _CMD=""
-    _CMD_ARGS=""
+    cmd=""
+    cmd_args=""
     if [ -f "$ROCK8S_STATE_HOME/current" ]; then
         . "$ROCK8S_STATE_HOME/current"
         if [ -n "$tenant" ]; then
@@ -160,9 +170,11 @@ _main() {
             export ROCK8S_CLUSTER="$cluster"
         fi
     fi
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _OUTPUT="$ROCK8S_OUTPUT"
-    _TENANT="$ROCK8S_TENANT"
+    cluster="$ROCK8S_CLUSTER"
+    output="$ROCK8S_OUTPUT"
+    tenant="$ROCK8S_TENANT"
+    pfsense="$ROCK8S_PFSENSE"
+    config="$ROCK8S_CONFIG"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -176,11 +188,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -188,11 +200,11 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
@@ -200,25 +212,49 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -p|--pfsense|-p=*|--pfsense=*)
+                case "$1" in
+                    *=*)
+                        pfsense="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        pfsense="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            --config|--config=*)
+                case "$1" in
+                    *=*)
+                        config="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        config="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             nodes|cluster|pfsense)
-                _CMD="$1"
+                cmd="$1"
                 shift
-                _CMD_ARGS="$*"
+                cmd_args="$*"
                 break
                 ;;
             backup|restore)
-                _CMD="$1"
+                cmd="$1"
                 shift
-                _CMD_ARGS="$*"
+                cmd_args="$*"
                 break
                 ;;
             kubectl)
@@ -227,9 +263,9 @@ _main() {
                 exit $?
                 ;;
             completion)
-                _CMD="$1"
+                cmd="$1"
                 shift
-                _CMD_ARGS="$*"
+                cmd_args="$*"
                 break
                 ;;
             version)
@@ -243,18 +279,20 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CMD" ]; then
+    if [ -z "$cmd" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_TENANT="$_TENANT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_OUTPUT="$_OUTPUT"
-    _SUBCMD="$ROCK8S_LIB_PATH/libexec/$_CMD.sh"
-    if [ ! -f "$_SUBCMD" ]; then
-        fail "unknown command: $_CMD"
+    export ROCK8S_TENANT="$tenant"
+    export ROCK8S_CLUSTER="$cluster"
+    export ROCK8S_PFSENSE="$pfsense"
+    export ROCK8S_OUTPUT="$output"
+    export ROCK8S_CONFIG="$config"
+    subcmd="$ROCK8S_LIB_PATH/libexec/$cmd.sh"
+    if [ ! -f "$subcmd" ]; then
+        fail "unknown command: $cmd"
     fi
-    exec sh "$_SUBCMD" $_CMD_ARGS
+    exec sh "$subcmd" $cmd_args
 }
 
 _main "$@"

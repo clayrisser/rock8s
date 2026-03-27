@@ -49,12 +49,12 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _TENANT="$ROCK8S_TENANT"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _PROVIDER=""
-    _CLUSTER_ARG=""
-    _TENANT_ARG=""
+    output="${ROCK8S_OUTPUT}"
+    tenant="$ROCK8S_TENANT"
+    cluster="$ROCK8S_CLUSTER"
+    provider=""
+    cluster_arg=""
+    tenant_arg=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -64,11 +64,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -76,11 +76,11 @@ _main() {
             --provider|--provider=*)
                 case "$1" in
                     *=*)
-                        _PROVIDER="${1#*=}"
+                        provider="${1#*=}"
                         shift
                         ;;
                     *)
-                        _PROVIDER="$2"
+                        provider="$2"
                         shift 2
                         ;;
                 esac
@@ -90,35 +90,35 @@ _main() {
                 exit 1
                 ;;
             *)
-                _CLUSTER_ARG="$1"
+                cluster_arg="$1"
                 shift
                 if [ $# -gt 0 ] && ! echo "$1" | grep -q "^-"; then
-                    _TENANT_ARG="$1"
+                    tenant_arg="$1"
                     shift
                 fi
                 break
                 ;;
         esac
     done
-    if [ -n "$_CLUSTER_ARG" ]; then
-        _CLUSTER="$_CLUSTER_ARG"
+    if [ -n "$cluster_arg" ]; then
+        cluster="$cluster_arg"
     fi
-    if [ -n "$_TENANT_ARG" ]; then
-        _TENANT="$_TENANT_ARG"
+    if [ -n "$tenant_arg" ]; then
+        tenant="$tenant_arg"
     fi
-    export ROCK8S_TENANT="$_TENANT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
+    export ROCK8S_TENANT="$tenant"
+    export ROCK8S_CLUSTER="$cluster"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    _CONFIG_DIR="$ROCK8S_CONFIG_HOME/tenants/$ROCK8S_TENANT/clusters/$ROCK8S_CLUSTER"
-    _CONFIG_FILE="$_CONFIG_DIR/config.yaml"
-    if [ ! -f "$_CONFIG_FILE" ]; then
+    config_dir="$ROCK8S_CONFIG_HOME/tenants/$ROCK8S_TENANT/clusters/$ROCK8S_CLUSTER"
+    config_file="$config_dir/config.yaml"
+    if [ ! -f "$config_file" ]; then
         get_tenant_config_file >/dev/null
     fi
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","config_file":"%s"}\n' \
-        "$_CLUSTER" "$(get_provider)" "$_TENANT" "$_CONFIG_FILE" | \
-        format_output "$_OUTPUT"
+        "$cluster" "$(get_provider)" "$tenant" "$config_file" | \
+        format_output "$output"
 }
 
 _main "$@"

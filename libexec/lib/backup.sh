@@ -3,109 +3,109 @@
 set -e
 
 backup_download_with_progress() {
-    _POD_NAME="$1"
-    _NAMESPACE="$2"
-    _CONTAINER="$3"
-    _REMOTE_PATH="$4"
-    _LOCAL_PATH="$5"
-    _DISPLAY_NAME="$6"
-    _CMD="kubectl exec $_POD_NAME -n $_NAMESPACE"
-    if [ -n "$_CONTAINER" ]; then
-        _CMD="$_CMD -c $_CONTAINER"
+    pod_name="$1"
+    namespace="$2"
+    container="$3"
+    remote_path="$4"
+    local_path="$5"
+    display_name="$6"
+    cmd="kubectl exec $pod_name -n $namespace"
+    if [ -n "$container" ]; then
+        cmd="$cmd -c $container"
     fi
-    SIZE=$($_CMD -- sh -c "wc -c < $_REMOTE_PATH")
-    rm -f "$_LOCAL_PATH"
-    _CP_CMD="kubectl cp --retries=$RETRIES $_NAMESPACE/$_POD_NAME:$_REMOTE_PATH $_LOCAL_PATH"
-    if [ -n "$_CONTAINER" ]; then
-        _CP_CMD="$_CP_CMD -c $_CONTAINER"
+    SIZE=$($cmd -- sh -c "wc -c < $remote_path")
+    rm -f "$local_path"
+    cp_cmd="kubectl cp --retries=$RETRIES $namespace/$pod_name:$remote_path $local_path"
+    if [ -n "$container" ]; then
+        cp_cmd="$cp_cmd -c $container"
     fi
-    $_CP_CMD >/dev/null 2>&1 &
-    _START_TIME=$(date +%s)
-    _LAST_SIZE=0
-    while [ ! -f "$_LOCAL_PATH" ] || [ "$(wc -c < $_LOCAL_PATH)" -lt "$SIZE" ]; do
-        [ -f "$_LOCAL_PATH" ] && _CURRENT_SIZE=$(wc -c < "$_LOCAL_PATH") || _CURRENT_SIZE=0
-        _ELAPSED=$(($(date +%s) - _START_TIME))
-        [ $_ELAPSED -eq 0 ] && _RATE=0 || _RATE=$((_CURRENT_SIZE / _ELAPSED))
-        _PERCENT=$((_CURRENT_SIZE * 100 / SIZE))
-        show_progress "$_DISPLAY_NAME" $_CURRENT_SIZE $SIZE $_RATE $_PERCENT
-        _LAST_SIZE=$_CURRENT_SIZE
+    $cp_cmd >/dev/null 2>&1 &
+    start_time=$(date +%s)
+    last_size=0
+    while [ ! -f "$local_path" ] || [ "$(wc -c < $local_path)" -lt "$SIZE" ]; do
+        [ -f "$local_path" ] && current_size=$(wc -c < "$local_path") || current_size=0
+        elapsed=$(($(date +%s) - start_time))
+        [ $elapsed -eq 0 ] && rate=0 || rate=$((current_size / elapsed))
+        percent=$((current_size * 100 / SIZE))
+        show_progress "$display_name" $current_size $SIZE $rate $percent
+        last_size=$current_size
         sleep 1
     done
     wait
-    if [ ! -f "$_LOCAL_PATH" ] || [ "$(wc -c < $_LOCAL_PATH)" -ne "$SIZE" ]; then
-        rm -f "$_LOCAL_PATH"
-        fail "failed to download backup for $_DISPLAY_NAME"
+    if [ ! -f "$local_path" ] || [ "$(wc -c < $local_path)" -ne "$SIZE" ]; then
+        rm -f "$local_path"
+        fail "failed to download backup for $display_name"
     fi
-    printf "\033[2K\r%s %s %s\n" "$_DISPLAY_NAME" "████████████████████" "$(format_size $SIZE)" >&2
+    printf "\033[2K\r%s %s %s\n" "$display_name" "████████████████████" "$(format_size $SIZE)" >&2
 }
 
 backup_create_temp() {
-    _POD_NAME="$1"
-    _NAMESPACE="$2"
-    _CONTAINER="$3"
-    _TEMP_PATH="$4"
-    _CMD="kubectl exec $_POD_NAME -n $_NAMESPACE"
-    if [ -n "$_CONTAINER" ]; then
-        _CMD="$_CMD -c $_CONTAINER"
+    pod_name="$1"
+    namespace="$2"
+    container="$3"
+    temp_path="$4"
+    cmd="kubectl exec $pod_name -n $namespace"
+    if [ -n "$container" ]; then
+        cmd="$cmd -c $container"
     fi
-    $_CMD -- sh -c "rm -rf $_TEMP_PATH* || true"
-    $_CMD -- sh -c "mkdir -p $_TEMP_PATH"
+    $cmd -- sh -c "rm -rf $temp_path* || true"
+    $cmd -- sh -c "mkdir -p $temp_path"
 }
 
 backup_cleanup_temp() {
-    _POD_NAME="$1"
-    _NAMESPACE="$2"
-    _CONTAINER="$3"
-    _TEMP_PATH="$4"
-    _CMD="kubectl exec $_POD_NAME -n $_NAMESPACE"
-    if [ -n "$_CONTAINER" ]; then
-        _CMD="$_CMD -c $_CONTAINER"
+    pod_name="$1"
+    namespace="$2"
+    container="$3"
+    temp_path="$4"
+    cmd="kubectl exec $pod_name -n $namespace"
+    if [ -n "$container" ]; then
+        cmd="$cmd -c $container"
     fi
-    $_CMD -- sh -c "rm -rf $_TEMP_PATH*"
+    $cmd -- sh -c "rm -rf $temp_path*"
 }
 
 backup_compress_temp() {
-    _POD_NAME="$1"
-    _NAMESPACE="$2"
-    _CONTAINER="$3"
-    _TEMP_PATH="$4"
-    _ARCHIVE_NAME="$5"
-    _CMD="kubectl exec $_POD_NAME -n $_NAMESPACE"
-    if [ -n "$_CONTAINER" ]; then
-        _CMD="$_CMD -c $_CONTAINER"
+    pod_name="$1"
+    namespace="$2"
+    container="$3"
+    temp_path="$4"
+    archive_name="$5"
+    cmd="kubectl exec $pod_name -n $namespace"
+    if [ -n "$container" ]; then
+        cmd="$cmd -c $container"
     fi
-    log "compressing $_NAMESPACE/$_POD_NAME"
-    try "$_CMD -- sh -c \"cd $_TEMP_PATH && tar cf ${_TEMP_PATH}.tar.gz --use-compress-program='gzip -9' $_ARCHIVE_NAME\""
+    log "compressing $namespace/$pod_name"
+    try "$cmd -- sh -c \"cd $temp_path && tar cf ${temp_path}.tar.gz --use-compress-program='gzip -9' $archive_name\""
 }
 
 backup_extract_archive() {
-    _ARCHIVE="$1"
-    _TARGET_DIR="$2"
-    mkdir -p "$_TARGET_DIR"
-    cd "$_TARGET_DIR"
-    tar xzf "$_ARCHIVE"
-    rm -f "$_ARCHIVE"
+    archive="$1"
+    target_dir="$2"
+    mkdir -p "$target_dir"
+    cd "$target_dir"
+    tar xzf "$archive"
+    rm -f "$archive"
 }
 
 wait_for_pod() {
-    _NAMESPACE="$1"
-    _SELECTOR="$2"
-    _CONTAINER="$3"
-    _I=0
-    while [ $_I -lt $RETRIES ]; do
-        _I="$((_I + 1))"
-        if [ $_I -gt 1 ]; then
-            warn "waiting for $_NAMESPACE/$(echo $_SELECTOR | cut -d= -f2) to be ready $_I/$RETRIES" >&2
+    namespace="$1"
+    selector="$2"
+    container="$3"
+    i=0
+    while [ $i -lt $RETRIES ]; do
+        i=$((i + 1))
+        if [ $i -gt 1 ]; then
+            warn "waiting for $namespace/$(echo $selector | cut -d= -f2) to be ready $i/$RETRIES" >&2
             sleep 1
         fi
-        _POD_NAME="$(kubectl get pods -l "$_SELECTOR" -n "$_NAMESPACE" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
-        if [ -n "$_POD_NAME" ]; then
-            _CMD="kubectl exec $_POD_NAME -n $_NAMESPACE"
-            if [ -n "$_CONTAINER" ]; then
-                _CMD="$_CMD -c $_CONTAINER"
+        pod_name="$(kubectl get pods -l "$selector" -n "$namespace" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+        if [ -n "$pod_name" ]; then
+            cmd="kubectl exec $pod_name -n $namespace"
+            if [ -n "$container" ]; then
+                cmd="$cmd -c $container"
             fi
-            if $_CMD -- sh -c "echo 'pod is ready'" >/dev/null 2>&1; then
-                echo "$_POD_NAME"
+            if $cmd -- sh -c "echo 'pod is ready'" >/dev/null 2>&1; then
+                echo "$pod_name"
                 return
             fi
         fi

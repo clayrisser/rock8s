@@ -2,15 +2,15 @@
 
 set -e
 
-export WHIPTAIL_OK=0
-export WHIPTAIL_CANCEL=1
-export WHIPTAIL_ESC=255
-export WHIPTAIL_ERROR=255
+export DIALOG_OK=0
+export DIALOG_CANCEL=1
+export DIALOG_ESC=255
+export DIALOG_ERROR=255
 
-handle_whiptail_exit() {
-    _EXIT_CODE=$1
-    case $_EXIT_CODE in
-        $WHIPTAIL_CANCEL|$WHIPTAIL_ESC)
+handle_dialog_exit() {
+    exit_code=$1
+    case $exit_code in
+        $DIALOG_CANCEL|$DIALOG_ESC)
             return 1
             ;;
     esac
@@ -18,93 +18,94 @@ handle_whiptail_exit() {
 }
 
 prompt_text() {
-    _PROMPT="$1"
-    _ENV_VAR="$2"
-    _DEFAULT="$3"
-    _REQUIRED="${4:-0}"
-    _ENV_VALUE=""
-    if [ -n "$_ENV_VAR" ]; then
-        eval "_ENV_VALUE=\$$_ENV_VAR"
+    prompt="$1"
+    env_var="$2"
+    default_val="$3"
+    required="${4:-0}"
+    env_value=""
+    if [ -n "$env_var" ]; then
+        eval "env_value=\$$env_var"
     fi
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
-        if [ -n "$_ENV_VALUE" ]; then
-            echo "$_ENV_VALUE"
+        if [ -n "$env_value" ]; then
+            echo "$env_value"
             return
-        elif [ -n "$_DEFAULT" ]; then
-            echo "$_DEFAULT"
+        elif [ -n "$default_val" ]; then
+            echo "$default_val"
             return
-        elif [ "$_REQUIRED" = "1" ]; then
-            fail "missing required value: $_PROMPT"
+        elif [ "$required" = "1" ]; then
+            fail "missing required value: $prompt"
         else
             echo ""
             return
         fi
     fi
-    _EFFECTIVE_DEFAULT="${_ENV_VALUE:-$_DEFAULT}"
-    _TITLE="Input Required"
-    [ "$_REQUIRED" = "0" ] && _TITLE="Input Optional"
+    effective_default="${env_value:-$default_val}"
+    title="Input Required"
+    [ "$required" = "0" ] && title="Input Optional"
     while true; do
-        { _ANSWER=$(whiptail --title "$_TITLE" \
+        { answer=$(dialog --title "$title" \
             --backtitle "Rock8s Configuration" \
-            --inputbox "$_PROMPT" \
+            --inputbox "$prompt" \
             10 60 \
-            "$_EFFECTIVE_DEFAULT" \
-            3>&1 1>&2 2>&3); _EXIT_CODE=$?; } || true
-        if [ $_EXIT_CODE -eq $WHIPTAIL_CANCEL ] || [ $_EXIT_CODE -eq $WHIPTAIL_ESC ]; then
+            "$effective_default" \
+            3>&1 1>&2 2>&3); exit_code=$?; } || true
+        if [ $exit_code -eq $DIALOG_CANCEL ] || [ $exit_code -eq $DIALOG_ESC ]; then
             return 1
         fi
-        _TRIMMED_ANSWER="$(echo "$_ANSWER" | tr -d '[:space:]')"
-        if [ "$_REQUIRED" = "1" ] && [ -z "$_TRIMMED_ANSWER" ]; then
-            { whiptail --title "Error" \
+        trimmed_answer="$(echo "$answer" | tr -d '[:space:]')"
+        if [ "$required" = "1" ] && [ -z "$trimmed_answer" ]; then
+            { dialog --title "Error" \
                 --backtitle "Rock8s Configuration" \
                 --infobox "This field is required. Please enter a value." \
                 0 0 \
                 3>&1 1>&2 2>&3; } || true
             continue
         fi
-        [ -z "$_ANSWER" ] && _ANSWER="$_EFFECTIVE_DEFAULT"
+        [ -z "$answer" ] && answer="$effective_default"
         break
     done
-    echo "$_ANSWER"
+    echo "$answer"
 }
 
 prompt_password() {
-    _PROMPT="$1"
-    _ENV_VAR="$2"
-    _REQUIRED="${3:-0}"
-    _ENV_VALUE=""
-    if [ -n "$_ENV_VAR" ]; then
-        eval "_ENV_VALUE=\$$_ENV_VAR"
+    prompt="$1"
+    env_var="$2"
+    required="${3:-0}"
+    env_value=""
+    if [ -n "$env_var" ]; then
+        eval "env_value=\$$env_var"
     fi
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
-        if [ -n "$_ENV_VALUE" ]; then
-            echo "$_ENV_VALUE"
+        if [ -n "$env_value" ]; then
+            echo "$env_value"
             return
-        elif [ "$_REQUIRED" = "1" ]; then
-            fail "missing required password: $_PROMPT"
+        elif [ "$required" = "1" ]; then
+            fail "missing required password: $prompt"
         else
             echo ""
             return
         fi
     fi
-    _TITLE="Password Required"
-    [ "$_REQUIRED" = "0" ] && _TITLE="Password Optional"
+    title="Password Required"
+    [ "$required" = "0" ] && title="Password Optional"
     while true; do
-        { _ANSWER=$(whiptail --title "$_TITLE" \
+        { answer=$(dialog --title "$title" \
             --backtitle "Rock8s Configuration" \
-            --passwordbox "$_PROMPT" \
+            --insecure \
+            --passwordbox "$prompt" \
             10 60 \
-            3>&1 1>&2 2>&3); _EXIT_CODE=$?; } || true
-        if [ $_EXIT_CODE -eq $WHIPTAIL_CANCEL ] || [ $_EXIT_CODE -eq $WHIPTAIL_ESC ]; then
-            if [ "$_REQUIRED" = "0" ] && [ -n "$_ENV_VALUE" ]; then
-                echo "$_ENV_VALUE"
+            3>&1 1>&2 2>&3); exit_code=$?; } || true
+        if [ $exit_code -eq $DIALOG_CANCEL ] || [ $exit_code -eq $DIALOG_ESC ]; then
+            if [ "$required" = "0" ] && [ -n "$env_value" ]; then
+                echo "$env_value"
             else
                 return 1
             fi
         fi
-        _TRIMMED_ANSWER="$(echo "$_ANSWER" | tr -d '[:space:]')"
-        if [ "$_REQUIRED" = "1" ] && [ -z "$_TRIMMED_ANSWER" ]; then
-            { whiptail --title "Error" \
+        trimmed_answer="$(echo "$answer" | tr -d '[:space:]')"
+        if [ "$required" = "1" ] && [ -z "$trimmed_answer" ]; then
+            { dialog --title "Error" \
                 --backtitle "Rock8s Configuration" \
                 --infobox "This field is required. Please enter a value." \
                 0 0 \
@@ -113,41 +114,41 @@ prompt_password() {
         fi
         break
     done
-    echo "$_ANSWER"
+    echo "$answer"
 }
 
 prompt_boolean() {
-    _PROMPT="$1"
-    _ENV_VAR="$2"
-    _DEFAULT="$3"
-    _ENV_VALUE=""
-    if [ -n "$_ENV_VAR" ]; then
-        eval "_ENV_VALUE=\$$_ENV_VAR"
+    prompt="$1"
+    env_var="$2"
+    default_val="$3"
+    env_value=""
+    if [ -n "$env_var" ]; then
+        eval "env_value=\$$env_var"
     fi
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
-        if [ -n "$_ENV_VALUE" ]; then
-            echo "$_ENV_VALUE"
+        if [ -n "$env_value" ]; then
+            echo "$env_value"
             return
-        elif [ -n "$_DEFAULT" ]; then
-            echo "$_DEFAULT"
+        elif [ -n "$default_val" ]; then
+            echo "$default_val"
             return
         else
-            fail "missing required boolean: $_PROMPT"
+            fail "missing required boolean: $prompt"
         fi
     fi
-    _EFFECTIVE_DEFAULT="${_ENV_VALUE:-$_DEFAULT}"
-    if [ "$_EFFECTIVE_DEFAULT" = "0" ]; then
-        _DEFAULT_NO="--defaultno"
+    effective_default="${env_value:-$default_val}"
+    if [ "$effective_default" = "0" ]; then
+        default_no="--defaultno"
     else
-        _DEFAULT_NO=""
+        default_no=""
     fi
-    { whiptail --title "Choose Yes/No" \
+    { dialog --title "Choose Yes/No" \
         --backtitle "Rock8s Configuration" \
-        $_DEFAULT_NO \
-        --yesno "$_PROMPT" \
+        $default_no \
+        --yesno "$prompt" \
         0 0 \
-        3>&1 1>&2 2>&3; _EXIT_CODE=$?; } || true
-    if [ $_EXIT_CODE -eq $WHIPTAIL_OK ]; then
+        3>&1 1>&2 2>&3; exit_code=$?; } || true
+    if [ $exit_code -eq $DIALOG_OK ]; then
         echo "1"
     else
         echo "0"
@@ -156,101 +157,101 @@ prompt_boolean() {
 }
 
 prompt_select() {
-    _PROMPT="$1"
-    _ENV_VAR="$2"
-    _DEFAULT="$3"
+    prompt="$1"
+    env_var="$2"
+    default_val="$3"
     shift 3
-    _ENV_VALUE=""
-    if [ -n "$_ENV_VAR" ]; then
-        eval "_ENV_VALUE=\$$_ENV_VAR"
+    env_value=""
+    if [ -n "$env_var" ]; then
+        eval "env_value=\$$env_var"
     fi
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
-        if [ -n "$_ENV_VALUE" ]; then
-            if ! validate_enum "$_ENV_VALUE" "$@"; then
-                fail "invalid value for $_PROMPT: $_ENV_VALUE"
+        if [ -n "$env_value" ]; then
+            if ! validate_enum "$env_value" "$@"; then
+                fail "invalid value for $prompt: $env_value"
             fi
-            echo "$_ENV_VALUE"
+            echo "$env_value"
             return
-        elif [ -n "$_DEFAULT" ]; then
-            echo "$_DEFAULT"
+        elif [ -n "$default_val" ]; then
+            echo "$default_val"
             return
         else
-            fail "missing required value: $_PROMPT"
+            fail "missing required value: $prompt"
         fi
     fi
-    _EFFECTIVE_DEFAULT="${_ENV_VALUE:-$_DEFAULT}"
-    _MENU_ITEMS=""
-    for _OPTION in "$@"; do
-        _MENU_ITEMS="$_MENU_ITEMS $_OPTION $_OPTION"
+    effective_default="${env_value:-$default_val}"
+    menu_items=""
+    for option in "$@"; do
+        menu_items="$menu_items $option $option"
     done
-    _ANSWER=$(whiptail --title "Select Option" \
+    answer=$(dialog --title "Select Option" \
         --backtitle "Rock8s Configuration" \
-        --default-item "$_EFFECTIVE_DEFAULT" \
-        --notags \
-        --menu "$_PROMPT" \
+        --default-item "$effective_default" \
+        --no-tags \
+        --menu "$prompt" \
         0 0 0 \
-        $_MENU_ITEMS \
+        $menu_items \
         3>&1 1>&2 2>&3)
-    _EXIT_CODE=$?
-    if ! handle_whiptail_exit $_EXIT_CODE; then
-        echo "$_EFFECTIVE_DEFAULT"
+    exit_code=$?
+    if ! handle_dialog_exit $exit_code; then
+        echo "$effective_default"
         return
     fi
-    echo "$_ANSWER"
+    echo "$answer"
 }
 
 prompt_multiselect() {
-    _PROMPT="$1"
-    _ENV_VAR="$2"
+    prompt="$1"
+    env_var="$2"
     shift 2
-    _ENV_VALUE=""
-    if [ -n "$_ENV_VAR" ]; then
-        eval "_ENV_VALUE=\$$_ENV_VAR"
+    env_value=""
+    if [ -n "$env_var" ]; then
+        eval "env_value=\$$env_var"
     fi
     if [ "${NON_INTERACTIVE:-0}" = "1" ]; then
-        if [ -n "$_ENV_VALUE" ]; then
-            echo "$_ENV_VALUE"
+        if [ -n "$env_value" ]; then
+            echo "$env_value"
             return
         else
             echo ""
             return
         fi
     fi
-    _MENU_ITEMS=""
-    _ITEM_COUNT=0
-    for _OPTION in "$@"; do
-        _IS_DEFAULT="OFF"
-        for _DEFAULT in $_ENV_VALUE; do
-            if [ "$_OPTION" = "$_DEFAULT" ]; then
-                _IS_DEFAULT="ON"
+    menu_items=""
+    item_count=0
+    for option in "$@"; do
+        is_default="OFF"
+        for default_item in $env_value; do
+            if [ "$option" = "$default_item" ]; then
+                is_default="ON"
                 break
             fi
         done
-        _MENU_ITEMS="$_MENU_ITEMS $_OPTION $_OPTION $_IS_DEFAULT"
-        _ITEM_COUNT=$((_ITEM_COUNT + 1))
+        menu_items="$menu_items $option $option $is_default"
+        item_count=$((item_count + 1))
     done
-    _ANSWER=$(whiptail --title "Select Options" \
+    answer=$(dialog --title "Select Options" \
         --backtitle "Rock8s Configuration" \
         --separate-output \
-        --notags \
-        --checklist "$_PROMPT" \
+        --no-tags \
+        --checklist "$prompt" \
         0 0 0 \
-        $_MENU_ITEMS \
+        $menu_items \
         3>&1 1>&2 2>&3)
-    _EXIT_CODE=$?
-    if ! handle_whiptail_exit $_EXIT_CODE; then
+    exit_code=$?
+    if ! handle_dialog_exit $exit_code; then
         echo ""
         return
     fi
-    echo "$_ANSWER"
+    echo "$answer"
 }
 
 validate_enum() {
-    _VALUE="$1"
+    value="$1"
     shift
-    _OPTIONS="$*"
-    for _OPTION in $_OPTIONS; do
-        if [ "$_VALUE" = "$_OPTION" ]; then
+    options="$*"
+    for option in $options; do
+        if [ "$value" = "$option" ]; then
             return
         fi
     done

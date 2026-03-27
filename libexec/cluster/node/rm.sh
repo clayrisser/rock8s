@@ -49,11 +49,11 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _TENANT="$ROCK8S_TENANT"
-    _NODE=""
-    _YES=""
+    output="${ROCK8S_OUTPUT}"
+    cluster="$ROCK8S_CLUSTER"
+    tenant="$ROCK8S_TENANT"
+    node=""
+    yes=""
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -63,11 +63,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -75,11 +75,11 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
@@ -87,17 +87,17 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             -y|--yes)
-                _YES="1"
+                yes="1"
                 shift
                 ;;
             -*)
@@ -105,8 +105,8 @@ _main() {
                 exit 1
                 ;;
             *)
-                if [ -z "$_NODE" ]; then
-                    _NODE="$1"
+                if [ -z "$node" ]; then
+                    node="$1"
                     shift
                 else
                     _help
@@ -115,35 +115,27 @@ _main() {
                 ;;
         esac
     done
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$cluster"
+    export ROCK8S_TENANT="$tenant"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    if [ -z "$_NODE" ]; then
+    if [ -z "$node" ]; then
         fail "node name required"
     fi
-    _CLUSTER_DIR="$(get_cluster_dir)"
-    _KUBESPRAY_DIR="$(get_kubespray_dir)"
-    if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        fail "kubespray directory not found"
+    cluster_dir="$(get_cluster_dir)"
+    kube_config="$cluster_dir/kube.yaml"
+    if [ ! -f "$kube_config" ]; then
+        fail "kubeconfig not found"
     fi
-    _VENV_DIR="$_KUBESPRAY_DIR/venv"
-    if [ ! -d "$_VENV_DIR" ]; then
-        fail "kubespray virtual environment not found"
-    fi
-    . "$_VENV_DIR/bin/activate"
-    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
-        ANSIBLE_HOST_KEY_CHECKING=False \
-        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -e "@$_CLUSTER_DIR/inventory/vars.yml" \
-        -e "node=$_NODE" \
-        -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/remove-node.yml" -b -v >&2
+    log "draining node $node"
+    kubectl --kubeconfig="$kube_config" drain "$node" \
+        --ignore-daemonsets --delete-emptydir-data --force 2>&2 || true
+    log "deleting node $node from cluster"
+    kubectl --kubeconfig="$kube_config" delete node "$node" >&2 || true
     printf '{"cluster":"%s","provider":"%s","tenant":"%s","node":"%s"}\n' \
-        "$_CLUSTER" "$(get_provider)" "$_TENANT" "$_NODE" | \
-        format_output "$_OUTPUT"
+        "$cluster" "$(get_provider)" "$tenant" "$node" | \
+        format_output "$output"
 }
 
 _main "$@"

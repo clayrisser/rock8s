@@ -4,8 +4,7 @@ set -e
 
 . "$ROCK8S_LIB_PATH/libexec/lib.sh"
 
-export KUBESPRAY_VERSION="${KUBESPRAY_VERSION:-v2.24.0}"
-export KUBESPRAY_REPO="${KUBESPRAY_REPO:-https://github.com/kubernetes-sigs/kubespray.git}"
+export K3S_VERSION="${K3S_VERSION:-v1.31.4+k3s1}"
 
 _help() {
     cat <<EOF >&2
@@ -93,11 +92,11 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _CMD=""
-    _CMD_ARGS=""
-    _TENANT="$ROCK8S_TENANT"
-    _CLUSTER="$ROCK8S_CLUSTER"
+    output="${ROCK8S_OUTPUT}"
+    cmd=""
+    cmd_args=""
+    tenant="$ROCK8S_TENANT"
+    cluster="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -107,11 +106,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -119,19 +118,19 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             apply|addons|init|install|upgrade|node|scale|login|reset|use)
-                _CMD="$1"
+                cmd="$1"
                 shift
-                _CMD_ARGS="$*"
+                cmd_args="$*"
                 break
                 ;;
             *)
@@ -140,17 +139,17 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CMD" ]; then
+    if [ -z "$cmd" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_OUTPUT="$_OUTPUT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    _SUBCMD="$ROCK8S_LIB_PATH/libexec/cluster/$_CMD.sh"
-    if [ ! -f "$_SUBCMD" ]; then
-        fail "unknown cluster command: $_CMD"
+    export ROCK8S_OUTPUT="$output"
+    export ROCK8S_CLUSTER="$cluster"
+    subcmd="$ROCK8S_LIB_PATH/libexec/cluster/$cmd.sh"
+    if [ ! -f "$subcmd" ]; then
+        fail "unknown cluster command: $cmd"
     fi
-    exec sh "$_SUBCMD" $_CMD_ARGS
+    exec sh "$subcmd" $cmd_args
 }
 
 _main "$@"

@@ -10,10 +10,10 @@ NAME
        rock8s pfsense apply
 
 SYNOPSIS
-       rock8s pfsense apply [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password] [-y|--yes]
+       rock8s pfsense apply [-h] [-o <format>] [--name <name>] [-t <tenant>] [--update] [--password <password>] [--ssh-password] [-y|--yes]
 
 DESCRIPTION
-       create and configure pfsense
+       provision and configure pfsense firewall nodes
 
 OPTIONS
        -h, --help
@@ -25,8 +25,8 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name
 
-       -c, --cluster <cluster>
-              cluster name
+       -n, --name <name>
+              pfsense instance name
 
        --update
               update ansible collections
@@ -41,30 +41,26 @@ OPTIONS
               skip confirmation prompt
 
 EXAMPLE
-       # apply pfsense with automatic approval
-       rock8s pfsense apply --cluster mycluster --yes
+       # provision and configure pfsense
+       rock8s pfsense apply --name mypfsense --yes
 
-       # apply pfsense with a specific password
-       rock8s pfsense apply --cluster mycluster --password mypassword
-
-       # apply pfsense using password authentication for ssh
-       rock8s pfsense apply --cluster mycluster --ssh-password --password mypassword
+       # provision with a specific password
+       rock8s pfsense apply --name mypfsense --password mypassword
 
 SEE ALSO
        rock8s pfsense configure --help
        rock8s pfsense destroy --help
-       rock8s cluster install --help
 EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _TENANT="$ROCK8S_TENANT"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _UPDATE=""
-    _PASSWORD=""
-    _SSH_PASSWORD=0
-    _YES=0
+    output="${ROCK8S_OUTPUT}"
+    tenant="$ROCK8S_TENANT"
+    pfsense="$ROCK8S_PFSENSE"
+    update=""
+    password=""
+    ssh_password=0
+    yes=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -74,11 +70,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -86,23 +82,23 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
                 ;;
-            -c|--cluster|-c=*|--cluster=*)
+            -n|--name|-n=*|--name=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        pfsense="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        pfsense="$2"
                         shift 2
                         ;;
                 esac
@@ -110,25 +106,25 @@ _main() {
             --password|--password=*)
                 case "$1" in
                     *=*)
-                        _PASSWORD="${1#*=}"
+                        password="${1#*=}"
                         shift
                         ;;
                     *)
-                        _PASSWORD="$2"
+                        password="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             --ssh-password)
-                _SSH_PASSWORD=1
+                ssh_password=1
                 shift
                 ;;
             --update)
-                _UPDATE="1"
+                update="1"
                 shift
                 ;;
             -y|--yes)
-                _YES=1
+                yes=1
                 shift
                 ;;
             -*)
@@ -141,27 +137,51 @@ _main() {
                 ;;
         esac
     done
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
-    if [ -z "$ROCK8S_CLUSTER" ]; then
-        fail "cluster name required"
+    export ROCK8S_PFSENSE="$pfsense"
+    export ROCK8S_TENANT="$tenant"
+    if [ -z "$ROCK8S_PFSENSE" ]; then
+        fail "pfsense name required"
     fi
-    sh "$ROCK8S_LIB_PATH/libexec/nodes/apply.sh" \
-        --output="$_OUTPUT" \
-        --cluster="$_CLUSTER" \
-        --tenant="$_TENANT" \
-        $([ "$_YES" = "1" ] && echo "--yes") \
-        pfsense >/dev/null
+    pfsense_dir="$(get_pfsense_dir)"
+    provider="$(get_provider)"
+    mkdir -p "$pfsense_dir"
+    if is_pfsense_provisioned; then
+        provider_dir="$ROCK8S_LIB_PATH/providers/$provider"
+        if [ ! -d "$provider_dir" ]; then
+            fail "provider $provider not found"
+        fi
+        rm -rf "$pfsense_dir/provider"
+        cp -r "$provider_dir" "$pfsense_dir/provider"
+        state_key="$(get_state_key "$tenant" "$pfsense" "pfsense")"
+        write_backend_config "$pfsense_dir/provider" "$state_key" "$pfsense_dir"
+        export TF_VAR_cluster_name="$pfsense"
+        export TF_VAR_purpose="pfsense"
+        export TF_VAR_tenant="$tenant"
+        export TF_DATA_DIR="$pfsense_dir/.terraform"
+        config_json="$(get_config_json)"
+        echo "$config_json" | . "$pfsense_dir/provider/tfvars.sh" > "$pfsense_dir/terraform.tfvars.json"
+        chmod 600 "$pfsense_dir/terraform.tfvars.json"
+        if [ -f "$pfsense_dir/provider/variables.sh" ]; then
+            . "$pfsense_dir/provider/variables.sh"
+        fi
+        cd "$pfsense_dir/provider"
+        tofu init -upgrade -reconfigure >&2
+        tofu apply $([ "$yes" = "1" ] && echo "-auto-approve" || true) -var-file="$pfsense_dir/terraform.tfvars.json" >&2
+        tofu output -json > "$pfsense_dir/output.json"
+        extract_ssh_private_key "$pfsense_dir/output.json" "$pfsense_dir/id_rsa"
+    else
+        log "using existing pfSense appliance (no node type specified in config)"
+    fi
     sh "$ROCK8S_LIB_PATH/libexec/pfsense/configure.sh" \
-        --output="$_OUTPUT" \
-        --cluster="$_CLUSTER" \
-        --tenant="$_TENANT" \
-        $([ "$_UPDATE" = "1" ] && echo "--update") \
-        $([ -n "$_PASSWORD" ] && echo "--password '$_PASSWORD'") \
-        $([ "$_SSH_PASSWORD" = "1" ] && echo "--ssh-password") >/dev/null
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
-        format_output "$_OUTPUT"
+        --output="$output" \
+        --name="$pfsense" \
+        --tenant="$tenant" \
+        $([ "$update" = "1" ] && echo "--update") \
+        $([ -n "$password" ] && echo "--password '$password'") \
+        $([ "$ssh_password" = "1" ] && echo "--ssh-password") >/dev/null
+    printf '{"pfsense":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$pfsense" "$provider" "$tenant" | \
+        format_output "$output"
 }
 
 _main "$@"

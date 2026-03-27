@@ -37,14 +37,14 @@ _rock8s_completion() {
         cword="${COMP_CWORD}"
     fi
     local commands="nodes cluster pfsense backup restore completion version"
-    local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster"
+    local global_opts="-h --help -d --debug -o --output -t --tenant -c --cluster -p --pfsense"
     local nodes_cmds="ls apply destroy ssh pubkey"
     local cluster_cmds="addons login reset use apply install upgrade node scale"
     local pfsense_cmds="configure apply destroy publish"
     local backup_cmds="-h --help -a --all -o --output -d --output-dir --retries --skip --skip-volumes --skip-namespaces --no-skip-volumes"
     local restore_cmds="-n --namespace -b --backup"
     local completion_cmds="bash zsh"
-    local node_types="master worker pfsense"
+    local node_types="master worker"
     if [[ ${cword} -eq 1 ]]; then
         COMPREPLY=($(compgen -W "${commands} ${global_opts}" -- "${cur}"))
         return 0
@@ -104,6 +104,12 @@ _rock8s_completion() {
             pfsense)
                 if [[ ${cword} -eq 2 ]]; then
                     COMPREPLY=($(compgen -W "${pfsense_cmds}" -- "${cur}"))
+                elif [[ ${cword} -ge 3 ]]; then
+                    if [[ ${words[2]} == "publish" ]]; then
+                        COMPREPLY=($(compgen -W "-n --name -c --cluster" -- "${cur}"))
+                    else
+                        COMPREPLY=($(compgen -W "-n --name" -- "${cur}"))
+                    fi
                 fi
                 ;;
             backup)
@@ -144,7 +150,6 @@ _rock8s() {
     node_types=(
         'master:list only master nodes'
         'worker:list only worker nodes'
-        'pfsense:list only pfsense nodes'
     )
     _arguments -C \
         '-h[Show help message]' \
@@ -157,6 +162,8 @@ _rock8s() {
         '--tenant=[Tenant name]:tenant:->tenants' \
         '-c[Cluster name]:cluster:->clusters' \
         '--cluster=[Cluster name]:cluster:->clusters' \
+        '-p[pfSense name]:pfsense' \
+        '--pfsense=[pfSense name]:pfsense' \
         '1: :->cmds' \
         '*::arg:->args'
     case $state in
@@ -235,11 +242,28 @@ _rock8s() {
                     fi
                     ;;
                 pfsense)
-                    _values 'pfsense subcommand' \
-                        'configure[Configure pfsense settings and rules]' \
-                        'apply[Create and configure pfsense firewall nodes]' \
-                        'destroy[Destroy pfsense firewall nodes]' \
-                        'publish[Publish haproxy configuration]'
+                    if (( CURRENT == 2 )); then
+                        _values 'pfsense subcommand' \
+                            'configure[Configure pfsense settings and rules]' \
+                            'apply[Create and configure pfsense firewall nodes]' \
+                            'destroy[Destroy pfsense firewall nodes]' \
+                            'publish[Publish haproxy configuration]'
+                    elif (( CURRENT >= 3 )); then
+                        case $line[2] in
+                            publish)
+                                _arguments \
+                                    '-n[pfSense name]:name' \
+                                    '--name=[pfSense name]:name' \
+                                    '-c[Cluster name]:cluster' \
+                                    '--cluster=[Cluster name]:cluster'
+                                ;;
+                            *)
+                                _arguments \
+                                    '-n[pfSense name]:name' \
+                                    '--name=[pfSense name]:name'
+                                ;;
+                        esac
+                    fi
                     ;;
                 backup)
                     _values 'backup options'\

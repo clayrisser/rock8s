@@ -13,7 +13,7 @@ SYNOPSIS
        rock8s cluster scale [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>]
 
 DESCRIPTION
-       scale nodes in a kubernetes cluster
+       scale nodes in a kubernetes cluster by joining new worker nodes
 
 OPTIONS
        -h, --help
@@ -43,9 +43,9 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _TENANT="$ROCK8S_TENANT"
+    output="${ROCK8S_OUTPUT}"
+    cluster="$ROCK8S_CLUSTER"
+    tenant="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -55,11 +55,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -67,11 +67,11 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
@@ -79,11 +79,11 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
@@ -98,30 +98,36 @@ _main() {
                 ;;
         esac
     done
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
+    export ROCK8S_CLUSTER="$cluster"
+    export ROCK8S_TENANT="$tenant"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    _CLUSTER_DIR="$(get_cluster_dir)"
-    _KUBESPRAY_DIR="$(get_kubespray_dir)"
-    if [ ! -d "$_KUBESPRAY_DIR" ]; then
-        fail "kubespray directory not found"
+    first_master="$(get_k3s_first_master_ip)"
+    worker_ssh_key="$(get_worker_ssh_private_key)"
+    worker_private_ipv4s="$(get_worker_private_ipv4s)"
+    if [ -z "$first_master" ]; then
+        fail "no master nodes found"
     fi
-    _VENV_DIR="$_KUBESPRAY_DIR/venv"
-    if [ ! -d "$_VENV_DIR" ]; then
-        fail "kubespray virtual environment not found"
-    fi
-    . "$_VENV_DIR/bin/activate"
-    ANSIBLE_ROLES_PATH="$_KUBESPRAY_DIR/roles" \
-        ANSIBLE_HOST_KEY_CHECKING=False \
-        "$_KUBESPRAY_DIR/venv/bin/ansible-playbook" \
-        -i "$_CLUSTER_DIR/inventory/inventory.ini" \
-        -u admin --become --become-user=root \
-        "$_KUBESPRAY_DIR/scale.yml" -b -v >&2
+    for ip in $worker_private_ipv4s; do
+        already_joined="$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+            -i "$worker_ssh_key" admin@"$ip" \
+            'systemctl is-active k3s-agent 2>/dev/null || true')" || true
+        if [ "$already_joined" = "active" ]; then
+            log "node $ip already joined, skipping"
+            continue
+        fi
+        log "joining agent node $ip"
+        k3sup join \
+            --ip "$ip" \
+            --server-ip "$first_master" \
+            --user admin \
+            --ssh-key "$worker_ssh_key" \
+            --k3s-version "$K3S_VERSION" >&2
+    done
     printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
-        format_output "$_OUTPUT"
+        "$cluster" "$(get_provider)" "$tenant" | \
+        format_output "$output"
 }
 
 _main "$@"

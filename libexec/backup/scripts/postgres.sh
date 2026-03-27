@@ -24,10 +24,10 @@ if [ -z "$DATABASES" ]; then
 fi
 _BACKUP_TMP="/pgdata/.rock8s_backup"
 backup_create_temp "$POD_NAME" "$NAMESPACE" "database" "$_BACKUP_TMP"
-for _DB in $DATABASES; do
-    log "backing up postgres database $NAMESPACE/$_DB"
+for db in $DATABASES; do
+    log "backing up postgres database $NAMESPACE/$db"
     try "kubectl exec $POD_NAME -n $NAMESPACE -c database -- sh -c \
-        \"cd $_BACKUP_TMP && PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h localhost --no-owner --no-acl -p $POSTGRES_PORT -U $POSTGRES_USER $_DB -f $_DB.sql\""
+        \"cd $_BACKUP_TMP && PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h localhost --no-owner --no-acl -p $POSTGRES_PORT -U $POSTGRES_USER $db -f $db.sql\""
 done
 backup_compress_temp "$POD_NAME" "$NAMESPACE" "database" "$_BACKUP_TMP" "*.sql"
 mkdir -p "$BACKUP_DIR"

@@ -39,7 +39,17 @@ get_master_ssh_private_key() {
         echo "$_MASTER_SSH_PRIVATE_KEY"
         return
     fi
-    _MASTER_SSH_PRIVATE_KEY="$(get_master_output_json | jq -r '.node_ssh_private_key.value // ""')"
+    _MASTER_SSH_PRIVATE_KEY="$(get_cluster_dir)/master/id_rsa"
+    if [ ! -f "$_MASTER_SSH_PRIVATE_KEY" ]; then
+        master_output="$(get_master_output_json)"
+        pem="$(echo "$master_output" | jq -r '.node_ssh_private_key.value // ""')"
+        if [ -n "$pem" ]; then
+            printf '%s\n' "$pem" > "$_MASTER_SSH_PRIVATE_KEY"
+            chmod 600 "$_MASTER_SSH_PRIVATE_KEY"
+        else
+            fail "master SSH private key not found"
+        fi
+    fi
     echo "$_MASTER_SSH_PRIVATE_KEY"
 }
 
@@ -61,13 +71,13 @@ get_master_private_ipv4s() {
     echo "$_MASTER_PRIVATE_IPV4S"
 }
 
-get_master_public_ipv4s() {
-    if [ -n "$_MASTER_PUBLIC_IPV4S" ]; then
-        echo "$_MASTER_PUBLIC_IPV4S"
+get_master_architectures() {
+    if [ -n "$_MASTER_ARCHITECTURES" ]; then
+        echo "$_MASTER_ARCHITECTURES"
         return
     fi
-    _MASTER_PUBLIC_IPV4S="$(get_master_output_json | jq -r '.node_public_ipv4s?.value // [] | to_entries[]? | .value // empty')"
-    echo "$_MASTER_PUBLIC_IPV4S"
+    _MASTER_ARCHITECTURES="$(get_master_output_json | jq -r '.node_architectures?.value // {} | to_entries[]? | "\(.key)=\(.value)" // empty')"
+    echo "$_MASTER_ARCHITECTURES"
 }
 
 get_supplementary_addresses() {
@@ -75,19 +85,15 @@ get_supplementary_addresses() {
         echo "$_SUPPLEMENTARY_ADDRESSES"
         return
     fi
-    _ENTRYPOINT="$(get_entrypoint)"
-    _ENTRYPOINT_IPV4="$(get_entrypoint_ipv4)"
-    _MASTER_PRIVATE_IPV4S="$(get_master_private_ipv4s)"
-    _MASTER_PUBLIC_IPV4S="$(get_master_public_ipv4s)"
-    _SUPPLEMENTARY_ADDRESSES="\"$_ENTRYPOINT\""
-    if [ -n "$_ENTRYPOINT_IPV4" ]; then
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_ENTRYPOINT_IPV4\""
+    entrypoint="$(get_entrypoint)"
+    entrypoint_ipv4="$(get_entrypoint_ipv4)"
+    master_private_ipv4s="$(get_master_private_ipv4s)"
+    _SUPPLEMENTARY_ADDRESSES="\"$entrypoint\""
+    if [ -n "$entrypoint_ipv4" ]; then
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$entrypoint_ipv4\""
     fi
-    for _IPV4 in $_MASTER_PRIVATE_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
-    done
-    for _IPV4 in $_MASTER_PUBLIC_IPV4S; do
-        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$_IPV4\""
+    for ipv4 in $master_private_ipv4s; do
+        _SUPPLEMENTARY_ADDRESSES="$_SUPPLEMENTARY_ADDRESSES,\"$ipv4\""
     done
     echo "$_SUPPLEMENTARY_ADDRESSES"
 }
