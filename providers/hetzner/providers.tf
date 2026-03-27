@@ -5,14 +5,9 @@ terraform {
     }
     tls = {
       source  = "hashicorp/tls"
-      version = "~> 4.0.6"
-    }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 2.5.2"
+      version = "~> 4.0"
     }
   }
-  backend "local" {}
 }
 
 provider "hcloud" {

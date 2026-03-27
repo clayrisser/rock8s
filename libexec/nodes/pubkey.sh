@@ -50,10 +50,10 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _PURPOSE=""
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _TENANT="$ROCK8S_TENANT"
+    output="${ROCK8S_OUTPUT}"
+    purpose=""
+    cluster="$ROCK8S_CLUSTER"
+    tenant="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -63,11 +63,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -75,11 +75,11 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
@@ -87,17 +87,17 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
                 ;;
-            master|worker|pfsense)
-                _PURPOSE="$1"
+            master|worker)
+                purpose="$1"
                 shift
                 ;;
             *)
@@ -106,23 +106,26 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_PURPOSE" ]; then
+    if [ -z "$purpose" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_TENANT="$_TENANT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_OUTPUT="$_OUTPUT"
+    export ROCK8S_TENANT="$tenant"
+    export ROCK8S_CLUSTER="$cluster"
+    export ROCK8S_OUTPUT="$output"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    _PURPOSE_DIR="$(get_cluster_dir)/$_PURPOSE"
-    _PUBLIC_KEY_PATH="$_PURPOSE_DIR/id_rsa.pub"
-    if [ -f "$_PUBLIC_KEY_PATH" ]; then
-        _PUBLIC_KEY=$(cat "$_PUBLIC_KEY_PATH")
-        printf '{"public_key":"%s"}\n' "$_PUBLIC_KEY" | format_output "$_OUTPUT"
+    purpose_dir="$(get_cluster_dir)/$purpose"
+    output_file="$purpose_dir/output.json"
+    if [ -f "$output_file" ]; then
+        public_key="$(jq -r '.node_ssh_public_key.value // empty' < "$output_file")"
+        if [ -z "$public_key" ]; then
+            fail "no public key found in output for $purpose nodes"
+        fi
+        printf '{"public_key":"%s"}\n' "$public_key" | format_output "$output"
     else
-        fail "no public key found for $_PURPOSE nodes"
+        fail "no output found for $purpose nodes"
     fi
 }
 

@@ -1,7 +1,79 @@
 locals {
-  cluster              = local.tenant == "" ? var.cluster_name : "${local.tenant}-${var.cluster_name}"
-  tenant               = var.tenant == "" || var.tenant == null || var.tenant == "default" ? "" : var.tenant
-  node_ssh_private_key = "${var.cluster_dir}/${var.purpose}/id_rsa"
+  cluster = local.tenant == "" ? var.cluster_name : "${local.tenant}-${var.cluster_name}"
+  tenant  = var.tenant == "" || var.tenant == null || var.tenant == "default" ? "" : var.tenant
+  gateway_parts  = var.purpose != "pfsense" ? split("/", var.network.lan.ipv4.subnet) : []
+  gateway_octets = length(local.gateway_parts) > 0 ? split(".", local.gateway_parts[0]) : []
+  gateway_ip = length(local.gateway_octets) == 4 ? format("%s.%s.%s.2",
+    local.gateway_octets[0], local.gateway_octets[1], local.gateway_octets[2]
+  ) : ""
+  cloud_init = <<-EOT
+#cloud-config
+users:
+  - name: admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${tls_private_key.node.public_key_openssh}
+env:
+  PATH: /usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/games:/usr/games
+write_files:
+  - path: /etc/sysctl.d/99-k8s.conf
+    content: |
+      fs.file-max=262144
+bootcmd:
+  - modprobe dm_thin_pool
+  - modprobe dm_snapshot
+  - modprobe dm_mirror
+  - modprobe dm_crypt
+  - systemctl restart networking
+  - |
+    IFACE=""
+    while [ -z "$IFACE" ]; do
+      IFACE=$(ip link show | grep -E "^[0-9]" | grep -vE "eth0|lo" | head -n1 | cut -d':' -f2 | tr -d ' ')
+      if [ -z "$IFACE" ]; then
+        sleep 10
+        systemctl restart networking
+      fi
+    done
+    echo "auto $IFACE" > /etc/network/interfaces.d/60-lan
+    echo "iface $IFACE inet dhcp" >> /etc/network/interfaces.d/60-lan
+    echo "  mtu 1450" >> /etc/network/interfaces.d/60-lan
+    echo "  up route add default gw ${local.gateway_ip}" >> /etc/network/interfaces.d/60-lan
+    echo "  dns-nameservers 185.12.64.2 185.12.64.1" >> /etc/network/interfaces.d/60-lan
+  - systemctl restart networking
+  - sysctl -p /etc/sysctl.d/99-k8s.conf
+runcmd:
+  - systemctl enable iscsid
+  - systemctl start iscsid
+  - apt-get update
+package_update: true
+package_upgrade: true
+packages:
+  - nfs-common
+  - open-iscsi
+EOT
+  arch_map = {
+    cpx11 = "amd64"
+    cpx21 = "amd64"
+    cpx31 = "amd64"
+    cpx41 = "amd64"
+    cpx51 = "amd64"
+    cax11 = "arm64"
+    cax21 = "arm64"
+    cax31 = "arm64"
+    cax41 = "arm64"
+    ccx13 = "amd64"
+    ccx23 = "amd64"
+    ccx33 = "amd64"
+    ccx43 = "amd64"
+    ccx53 = "amd64"
+    ccx63 = "amd64"
+    cx22  = "amd64"
+    cx32  = "amd64"
+    cx42  = "amd64"
+    cx52  = "amd64"
+  }
   location_zones = {
     "nbg1" = "eu-central"
     "fsn1" = "eu-central"
@@ -35,6 +107,7 @@ locals {
         server_type = group.type
         image       = group.image
         ipv4        = try(group.ipv4s[i], null)
+        arch        = lookup(local.arch_map, group.type, "amd64")
       }
     ]
   ])
@@ -91,4 +164,8 @@ locals {
     local.sync_network_base[0], local.sync_network_base[1],
     local.sync_network_base[2]
   ) : null
+  node_architectures = {
+    for idx, cfg in local.node_configs :
+    cfg.name => cfg.arch
+  }
 }

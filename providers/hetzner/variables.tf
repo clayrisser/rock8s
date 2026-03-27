@@ -27,10 +27,6 @@ variable "cluster_name" {
   }
 }
 
-variable "ssh_public_key_path" {
-  type = string
-}
-
 variable "image" {
   default = "debian-12"
   validation {
@@ -55,15 +51,6 @@ variable "location" {
 
 variable "network" {
   type = any
-}
-
-variable "user_data" {
-  type    = string
-  default = ""
-}
-
-variable "cluster_dir" {
-  type = string
 }
 
 variable "nodes" {

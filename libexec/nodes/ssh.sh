@@ -61,10 +61,10 @@ EOF
 }
 
 _show_available_nodes() {
-    _PURPOSE="$1"
-    if [ -n "$_PURPOSE" ]; then
-        echo "Available ${_PURPOSE} nodes:" >&2
-        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" "$_PURPOSE" | cat >&2
+    purpose="$1"
+    if [ -n "$purpose" ]; then
+        echo "Available ${purpose} nodes:" >&2
+        sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" "$purpose" | cat >&2
     else
         echo "Available nodes:" >&2
         sh "$ROCK8S_LIB_PATH/libexec/nodes/ls.sh" --cluster "$ROCK8S_CLUSTER" | cat >&2
@@ -72,37 +72,34 @@ _show_available_nodes() {
 }
 
 fail_with_nodes() {
-    _MSG="$1"
-    _PURPOSE="$2"
-    echo "Error: $_MSG" >&2
+    msg="$1"
+    purpose="$2"
+    echo "Error: $msg" >&2
     echo >&2
-    _show_available_nodes "$_PURPOSE"
+    _show_available_nodes "$purpose"
     exit 1
 }
 
 _count_nodes() {
-    _NODE_TYPE="$1"
-    case "$_NODE_TYPE" in
+    node_type="$1"
+    case "$node_type" in
         master)
             get_master_private_ipv4s | wc -w
             ;;
         worker)
             get_worker_private_ipv4s | wc -w
             ;;
-        pfsense)
-            get_pfsense_private_ipv4s | wc -w
-            ;;
     esac
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _PURPOSE=""
-    _NODE_NUM=""
-    _NODE_IP=""
-    _SSH_ARGS=""
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _TENANT="$ROCK8S_TENANT"
+    output="${ROCK8S_OUTPUT}"
+    purpose=""
+    node_num=""
+    node_ip=""
+    ssh_args=""
+    cluster="$ROCK8S_CLUSTER"
+    tenant="$ROCK8S_TENANT"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -112,11 +109,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -124,11 +121,11 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
@@ -136,26 +133,26 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
                 ;;
-            master|worker|pfsense)
-                _PURPOSE="$1"
+            master|worker)
+                purpose="$1"
                 shift
                 ;;
             *)
-                if [ -n "$_PURPOSE" ]; then
+                if [ -n "$purpose" ]; then
                     if echo "$1" | grep -q '^[0-9]\+$'; then
-                        _NODE_NUM="$1"
+                        node_num="$1"
                         shift
                         if [ $# -gt 0 ]; then
-                            _SSH_ARGS="$*"
+                            ssh_args="$*"
                         fi
                         break
                     else
@@ -163,22 +160,22 @@ _main() {
                         exit 1
                     fi
                 elif echo "$1" | grep -q '^[a-z]\+-[0-9]\+$'; then
-                    _PURPOSE="${1%%-*}"
-                    _NODE_NUM="${1##*-}"
-                    case "$_PURPOSE" in
-                        master|worker|pfsense) ;;
-                        *) fail_with_nodes "invalid node name: $1 (must be master-N, worker-N, or pfsense-N)" ;;
+                    purpose="${1%%-*}"
+                    node_num="${1##*-}"
+                    case "$purpose" in
+                        master|worker) ;;
+                        *) fail_with_nodes "invalid node name: $1 (must be master-N or worker-N)" ;;
                     esac
                     shift
                     if [ $# -gt 0 ]; then
-                        _SSH_ARGS="$*"
+                        ssh_args="$*"
                     fi
                     break
                 elif echo "$1" | grep -q '^[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+$'; then
-                    _NODE_IP="$1"
+                    node_ip="$1"
                     shift
                     if [ $# -gt 0 ]; then
-                        _SSH_ARGS="$*"
+                        ssh_args="$*"
                     fi
                     break
                 else
@@ -188,79 +185,63 @@ _main() {
                 ;;
         esac
     done
-    export ROCK8S_TENANT="$_TENANT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_OUTPUT="$_OUTPUT"
+    export ROCK8S_TENANT="$tenant"
+    export ROCK8S_CLUSTER="$cluster"
+    export ROCK8S_OUTPUT="$output"
     if [ -z "$ROCK8S_CLUSTER" ]; then
         fail "cluster name required"
     fi
-    if [ -n "$_NODE_IP" ]; then
-        _PRIVATE_IPS="$(get_master_private_ipv4s)"
-        _COUNT=1
-        for _IP in $_PRIVATE_IPS; do
-            if [ "$_IP" = "$_NODE_IP" ]; then
-                _PURPOSE="master"
-                _NODE_NUM="$_COUNT"
+    if [ -n "$node_ip" ]; then
+        private_ips="$(get_master_private_ipv4s)"
+        count=1
+        for _IP in $private_ips; do
+            if [ "$_IP" = "$node_ip" ]; then
+                purpose="master"
+                node_num="$count"
                 break
             fi
-            _COUNT=$((_COUNT + 1))
+            count=$((count + 1))
         done
-        if [ -z "$_PURPOSE" ]; then
-            _PRIVATE_IPS="$(get_worker_private_ipv4s)"
-            _COUNT=1
-            for _IP in $_PRIVATE_IPS; do
-                if [ "$_IP" = "$_NODE_IP" ]; then
-                    _PURPOSE="worker"
-                    _NODE_NUM="$_COUNT"
+        if [ -z "$purpose" ]; then
+            private_ips="$(get_worker_private_ipv4s)"
+            count=1
+            for _IP in $private_ips; do
+                if [ "$_IP" = "$node_ip" ]; then
+                    purpose="worker"
+                    node_num="$count"
                     break
                 fi
-                _COUNT=$((_COUNT + 1))
+                count=$((count + 1))
             done
         fi
-        if [ -z "$_PURPOSE" ]; then
-            _PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
-            _COUNT=1
-            for _IP in $_PRIVATE_IPS; do
-                if [ "$_IP" = "$_NODE_IP" ]; then
-                    _PURPOSE="pfsense"
-                    _NODE_NUM="$_COUNT"
-                    break
-                fi
-                _COUNT=$((_COUNT + 1))
-            done
-        fi
-        [ -z "$_PURPOSE" ] && fail_with_nodes "no node found with ip $_NODE_IP"
+        [ -z "$purpose" ] && fail_with_nodes "no node found with ip $node_ip"
     else
-        [ -z "$_PURPOSE" ] && fail_with_nodes "node identifier required"
-        if [ -z "$_NODE_NUM" ]; then
-            _NODE_COUNT="$(_count_nodes "$_PURPOSE")"
-            if [ "$_NODE_COUNT" -eq 1 ]; then
-                _NODE_NUM=1
+        [ -z "$purpose" ] && fail_with_nodes "node identifier required"
+        if [ -z "$node_num" ]; then
+            node_count="$(_count_nodes "$purpose")"
+            if [ "$node_count" -eq 1 ]; then
+                node_num=1
             else
-                fail_with_nodes "node number required (found $_NODE_COUNT ${_PURPOSE} nodes)" "$_PURPOSE"
+                fail_with_nodes "node number required (found $node_count ${purpose} nodes)" "$purpose"
             fi
         fi
     fi
-    case "$_PURPOSE" in
+    case "$purpose" in
         master)
-            _SSH_KEY="$(get_master_ssh_private_key)"
-            _PRIVATE_IPS="$(get_master_private_ipv4s)"
+            ssh_key="$(get_master_ssh_private_key)"
+            private_ips="$(get_master_private_ipv4s)"
             ;;
         worker)
-            _SSH_KEY="$(get_worker_ssh_private_key)"
-            _PRIVATE_IPS="$(get_worker_private_ipv4s)"
-            ;;
-        pfsense)
-            _SSH_KEY="$(get_pfsense_ssh_private_key)"
-            _PRIVATE_IPS="$(get_pfsense_private_ipv4s)"
+            ssh_key="$(get_worker_ssh_private_key)"
+            private_ips="$(get_worker_private_ipv4s)"
             ;;
     esac
-    [ -z "$_SSH_KEY" ] && fail_with_nodes "ssh key not found for $_PURPOSE nodes" "$_PURPOSE"
-    if [ -z "$_NODE_IP" ]; then
-        _NODE_IP="$(echo "$_PRIVATE_IPS" | tr ' ' '\n' | sed -n "${_NODE_NUM}p")"
-        [ -z "$_NODE_IP" ] && fail_with_nodes "$_PURPOSE-$_NODE_NUM not found" "$_PURPOSE"
+    [ -z "$ssh_key" ] && fail_with_nodes "ssh key not found for $purpose nodes" "$purpose"
+    if [ -z "$node_ip" ]; then
+        node_ip="$(echo "$private_ips" | tr ' ' '\n' | sed -n "${node_num}p")"
+        [ -z "$node_ip" ] && fail_with_nodes "$purpose-$node_num not found" "$purpose"
     fi
-    exec ssh -i "$_SSH_KEY" "admin@$_NODE_IP" $_SSH_ARGS
+    exec ssh -i "$ssh_key" "admin@$node_ip" $ssh_args
 }
 
 _main "$@"

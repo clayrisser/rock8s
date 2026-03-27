@@ -71,8 +71,8 @@ _DNS_PROVIDER=""
 _HETZNER_API_KEY=""
 
 _is_addon_enabled() {
-    for _SELECTED_ADDON in $_SELECTED_ADDONS; do
-        if [ "$_SELECTED_ADDON" = "$1" ]; then
+    for selected_addon in $_SELECTED_ADDONS; do
+        if [ "$selected_addon" = "$1" ]; then
             return
         fi
     done

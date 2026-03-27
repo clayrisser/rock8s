@@ -32,27 +32,18 @@ cx42
 cx52"
 
 _DEFAULT_LOCATION="nbg1"
-_DEFAULT_NETWORK="172.20.0.0/16"
-_DEFAULT_PFSENSE_TYPE="cx22"
 _DEFAULT_MASTER_TYPE="cx32"
 _DEFAULT_WORKER_TYPE="cpx51"
 _DEFAULT_WORKER_COUNT="3"
 
 : "${LOCATION:=$_DEFAULT_LOCATION}"
-: "${NETWORK:=$_DEFAULT_NETWORK}"
 
 _LOCATION="$(prompt_select "Select location" "LOCATION" "$_DEFAULT_LOCATION" $_AVAILABLE_LOCATIONS)"
 _ENTRYPOINT="$(prompt_text "Enter network entrypoint" "ENTRYPOINT" "$_DEFAULT_ENTRYPOINT" 1)"
-_PFSENSE_TYPE="$(prompt_select "Select pfsense node type" "PFSENSE_TYPE" "$_DEFAULT_PFSENSE_TYPE" $_AVAILABLE_SERVER_TYPES)"
 
-_PRIMARY_HOSTNAME="$(prompt_text "Enter primary pfsense hostname" "PRIMARY_HOSTNAME" "" 1)"
-_SECONDARY_HOSTNAME="$(prompt_text "Enter secondary pfsense hostname" "SECONDARY_HOSTNAME" "")"
+_PFSENSE_HOSTNAME="$(prompt_text "Enter primary pfsense hostname" "PFSENSE_HOSTNAME" "" 1)"
+_PFSENSE_SECONDARY="$(prompt_text "Enter secondary pfsense hostname (optional, for HA)" "PFSENSE_SECONDARY" "")"
 
-_PFSENSE_HOSTNAMES="[\"$_PRIMARY_HOSTNAME\""
-if [ -n "$_SECONDARY_HOSTNAME" ]; then
-    _PFSENSE_HOSTNAMES="$_PFSENSE_HOSTNAMES,\"$_SECONDARY_HOSTNAME\""
-fi
-_PFSENSE_HOSTNAMES="$_PFSENSE_HOSTNAMES]"
 _MASTER_TYPE="$(prompt_select "Select master node type" "MASTER_TYPE" "$_DEFAULT_MASTER_TYPE" $_AVAILABLE_SERVER_TYPES)"
 _WORKER_TYPE="$(prompt_select "Select worker node type" "WORKER_TYPE" "$_DEFAULT_WORKER_TYPE" $_AVAILABLE_SERVER_TYPES)"
 _WORKER_COUNT="$(prompt_text "Enter number of worker nodes" "WORKER_COUNT" "$_DEFAULT_WORKER_COUNT" 1)"
@@ -66,18 +57,12 @@ network:
   lan:
     mtu: 1450
     ipv4:
-      nat: false
       subnet: 172.20.0.0/16
     ipv6:
-      subnet: fd20::/64$([ -n "$_SECONDARY_HOSTNAME" ] && echo "
-  sync:
-    ipv4:
-      subnet: 172.21.0.0/16")
+      subnet: fd20::/64
 pfsense:
-  - type: $_PFSENSE_TYPE
-    hostnames:
-      - $_PRIMARY_HOSTNAME$([ -n "$_SECONDARY_HOSTNAME" ] && echo "
-      - $_SECONDARY_HOSTNAME")
+  hostname: $_PFSENSE_HOSTNAME$([ -n "$_PFSENSE_SECONDARY" ] && echo "
+  secondary_hostname: $_PFSENSE_SECONDARY")
 masters:
   - type: $_MASTER_TYPE
 workers:

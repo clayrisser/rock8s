@@ -32,7 +32,6 @@ install: build
 	@install -d $(DESTDIR)$(LIBDIR)/libexec
 	@install -d $(DESTDIR)$(LIBDIR)/providers
 	@install -d $(DESTDIR)$(LIBDIR)/pfsense
-	@install -d $(DESTDIR)$(LIBDIR)/kubespray
 	@install -d $(DESTDIR)$(LIBDIR)/addons
 	@install -d $(DESTDIR)$(MANDIR)/man1
 	@install -d $(DESTDIR)$(DOCDIR)
@@ -44,8 +43,6 @@ install: build
 	@chmod -R 755 $(DESTDIR)$(LIBDIR)/providers
 	@cp -r pfsense/* $(DESTDIR)$(LIBDIR)/pfsense/
 	@chmod -R 755 $(DESTDIR)$(LIBDIR)/pfsense
-	@cp -r kubespray/* $(DESTDIR)$(LIBDIR)/kubespray/
-	@chmod -R 755 $(DESTDIR)$(LIBDIR)/kubespray
 	@install -m 644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	@install -m 644 LICENSE $(DESTDIR)$(DOCDIR)/LICENSE
 	@install -m 644 $(MAN1_DIR)/*.1 $(DESTDIR)$(MANDIR)/man1/

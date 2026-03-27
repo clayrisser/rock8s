@@ -20,6 +20,42 @@ get_cluster_dir() {
     echo "$_CLUSTER_DIR"
 }
 
+get_pfsense_dir() {
+    if [ -n "$_PFSENSE_DIR" ]; then
+        echo "$_PFSENSE_DIR"
+        return
+    fi
+    if [ -z "$ROCK8S_STATE_HOME" ]; then
+        fail "ROCK8S_STATE_HOME not set"
+    fi
+    if [ -z "$ROCK8S_TENANT" ]; then
+        fail "ROCK8S_TENANT not set"
+    fi
+    if [ -z "$ROCK8S_PFSENSE" ]; then
+        fail "ROCK8S_PFSENSE not set"
+    fi
+    _PFSENSE_DIR="$ROCK8S_STATE_HOME/tenants/$ROCK8S_TENANT/pfsense/$ROCK8S_PFSENSE"
+    echo "$_PFSENSE_DIR"
+}
+
+get_pfsense_config_dir() {
+    if [ -n "$_PFSENSE_CONFIG_DIR" ]; then
+        echo "$_PFSENSE_CONFIG_DIR"
+        return
+    fi
+    if [ -z "$ROCK8S_CONFIG_HOME" ]; then
+        fail "ROCK8S_CONFIG_HOME not set"
+    fi
+    if [ -z "$ROCK8S_TENANT" ]; then
+        fail "ROCK8S_TENANT not set"
+    fi
+    if [ -z "$ROCK8S_PFSENSE" ]; then
+        fail "ROCK8S_PFSENSE not set"
+    fi
+    _PFSENSE_CONFIG_DIR="$ROCK8S_CONFIG_HOME/tenants/$ROCK8S_TENANT/pfsense/$ROCK8S_PFSENSE"
+    echo "$_PFSENSE_CONFIG_DIR"
+}
+
 get_config_dir() {
     if [ -n "$_CONFIG_DIR" ]; then
         echo "$_CONFIG_DIR"
@@ -38,40 +74,53 @@ get_config_dir() {
     echo "$_CONFIG_DIR"
 }
 
+_generate_config() {
+    providers_dir="$ROCK8S_LIB_PATH/providers"
+    providers_list=""
+    for p in "$providers_dir"/*/ ; do
+        if [ -d "$p" ]; then
+            prov="$(basename "$p")"
+            providers_list="$providers_list $prov $prov"
+        fi
+    done
+    if [ -z "$providers_list" ]; then
+        fail "no providers found"
+    fi
+    prov="$(dialog --title "Select Provider" --no-tags --menu "Choose your cloud provider" 0 0 0 $providers_list 3>&1 1>&2 2>&3)" || fail "provider selection cancelled"
+    mkdir -p "$(dirname "$_TENANT_CONFIG_FILE")"
+    provider_dir="$ROCK8S_LIB_PATH/providers/$prov"
+    config_script="$1"
+    if [ -f "$provider_dir/$config_script" ] && [ ! -f "$_TENANT_CONFIG_FILE" ]; then
+        . "$provider_dir/$config_script"
+        if [ -f "$_TENANT_CONFIG_FILE.tmp" ] && [ "$config_script" = "config.sh" ]; then
+            . "$ROCK8S_LIB_PATH/providers/addons.sh"
+        fi
+        if [ ! -f "$_TENANT_CONFIG_FILE.tmp" ]; then
+            fail "provider config script failed to create config file"
+        fi
+        mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
+        { echo "provider: $prov"; cat "$_TENANT_CONFIG_FILE"; } > "$_TENANT_CONFIG_FILE.tmp" && mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
+    fi
+    if [ ! -f "$_TENANT_CONFIG_FILE" ]; then
+        fail "configuration file not found at $_TENANT_CONFIG_FILE"
+    fi
+}
+
 get_tenant_config_file() {
     if [ -n "$_TENANT_CONFIG_FILE" ]; then
         echo "$_TENANT_CONFIG_FILE"
         return
     fi
-    _TENANT_CONFIG_FILE="$(get_config_dir)/config.yaml"
+    if [ -n "$ROCK8S_PFSENSE" ] && [ -z "$ROCK8S_CLUSTER" ]; then
+        _TENANT_CONFIG_FILE="$(get_pfsense_config_dir)/config.yaml"
+    else
+        _TENANT_CONFIG_FILE="$(get_config_dir)/config.yaml"
+    fi
     if [ ! -f "$_TENANT_CONFIG_FILE" ] && [ -z "$ROCK8S_SKIP_CONFIG" ]; then
-        _PROVIDERS_DIR="$ROCK8S_LIB_PATH/providers"
-        _PROVIDERS_LIST=""
-        for _P in "$_PROVIDERS_DIR"/*/ ; do
-            if [ -d "$_P" ]; then
-                _PROVIDER="$(basename "$_P")"
-                _PROVIDERS_LIST="$_PROVIDERS_LIST $_PROVIDER $_PROVIDER"
-            fi
-        done
-        if [ -z "$_PROVIDERS_LIST" ]; then
-            fail "no providers found"
-        fi
-        _PROVIDER="$(whiptail --title "Select Provider" --notags --menu "Choose your cloud provider" 0 0 0 $_PROVIDERS_LIST 3>&1 1>&2 2>&3)" || fail "provider selection cancelled"
-        mkdir -p "$(dirname "$_TENANT_CONFIG_FILE")"
-        _PROVIDER_DIR="$ROCK8S_LIB_PATH/providers/$_PROVIDER"
-        if [ -f "$_PROVIDER_DIR/config.sh" ] && [ ! -f "$_TENANT_CONFIG_FILE" ]; then
-            . "$_PROVIDER_DIR/config.sh"
-            if [ -f "$_TENANT_CONFIG_FILE.tmp" ]; then
-                . "$ROCK8S_LIB_PATH/providers/addons.sh"
-            fi
-            if [ ! -f "$_TENANT_CONFIG_FILE.tmp" ]; then
-                fail "provider config script failed to create config file"
-            fi
-            mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
-            { echo "provider: $_PROVIDER"; cat "$_TENANT_CONFIG_FILE"; } > "$_TENANT_CONFIG_FILE.tmp" && mv "$_TENANT_CONFIG_FILE.tmp" "$_TENANT_CONFIG_FILE"
-        fi
-        if [ ! -f "$_TENANT_CONFIG_FILE" ]; then
-            fail "cluster configuration file not found at $_TENANT_CONFIG_FILE"
+        if [ -n "$ROCK8S_PFSENSE" ] && [ -z "$ROCK8S_CLUSTER" ]; then
+            _generate_config "pfsense_config.sh"
+        else
+            _generate_config "config.sh"
         fi
     fi
     echo "$_TENANT_CONFIG_FILE"
@@ -84,32 +133,32 @@ get_config_json() {
     fi
     _CONFIG_JSON="{}"
     IFS=:
-    for _C in $ROCK8S_CONFIG_DIRS; do
-        _CONFIG_FILE="$_C/config.yaml"
-        if [ -f "$_CONFIG_FILE" ]; then
-            _NEW_JSON="$(yaml2json < "$_CONFIG_FILE")"
-            _CONFIG_JSON="$(echo "$_CONFIG_JSON" "$_NEW_JSON" | jq -s '.[0] * .[1]')"
+    for c in $ROCK8S_CONFIG_DIRS; do
+        config_file="$c/config.yaml"
+        if [ -f "$config_file" ]; then
+            new_json="$(yaml2json < "$config_file")"
+            _CONFIG_JSON="$(echo "$_CONFIG_JSON" "$new_json" | jq -s '.[0] * .[1]')"
         fi
     done
     unset IFS
     _TENANT_CONFIG_FILE="$(get_tenant_config_file)"
     if [ -f "$_TENANT_CONFIG_FILE" ]; then
-        _NEW_JSON="$(yaml2json < "$_TENANT_CONFIG_FILE")"
-        _CONFIG_JSON="$(echo "$_CONFIG_JSON" "$_NEW_JSON" | jq -s '.[0] * .[1]')"
+        new_json="$(yaml2json < "$_TENANT_CONFIG_FILE")"
+        _CONFIG_JSON="$(echo "$_CONFIG_JSON" "$new_json" | jq -s '.[0] * .[1]')"
     fi
     echo "$_CONFIG_JSON"
 }
 
 get_config() {
-    _JQ_FILTER="$1"
-    _DEFAULT_VALUE="$2"
+    jq_filter="$1"
+    default_value="$2"
     _CONFIG_JSON="$(get_config_json)"
-    _RESULT="$(echo "$_CONFIG_JSON" | jq -r "$_JQ_FILTER" 2>/dev/null)"
-    if [ -n "$_RESULT" ] && [ "$_RESULT" != "null" ]; then
-        echo "$_RESULT"
+    result="$(echo "$_CONFIG_JSON" | jq -r "$jq_filter" 2>/dev/null)"
+    if [ -n "$result" ] && [ "$result" != "null" ]; then
+        echo "$result"
         return
     fi
-    echo "$_DEFAULT_VALUE"
+    echo "$default_value"
 }
 
 get_provider() {

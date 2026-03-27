@@ -63,8 +63,8 @@ karpenter
 kbst
 keygen
 krew
+k3sup
 kubeconfig
-kubespray
 kustomization
 kyverno
 ldapi
@@ -166,7 +166,10 @@ synchronizeusers
 synchronizevirtualip
 synchronizewol
 syscalld
+opentofu
 terraformrc
+tofu
+tofurc
 tfstate
 tfvars
 tojson

@@ -1,6 +1,11 @@
+resource "tls_private_key" "node" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
 resource "hcloud_ssh_key" "node" {
   name       = "${local.cluster}-${var.purpose}"
-  public_key = file(var.ssh_public_key_path)
+  public_key = tls_private_key.node.public_key_openssh
 }
 
 resource "hcloud_network" "lan" {
@@ -114,7 +119,7 @@ resource "hcloud_server" "nodes" {
   iso                = var.purpose == "pfsense" ? var.pfsense_iso : null
   location           = var.location
   ssh_keys           = [hcloud_ssh_key.node.id]
-  user_data          = var.user_data != "" ? var.user_data : null
+  user_data          = var.purpose != "pfsense" ? local.cloud_init : null
   delete_protection  = true
   rebuild_protection = true
   backups            = true
@@ -130,8 +135,8 @@ resource "hcloud_server" "nodes" {
     local.tenant != "" ? { tenant = local.tenant } : {}
   )
   public_net {
-    ipv4_enabled = try(var.network.lan.ipv4.nat, false) == false || var.purpose == "pfsense"
-    ipv6_enabled = try(var.network.lan.ipv6, null) != null || var.purpose == "pfsense"
+    ipv4_enabled = var.purpose == "pfsense"
+    ipv6_enabled = var.purpose == "pfsense" || try(var.network.lan.ipv6, null) != null
   }
   network {
     network_id = var.purpose == "pfsense" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id

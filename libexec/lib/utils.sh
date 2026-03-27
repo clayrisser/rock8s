@@ -51,17 +51,14 @@ ensure_system() {
     if [ "$_ENSURED_SYSTEM" -eq 1 ]; then
         return
     fi
-    command -v terraform >/dev/null 2>&1 || {
-        fail "terraform is not installed"
+    command -v tofu >/dev/null 2>&1 || {
+        fail "tofu is not installed"
     }
     command -v ansible >/dev/null 2>&1 || {
         fail "ansible is not installed"
     }
     command -v kubectl >/dev/null 2>&1 || {
         fail "kubectl is not installed"
-    }
-    command -v whiptail >/dev/null 2>&1 || {
-        fail "whiptail is not installed"
     }
     command -v jq >/dev/null 2>&1 || {
         fail "jq is not installed"
@@ -73,62 +70,62 @@ ensure_system() {
 }
 
 check_dependencies() {
-    _MISSING=""
-    for _CMD in "$@"; do
-        command -v "$_CMD" >/dev/null 2>&1 || {
-            [ -z "$_MISSING" ] && _MISSING="$_CMD" || _MISSING="$_MISSING $_CMD"
+    missing=""
+    for cmd in "$@"; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            [ -z "$missing" ] && missing="$cmd" || missing="$missing $cmd"
         }
     done
-    [ -n "$_MISSING" ] && {
-        fail "missing required dependencies: $_MISSING"
+    [ -n "$missing" ] && {
+        fail "missing required dependencies: $missing"
     }
 }
 
 parse_node_groups() {
-    _GROUPS="$1"
-    _RESULT="["
-    _FIRST=1
-    for group in $_GROUPS; do
-        if [ "$_FIRST" = 1 ]; then
-            _FIRST=0
+    groups="$1"
+    result="["
+    first=1
+    for group in $groups; do
+        if [ "$first" = 1 ]; then
+            first=0
         else
-            _RESULT="$_RESULT,"
+            result="$result,"
         fi
-        _TYPE=$(echo "$group" | cut -d: -f1)
-        _COUNT=$(echo "$group" | cut -d: -f2)
-        _OPTS="{}"
+        type=$(echo "$group" | cut -d: -f1)
+        count=$(echo "$group" | cut -d: -f2)
+        opts="{}"
         if echo "$group" | grep -q ':.*:'; then
-            _RAW_OPTS=$(echo "$group" | cut -d: -f3)
-            _OPTS="{"
-            _FIRST_OPT=1
+            raw_opts=$(echo "$group" | cut -d: -f3)
+            opts="{"
+            first_opt=1
             IFS=, read -r -a pairs <<EOF
-$_RAW_OPTS
+$raw_opts
 EOF
             for pair in "${pairs[@]}"; do
                 key="${pair%%=*}"
                 value="${pair#*=}"
-                if [ "$_FIRST_OPT" = 1 ]; then
-                    _FIRST_OPT=0
+                if [ "$first_opt" = 1 ]; then
+                    first_opt=0
                 else
-                    _OPTS="$_OPTS,"
+                    opts="$opts,"
                 fi
-                _OPTS="$_OPTS\"$key\":\"$value\""
+                opts="$opts\"$key\":\"$value\""
             done
-            _OPTS="$_OPTS}"
+            opts="$opts}"
         fi
-        _RESULT="$_RESULT{\"type\":\"$_TYPE\",\"count\":$_COUNT,\"options\":$_OPTS}"
+        result="$result{\"type\":\"$type\",\"count\":$count,\"options\":$opts}"
     done
-    _RESULT="$_RESULT]"
-    echo "$_RESULT"
+    result="$result]"
+    echo "$result"
 }
 
 try() {
-    _I=0
+    i=0
     trap 'exit 130' INT
-    while [ $_I -lt $RETRIES ]; do
-        _I=$((_I + 1))
-        if [ $_I -gt 1 ]; then
-            echo "retry $_I/$RETRIES"
+    while [ $i -lt $RETRIES ]; do
+        i=$((i + 1))
+        if [ $i -gt 1 ]; then
+            echo "retry $i/$RETRIES"
             sleep 1
         fi
         if eval "$@"; then

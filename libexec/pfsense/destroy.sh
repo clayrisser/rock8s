@@ -10,10 +10,10 @@ NAME
        rock8s pfsense destroy
 
 SYNOPSIS
-       rock8s pfsense destroy [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [-y|--yes] [--force]
+       rock8s pfsense destroy [-h] [-o <format>] [--name <name>] [-t <tenant>] [-y|--yes]
 
 DESCRIPTION
-       destroy pfsense firewall nodes.
+       destroy pfsense firewall nodes
 
 OPTIONS
        -h, --help
@@ -25,38 +25,30 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name
 
-       -c, --cluster <cluster>
-              cluster name
+       -n, --name <name>
+              pfsense instance name
 
        -y, --yes
               skip confirmation prompt
 
-       --force
-              skip dependency checks
-
 EXAMPLE
-       # destroy pfsense firewall with confirmation
-       rock8s pfsense destroy --cluster mycluster
+       # destroy pfsense with confirmation
+       rock8s pfsense destroy --name mypfsense
 
-       # destroy pfsense firewall without confirmation
-       rock8s pfsense destroy --cluster mycluster --yes
-
-       # force destroy pfsense firewall
-       rock8s pfsense destroy --cluster mycluster --force --yes
+       # destroy pfsense without confirmation
+       rock8s pfsense destroy --name mypfsense --yes
 
 SEE ALSO
+       rock8s pfsense apply --help
        rock8s pfsense configure --help
-       rock8s pfsense publish --help
-       rock8s nodes destroy --help
 EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _TENANT="$ROCK8S_TENANT"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _YES=0
-    _FORCE=0
+    output="${ROCK8S_OUTPUT}"
+    tenant="$ROCK8S_TENANT"
+    pfsense="$ROCK8S_PFSENSE"
+    yes=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -66,11 +58,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -78,33 +70,29 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
                 ;;
-            -c|--cluster|-c=*|--cluster=*)
+            -n|--name|-n=*|--name=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        pfsense="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        pfsense="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             -y|--yes)
-                _YES=1
-                shift
-                ;;
-            --force)
-                _FORCE=1
+                yes=1
                 shift
                 ;;
             -*)
@@ -117,18 +105,48 @@ _main() {
                 ;;
         esac
     done
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
-    sh "$ROCK8S_LIB_PATH/libexec/nodes/destroy.sh" \
-        --output="$_OUTPUT" \
-        --cluster="$_CLUSTER" \
-        --tenant="$_TENANT" \
-        $([ "$_YES" = "1" ] && echo "--yes") \
-        $([ "$_FORCE" = "1" ] && echo "--force") \
-        pfsense >/dev/null
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
-        format_output "$_OUTPUT"
+    export ROCK8S_PFSENSE="$pfsense"
+    export ROCK8S_TENANT="$tenant"
+    if [ -z "$ROCK8S_PFSENSE" ]; then
+        fail "pfsense name required"
+    fi
+    pfsense_dir="$(get_pfsense_dir)"
+    if [ ! -d "$pfsense_dir" ]; then
+        fail "pfsense $pfsense not found"
+    fi
+    if is_pfsense_provisioned; then
+        if [ ! -f "$pfsense_dir/output.json" ]; then
+            fail "pfsense $pfsense state not found"
+        fi
+        provider="$(get_provider)"
+        provider_dir="$ROCK8S_LIB_PATH/providers/$provider"
+        if [ ! -d "$provider_dir" ]; then
+            fail "provider $provider not found"
+        fi
+        rm -rf "$pfsense_dir/provider"
+        cp -r "$provider_dir" "$pfsense_dir/provider"
+        state_key="$(get_state_key "$tenant" "$pfsense" "pfsense")"
+        write_backend_config "$pfsense_dir/provider" "$state_key" "$pfsense_dir"
+        export TF_VAR_cluster_name="$pfsense"
+        export TF_VAR_purpose="pfsense"
+        export TF_VAR_tenant="$tenant"
+        export TF_DATA_DIR="$pfsense_dir/.terraform"
+        config_json="$(get_config_json)"
+        echo "$config_json" | . "$pfsense_dir/provider/tfvars.sh" > "$pfsense_dir/terraform.tfvars.json"
+        chmod 600 "$pfsense_dir/terraform.tfvars.json"
+        if [ -f "$pfsense_dir/provider/variables.sh" ]; then
+            . "$pfsense_dir/provider/variables.sh"
+        fi
+        cd "$pfsense_dir/provider"
+        tofu init -upgrade -reconfigure >&2
+        tofu destroy $([ "$yes" = "1" ] && echo "-auto-approve" || true) -var-file="$pfsense_dir/terraform.tfvars.json" >&2
+    else
+        warn "pfSense is an existing appliance, skipping infrastructure destruction"
+    fi
+    rm -rf "$pfsense_dir"
+    printf '{"pfsense":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$pfsense" "$provider" "$tenant" | \
+        format_output "$output"
 }
 
 _main "$@"

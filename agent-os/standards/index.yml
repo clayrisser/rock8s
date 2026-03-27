@@ -1,0 +1,43 @@
+# Agent OS Standards Index
+
+ansible:
+  check-then-configure:
+    description: Two-phase idempotency pattern using embedded PHP + JSON diff on pfSense
+  conventions:
+    description: Ansible task composition, variable structure, module usage, and naming
+  firewall-rules-dsl:
+    description: Natural-language firewall rule syntax with service name map and IPv4/IPv6 split
+  ha-primary-secondary:
+    description: Boolean primary flag controlling NAT, HAProxy, CARP, and IP selection for HA
+
+build:
+  editor-style:
+    description: EditorConfig indentation and style rules per file type
+  man-pages:
+    description: Auto-generating roff man pages from _help() heredocs via manpages.sh
+
+global:
+  architecture:
+    description: Repository layout, stack overview (k3s via k3sup, OpenTofu, Ansible for pfSense)
+
+providers:
+  addon-registry:
+    description: Snake_case addon IDs, config shape, default set, and GitLab heuristics
+  execution-model:
+    description: Provider code copy, tfvars.sh/variables.sh flow, OpenTofu migration
+  purpose-based-infra:
+    description: pfsense/master/worker purpose dirs with per-purpose state and init heuristics
+
+shell:
+  config-state-layout:
+    description: XDG paths, tenant/cluster hierarchy, layered YAML config merge
+  interactive-prompts:
+    description: dialog fd swap, NON_INTERACTIVE mode, env var overrides
+  output-error-handling:
+    description: fail/error/warn/log/debug primitives, JSON/YAML/text format_output
+  posix-compliance:
+    description: Strict POSIX /bin/sh compliance, no bashisms, set -e
+  subcommand-dispatch:
+    description: CLI dispatch chain via exec sh, _help() format, option parsing
+  variable-naming:
+    description: ROCK8S_* globals, _ prefix locals, boolean 0/1 strings, parameter defaults

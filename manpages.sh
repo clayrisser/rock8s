@@ -17,13 +17,13 @@ mkdir -p "$_MAN1_DIR" >/dev/null 2>&1
 mkdir -p "$_BUILD_DIR" >/dev/null 2>&1
 
 extract_help_text() {
-    _FILE="$1"
-    _FUNC_NAME="$2"
-    _OUTPUT_FILE="$3"
-    if [ -f "${_FILE}" ]; then
-        sed -n "/${_FUNC_NAME}() {/,/^}/p" "${_FILE}" |
+    file="$1"
+    func_name="$2"
+    output_file="$3"
+    if [ -f "${file}" ]; then
+        sed -n "/${func_name}() {/,/^}/p" "${file}" |
             sed -n '/cat <<EOF/,/EOF/p' |
-            sed '1d;$d' > "${_OUTPUT_FILE}"
+            sed '1d;$d' > "${output_file}"
         return 0
     else
         return 1
@@ -32,10 +32,10 @@ extract_help_text() {
 
 generate_main_manpage() {
     printf '.TH ROCK8S 1 "%s" "rock8s" "User Commands"\n' "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}.1"
-    _HELP_FILE="${_BUILD_DIR}/rock8s-help-main.txt"
-    extract_help_text "rock8s.sh" "_help" "${_HELP_FILE}"
-    if [ -s "${_HELP_FILE}" ]; then
-        cat "${_HELP_FILE}" | \
+    help_file="${_BUILD_DIR}/rock8s-help-main.txt"
+    extract_help_text "rock8s.sh" "_help" "${help_file}"
+    if [ -s "${help_file}" ]; then
+        cat "${help_file}" | \
             sed -e 's/^NAME$/.SH NAME/' | \
             sed -e 's/^SYNOPSIS$/.SH SYNOPSIS/' | \
             sed -e 's/^DESCRIPTION$/.SH DESCRIPTION/' | \
@@ -51,17 +51,17 @@ generate_main_manpage() {
 }
 
 generate_subcommand_manpage() {
-    _CMD="$1"
-    _MAIN_CMD_UPPER=$(echo "${_MAIN_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    _CMD_UPPER=$(echo "${_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    printf '.TH %s-%s 1 "%s" "rock8s" "User Commands"\n' "${_MAIN_CMD_UPPER}" "${_CMD_UPPER}" "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}.1"
-    _HELP_FILE="${_BUILD_DIR}/rock8s-help-${_CMD}.txt"
-    _SUBCMD_FILE="libexec/${_CMD}.sh"
-    if [ -f "${_SUBCMD_FILE}" ]; then
-        extract_help_text "${_SUBCMD_FILE}" "_help" "${_HELP_FILE}"
+    cmd="$1"
+    main_cmd_upper=$(echo "${_MAIN_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    cmd_upper=$(echo "${cmd}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    printf '.TH %s-%s 1 "%s" "rock8s" "User Commands"\n' "${main_cmd_upper}" "${cmd_upper}" "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}.1"
+    help_file="${_BUILD_DIR}/rock8s-help-${cmd}.txt"
+    subcmd_file="libexec/${cmd}.sh"
+    if [ -f "${subcmd_file}" ]; then
+        extract_help_text "${subcmd_file}" "_help" "${help_file}"
     fi
-    if [ -s "${_HELP_FILE}" ]; then
-        cat "${_HELP_FILE}" | \
+    if [ -s "${help_file}" ]; then
+        cat "${help_file}" | \
             sed -e 's/^NAME$/.SH NAME/' | \
             sed -e 's/^SYNOPSIS$/.SH SYNOPSIS/' | \
             sed -e 's/^DESCRIPTION$/.SH DESCRIPTION/' | \
@@ -70,28 +70,28 @@ generate_subcommand_manpage() {
             sed -e 's/^EXAMPLE$/.SH EXAMPLES/' | \
             sed -e 's/^SEE ALSO$/.SH SEE ALSO/' | \
             sed -e 's/rock8s \([a-z-]*\) --help/rock8s-\1(1)/' | \
-            sed -e "s/rock8s ${_CMD} \([a-z-]*\) --help/rock8s-${_CMD}-\1(1)/" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}.1"
+            sed -e "s/rock8s ${cmd} \([a-z-]*\) --help/rock8s-${cmd}-\1(1)/" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}.1"
     else
-        printf '.SH NAME\n%s-%s \\- %s %s command\n' "${_MAIN_CMD}" "${_CMD}" "${_MAIN_CMD}" "${_CMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}.1"
+        printf '.SH NAME\n%s-%s \\- %s %s command\n' "${_MAIN_CMD}" "${cmd}" "${_MAIN_CMD}" "${cmd}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}.1"
         printf '.SH SYNOPSIS\n       %s %s [options]\n\n.SH DESCRIPTION\n       %s command\n\n.SH SEE ALSO\n       %s(1)\n' \
-            "${_MAIN_CMD}" "${_CMD}" "${_CMD}" "${_MAIN_CMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}.1"
+            "${_MAIN_CMD}" "${cmd}" "${cmd}" "${_MAIN_CMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}.1"
     fi
 }
 
 generate_sub_subcommand_manpage() {
-    _CMD="$1"
-    _SUBCMD="$2"
-    _MAIN_CMD_UPPER=$(echo "${_MAIN_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    _CMD_UPPER=$(echo "${_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    _SUBCMD_UPPER=$(echo "${_SUBCMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    printf '.TH %s-%s-%s 1 "%s" "rock8s" "User Commands"\n' "${_MAIN_CMD_UPPER}" "${_CMD_UPPER}" "${_SUBCMD_UPPER}" "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}.1"
-    _HELP_FILE="${_BUILD_DIR}/rock8s-help-${_CMD}-${_SUBCMD}.txt"
-    _SUBCMD_FILE="libexec/${_CMD}/${_SUBCMD}.sh"
-    if [ -f "${_SUBCMD_FILE}" ]; then
-        extract_help_text "${_SUBCMD_FILE}" "_help" "${_HELP_FILE}"
+    cmd="$1"
+    subcmd="$2"
+    main_cmd_upper=$(echo "${_MAIN_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    cmd_upper=$(echo "${cmd}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    subcmd_upper=$(echo "${subcmd}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    printf '.TH %s-%s-%s 1 "%s" "rock8s" "User Commands"\n' "${main_cmd_upper}" "${cmd_upper}" "${subcmd_upper}" "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}.1"
+    help_file="${_BUILD_DIR}/rock8s-help-${cmd}-${subcmd}.txt"
+    subcmd_file="libexec/${cmd}/${subcmd}.sh"
+    if [ -f "${subcmd_file}" ]; then
+        extract_help_text "${subcmd_file}" "_help" "${help_file}"
     fi
-    if [ -s "${_HELP_FILE}" ]; then
-        cat "${_HELP_FILE}" | \
+    if [ -s "${help_file}" ]; then
+        cat "${help_file}" | \
             sed -e 's/^NAME$/.SH NAME/' | \
             sed -e 's/^SYNOPSIS$/.SH SYNOPSIS/' | \
             sed -e 's/^DESCRIPTION$/.SH DESCRIPTION/' | \
@@ -99,32 +99,32 @@ generate_sub_subcommand_manpage() {
             sed -e 's/^COMMANDS$/.SH COMMANDS/' | \
             sed -e 's/^EXAMPLE$/.SH EXAMPLES/' | \
             sed -e 's/^SEE ALSO$/.SH SEE ALSO/' | \
-            sed -e "s/rock8s ${_CMD} ${_SUBCMD} \([a-z-]*\) --help/rock8s-${_CMD}-${_SUBCMD}-\1(1)/" | \
-            sed -e "s/rock8s ${_CMD} \([a-z-]*\) --help/rock8s-${_CMD}-\1(1)/" | \
-            sed -e 's/rock8s \([a-z-]*\) --help/rock8s-\1(1)/' >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}.1"
+            sed -e "s/rock8s ${cmd} ${subcmd} \([a-z-]*\) --help/rock8s-${cmd}-${subcmd}-\1(1)/" | \
+            sed -e "s/rock8s ${cmd} \([a-z-]*\) --help/rock8s-${cmd}-\1(1)/" | \
+            sed -e 's/rock8s \([a-z-]*\) --help/rock8s-\1(1)/' >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}.1"
     else
-        printf '.SH NAME\n%s-%s-%s \\- %s %s %s command\n' "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}.1"
+        printf '.SH NAME\n%s-%s-%s \\- %s %s %s command\n' "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${_MAIN_CMD}" "${cmd}" "${subcmd}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}.1"
         printf '.SH SYNOPSIS\n       %s %s %s [options]\n\n.SH DESCRIPTION\n       %s %s %s command\n\n.SH SEE ALSO\n       %s-%s(1)\n' \
-            "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_MAIN_CMD}" "${_CMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}.1"
+            "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${_MAIN_CMD}" "${cmd}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}.1"
     fi
 }
 
 generate_sub_sub_subcommand_manpage() {
-    _CMD="$1"
-    _SUBCMD="$2"
-    _SUBSUBCMD="$3"
-    _MAIN_CMD_UPPER=$(echo "${_MAIN_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    _CMD_UPPER=$(echo "${_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    _SUBCMD_UPPER=$(echo "${_SUBCMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    _SUBSUBCMD_UPPER=$(echo "${_SUBSUBCMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
-    printf '.TH %s-%s-%s-%s 1 "%s" "rock8s" "User Commands"\n' "${_MAIN_CMD_UPPER}" "${_CMD_UPPER}" "${_SUBCMD_UPPER}" "${_SUBSUBCMD_UPPER}" "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}-${_SUBSUBCMD}.1"
-    _HELP_FILE="${_BUILD_DIR}/rock8s-help-${_CMD}-${_SUBCMD}-${_SUBSUBCMD}.txt"
-    _SUBSUBCMD_FILE="libexec/${_CMD}/${_SUBCMD}/${_SUBSUBCMD}.sh"
-    if [ -f "${_SUBSUBCMD_FILE}" ]; then
-        extract_help_text "${_SUBSUBCMD_FILE}" "_help" "${_HELP_FILE}"
+    cmd="$1"
+    subcmd="$2"
+    subsubcmd="$3"
+    main_cmd_upper=$(echo "${_MAIN_CMD}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    cmd_upper=$(echo "${cmd}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    subcmd_upper=$(echo "${subcmd}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    subsubcmd_upper=$(echo "${subsubcmd}" | tr '[:lower:]' '[:upper:]') 2> /dev/null
+    printf '.TH %s-%s-%s-%s 1 "%s" "rock8s" "User Commands"\n' "${main_cmd_upper}" "${cmd_upper}" "${subcmd_upper}" "${subsubcmd_upper}" "$(date +'%B %Y')" > "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}-${subsubcmd}.1"
+    help_file="${_BUILD_DIR}/rock8s-help-${cmd}-${subcmd}-${subsubcmd}.txt"
+    subsubcmd_file="libexec/${cmd}/${subcmd}/${subsubcmd}.sh"
+    if [ -f "${subsubcmd_file}" ]; then
+        extract_help_text "${subsubcmd_file}" "_help" "${help_file}"
     fi
-    if [ -s "${_HELP_FILE}" ]; then
-        cat "${_HELP_FILE}" | \
+    if [ -s "${help_file}" ]; then
+        cat "${help_file}" | \
             sed -e 's/^NAME$/.SH NAME/' | \
             sed -e 's/^SYNOPSIS$/.SH SYNOPSIS/' | \
             sed -e 's/^DESCRIPTION$/.SH DESCRIPTION/' | \
@@ -133,14 +133,14 @@ generate_sub_sub_subcommand_manpage() {
             sed -e 's/^COMMANDS$/.SH COMMANDS/' | \
             sed -e 's/^EXAMPLE$/.SH EXAMPLES/' | \
             sed -e 's/^SEE ALSO$/.SH SEE ALSO/' | \
-            sed -e "s/rock8s ${_CMD} ${_SUBCMD} ${_SUBSUBCMD} \([a-z-]*\) --help/rock8s-${_CMD}-${_SUBCMD}-${_SUBSUBCMD}-\1(1)/" | \
-            sed -e "s/rock8s ${_CMD} ${_SUBCMD} \([a-z-]*\) --help/rock8s-${_CMD}-${_SUBCMD}-\1(1)/" | \
-            sed -e "s/rock8s ${_CMD} \([a-z-]*\) --help/rock8s-${_CMD}-\1(1)/" | \
-            sed -e 's/rock8s \([a-z-]*\) --help/rock8s-\1(1)/' >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}-${_SUBSUBCMD}.1"
+            sed -e "s/rock8s ${cmd} ${subcmd} ${subsubcmd} \([a-z-]*\) --help/rock8s-${cmd}-${subcmd}-${subsubcmd}-\1(1)/" | \
+            sed -e "s/rock8s ${cmd} ${subcmd} \([a-z-]*\) --help/rock8s-${cmd}-${subcmd}-\1(1)/" | \
+            sed -e "s/rock8s ${cmd} \([a-z-]*\) --help/rock8s-${cmd}-\1(1)/" | \
+            sed -e 's/rock8s \([a-z-]*\) --help/rock8s-\1(1)/' >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}-${subsubcmd}.1"
     else
-        printf '.SH NAME\n%s-%s-%s-%s \\- %s %s %s %s command\n' "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_SUBSUBCMD}" "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_SUBSUBCMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}-${_SUBSUBCMD}.1"
+        printf '.SH NAME\n%s-%s-%s-%s \\- %s %s %s %s command\n' "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${subsubcmd}" "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${subsubcmd}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}-${subsubcmd}.1"
         printf '.SH SYNOPSIS\n       %s %s %s %s [options]\n\n.SH DESCRIPTION\n       %s %s %s %s command\n\n.SH SEE ALSO\n       %s-%s-%s(1)\n' \
-            "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_SUBSUBCMD}" "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" "${_SUBSUBCMD}" "${_MAIN_CMD}" "${_CMD}" "${_SUBCMD}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${_CMD}-${_SUBCMD}-${_SUBSUBCMD}.1"
+            "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${subsubcmd}" "${_MAIN_CMD}" "${cmd}" "${subcmd}" "${subsubcmd}" "${_MAIN_CMD}" "${cmd}" "${subcmd}" >> "${_MAN1_DIR}/${_MAIN_CMD}-${cmd}-${subcmd}-${subsubcmd}.1"
     fi
 }
 

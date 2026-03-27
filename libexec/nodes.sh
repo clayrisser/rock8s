@@ -64,11 +64,11 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _CMD=""
-    _CMD_ARGS=""
-    _TENANT="$ROCK8S_TENANT"
-    _CLUSTER="$ROCK8S_CLUSTER"
+    output="${ROCK8S_OUTPUT}"
+    cmd=""
+    cmd_args=""
+    tenant="$ROCK8S_TENANT"
+    cluster="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -78,11 +78,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -90,11 +90,11 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
@@ -102,19 +102,19 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             apply|destroy|ls|ssh|pubkey)
-                _CMD="$1"
+                cmd="$1"
                 shift
-                _CMD_ARGS="$*"
+                cmd_args="$*"
                 break
                 ;;
             *)
@@ -123,18 +123,18 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CMD" ]; then
+    if [ -z "$cmd" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_TENANT="$_TENANT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_OUTPUT="$_OUTPUT"
-    _SUBCMD="$ROCK8S_LIB_PATH/libexec/nodes/$_CMD.sh"
-    if [ ! -f "$_SUBCMD" ]; then
-        fail "unknown command: $_CMD"
+    export ROCK8S_TENANT="$tenant"
+    export ROCK8S_CLUSTER="$cluster"
+    export ROCK8S_OUTPUT="$output"
+    subcmd="$ROCK8S_LIB_PATH/libexec/nodes/$cmd.sh"
+    if [ ! -f "$subcmd" ]; then
+        fail "unknown command: $cmd"
     fi
-    exec sh "$_SUBCMD" $_CMD_ARGS
+    exec sh "$subcmd" $cmd_args
 }
 
 _main "$@"

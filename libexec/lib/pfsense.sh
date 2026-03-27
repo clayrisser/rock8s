@@ -2,42 +2,29 @@
 
 set -e
 
-get_pfsense_output_json_file() {
-    if [ -n "$_PFSENSE_OUTPUT_JSON_FILE" ]; then
-        echo "$_PFSENSE_OUTPUT_JSON_FILE"
-        return
-    fi
-    _PFSENSE_OUTPUT_JSON_FILE="$(get_cluster_dir)/pfsense/output.json"
-    echo "$_PFSENSE_OUTPUT_JSON_FILE"
-}
-
-get_pfsense_output_json() {
-    if [ -n "$_PFSENSE_OUTPUT_JSON" ]; then
-        echo "$_PFSENSE_OUTPUT_JSON"
-        return
-    fi
-    _PFSENSE_OUTPUT_JSON_FILE="$(get_pfsense_output_json_file)"
-    if [ -f "$_PFSENSE_OUTPUT_JSON_FILE" ]; then
-        _PFSENSE_OUTPUT_JSON="$(cat "$_PFSENSE_OUTPUT_JSON_FILE")"
-    else
-        _PFSENSE_OUTPUT_JSON='{}'
-    fi
-    echo "$_PFSENSE_OUTPUT_JSON"
-}
-
 get_pfsense_ssh_private_key() {
     if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ]; then
         echo "$_PFSENSE_SSH_PRIVATE_KEY"
         return
     fi
     _CONFIG_JSON="$(get_config_json)"
-    if [ "$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].type // ""')" = "" ]; then
-        _PFSENSE_SSH_PRIVATE_KEY="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].ssh_private_key // ""')"
-    fi
-    if [ -z "$_PFSENSE_SSH_PRIVATE_KEY" ]; then
-        _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_output_json | jq -r '.node_ssh_private_key.value // ""')"
+    _PFSENSE_SSH_PRIVATE_KEY="$(echo "$_CONFIG_JSON" | jq -r '.pfsense.ssh_private_key // ""')"
+    if [ -z "$_PFSENSE_SSH_PRIVATE_KEY" ] || [ ! -f "$_PFSENSE_SSH_PRIVATE_KEY" ]; then
+        pfsense_dir="$(get_pfsense_dir)"
+        if [ -f "$pfsense_dir/id_rsa" ]; then
+            _PFSENSE_SSH_PRIVATE_KEY="$pfsense_dir/id_rsa"
+        fi
     fi
     echo "$_PFSENSE_SSH_PRIVATE_KEY"
+}
+
+is_pfsense_provisioned() {
+    _CONFIG_JSON="$(get_config_json)"
+    pfsense_type="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].type // ""')"
+    if [ -n "$pfsense_type" ] && [ "$pfsense_type" != "null" ]; then
+        return 0
+    fi
+    return 1
 }
 
 get_pfsense_primary_hostname() {
@@ -46,9 +33,9 @@ get_pfsense_primary_hostname() {
         return
     fi
     _CONFIG_JSON="$(get_config_json)"
-    _PFSENSE_PRIMARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[0] // ""')"
+    _PFSENSE_PRIMARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense.hostname // ""')"
     if [ -z "$_PFSENSE_PRIMARY_HOSTNAME" ]; then
-        fail ".pfsense[0].hostnames[0] not found in config.yaml"
+        fail ".pfsense.hostname not found in config.yaml"
     fi
     echo "$_PFSENSE_PRIMARY_HOSTNAME"
 }
@@ -59,7 +46,7 @@ get_pfsense_secondary_hostname() {
         return
     fi
     _CONFIG_JSON="$(get_config_json)"
-    _PFSENSE_SECONDARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[1] // ""')"
+    _PFSENSE_SECONDARY_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense.secondary_hostname // ""')"
     echo "$_PFSENSE_SECONDARY_HOSTNAME"
 }
 
@@ -69,7 +56,7 @@ get_pfsense_shared_hostname() {
         return
     fi
     _CONFIG_JSON="$(get_config_json)"
-    _PFSENSE_SHARED_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense[0].hostnames[2] // ""')"
+    _PFSENSE_SHARED_HOSTNAME="$(echo "$_CONFIG_JSON" | jq -r '.pfsense.shared_hostname // ""')"
     echo "$_PFSENSE_SHARED_HOSTNAME"
 }
 
@@ -104,22 +91,22 @@ get_lan_ipv6_subnet() {
     _CONFIG_JSON="$(get_config_json)"
     _LAN_IPV6_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv6.subnet // ""')"
     if [ -z "$_LAN_IPV6_SUBNET" ]; then
-        _LAN_IPV4_NETWORK="$(get_lan_ipv4_subnet | cut -d'/' -f1)"
-        _LAST_NONZERO_OCTET=""
-        _OCTET_COUNT=1
-        for _OCTET in $(echo "$_LAN_IPV4_NETWORK" | tr '.' ' '); do
-            if [ "$_OCTET" != "0" ]; then
-                _LAST_NONZERO_OCTET="$_OCTET"
-                _LAST_NONZERO_POSITION="$_OCTET_COUNT"
+        lan_ipv4_network="$(get_lan_ipv4_subnet | cut -d'/' -f1)"
+        last_nonzero_octet=""
+        octet_count=1
+        for octet in $(echo "$lan_ipv4_network" | tr '.' ' '); do
+            if [ "$octet" != "0" ]; then
+                last_nonzero_octet="$octet"
+                last_nonzero_position="$octet_count"
             fi
-            _OCTET_COUNT=$((_OCTET_COUNT + 1))
+            octet_count=$((octet_count + 1))
         done
-        if [ "$_LAST_NONZERO_OCTET" -gt 99 ]; then
-            _PREFIX="$(printf '%02x' "$_LAST_NONZERO_OCTET")"
+        if [ "$last_nonzero_octet" -gt 99 ]; then
+            prefix="$(printf '%02x' "$last_nonzero_octet")"
         else
-            _PREFIX="$_LAST_NONZERO_OCTET"
+            prefix="$last_nonzero_octet"
         fi
-        _LAN_IPV6_SUBNET="fd${_PREFIX}::/64"
+        _LAN_IPV6_SUBNET="fd${prefix}::/64"
     fi
     echo "$_LAN_IPV6_SUBNET"
 }
@@ -156,8 +143,8 @@ get_pfsense_primary_lan_ipv4() {
         echo "$_PFSENSE_PRIMARY_LAN_IPV4"
         return
     fi
-    _LAN_IPV4_NETWORK="$(get_lan_ipv4_subnet | cut -d'/' -f1)"
-    _PFSENSE_PRIMARY_LAN_IPV4="$(calculate_next_ipv4 "$_LAN_IPV4_NETWORK" 2)"
+    lan_ipv4_network="$(get_lan_ipv4_subnet | cut -d'/' -f1)"
+    _PFSENSE_PRIMARY_LAN_IPV4="$(calculate_next_ipv4 "$lan_ipv4_network" 2)"
     echo "$_PFSENSE_PRIMARY_LAN_IPV4"
 }
 
@@ -166,8 +153,8 @@ get_pfsense_secondary_lan_ipv4() {
         echo "$_PFSENSE_SECONDARY_LAN_IPV4"
         return
     fi
-    _LAN_IPV4_NETWORK="$(get_lan_ipv4_subnet | cut -d'/' -f1)"
-    _PFSENSE_SECONDARY_LAN_IPV4="$(calculate_next_ipv4 "$_LAN_IPV4_NETWORK" 3)"
+    lan_ipv4_network="$(get_lan_ipv4_subnet | cut -d'/' -f1)"
+    _PFSENSE_SECONDARY_LAN_IPV4="$(calculate_next_ipv4 "$lan_ipv4_network" 3)"
     echo "$_PFSENSE_SECONDARY_LAN_IPV4"
 }
 
@@ -180,8 +167,8 @@ get_pfsense_primary_sync_ipv4() {
     if [ -z "$_SYNC_IPV4_SUBNET" ]; then
         return
     fi
-    _SYNC_IPV4_NETWORK="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f1)"
-    _PFSENSE_PRIMARY_SYNC_IPV4="$(calculate_next_ipv4 "$_SYNC_IPV4_NETWORK" 2)"
+    sync_ipv4_network="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f1)"
+    _PFSENSE_PRIMARY_SYNC_IPV4="$(calculate_next_ipv4 "$sync_ipv4_network" 2)"
     echo "$_PFSENSE_PRIMARY_SYNC_IPV4"
 }
 
@@ -194,8 +181,8 @@ get_pfsense_secondary_sync_ipv4() {
     if [ -z "$_SYNC_IPV4_SUBNET" ]; then
         return
     fi
-    _SYNC_IPV4_NETWORK="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f1)"
-    _PFSENSE_SECONDARY_SYNC_IPV4="$(calculate_next_ipv4 "$_SYNC_IPV4_NETWORK" 3)"
+    sync_ipv4_network="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f1)"
+    _PFSENSE_SECONDARY_SYNC_IPV4="$(calculate_next_ipv4 "$sync_ipv4_network" 3)"
     echo "$_PFSENSE_SECONDARY_SYNC_IPV4"
 }
 
@@ -213,8 +200,8 @@ get_pfsense_primary_lan_ipv6() {
         echo "$_PFSENSE_PRIMARY_LAN_IPV6"
         return
     fi
-    _LAN_IPV6_PREFIX="$(get_lan_ipv6_subnet | cut -d'/' -f1)"
-    _PFSENSE_PRIMARY_LAN_IPV6="${_LAN_IPV6_PREFIX}2"
+    lan_ipv6_prefix="$(get_lan_ipv6_subnet | cut -d'/' -f1)"
+    _PFSENSE_PRIMARY_LAN_IPV6="${lan_ipv6_prefix}2"
     echo "$_PFSENSE_PRIMARY_LAN_IPV6"
 }
 
@@ -223,8 +210,8 @@ get_pfsense_secondary_lan_ipv6() {
         echo "$_PFSENSE_SECONDARY_LAN_IPV6"
         return
     fi
-    _LAN_IPV6_PREFIX="$(get_lan_ipv6_subnet | cut -d'/' -f1)"
-    _PFSENSE_SECONDARY_LAN_IPV6="${_LAN_IPV6_PREFIX}3"
+    lan_ipv6_prefix="$(get_lan_ipv6_subnet | cut -d'/' -f1)"
+    _PFSENSE_SECONDARY_LAN_IPV6="${lan_ipv6_prefix}3"
     echo "$_PFSENSE_SECONDARY_LAN_IPV6"
 }
 
@@ -234,14 +221,7 @@ get_lan_ipv4_dhcp() {
         return
     fi
     _CONFIG_JSON="$(get_config_json)"
-    _LAN_IPV4_DHCP="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv4.dhcp // ""')"
-    if [ "$_LAN_IPV4_DHCP" = "" ]; then
-        if [ "$(get_external_network)" = "1" ]; then
-            _LAN_IPV4_DHCP="false"
-        else
-            _LAN_IPV4_DHCP="true"
-        fi
-    fi
+    _LAN_IPV4_DHCP="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv4.dhcp // "false"')"
     echo "$_LAN_IPV4_DHCP"
 }
 
@@ -285,17 +265,17 @@ get_sync_interface() {
 }
 
 get_haproxy_backend() {
-    _HAPROXY_PORT="$1"
+    haproxy_port="$1"
     shift
-    _HAPROXY_BACKEND=""
-    for _IP in "$@"; do
-        if [ -n "$_HAPROXY_BACKEND" ]; then
-            _HAPROXY_BACKEND="${_HAPROXY_BACKEND},check:${_IP}:${_HAPROXY_PORT}"
+    haproxy_backend=""
+    for ip in "$@"; do
+        if [ -n "$haproxy_backend" ]; then
+            haproxy_backend="${haproxy_backend},check:${ip}:${haproxy_port}"
         else
-            _HAPROXY_BACKEND="check:${_IP}:${_HAPROXY_PORT}"
+            haproxy_backend="check:${ip}:${haproxy_port}"
         fi
     done
-    echo "$_HAPROXY_BACKEND"
+    echo "$haproxy_backend"
 }
 
 get_pfsense_althostnames() {
@@ -303,7 +283,7 @@ get_pfsense_althostnames() {
         echo "$_PFSENSE_ALTHOSTNAMES"
         return
     fi
-    for _HOSTNAME in \
+    for hostname in \
         "$(get_pfsense_primary_hostname)" \
         "$(get_pfsense_primary_lan_ipv4)" \
         "$(get_pfsense_primary_lan_ipv6)" \
@@ -315,37 +295,14 @@ get_pfsense_althostnames() {
         "$(get_pfsense_shared_hostname)" \
         "$(get_pfsense_shared_lan_ipv4)" \
         "$(get_pfsense_shared_wan_ipv4)"; do
-        if [ -n "$_HOSTNAME" ]; then
+        if [ -n "$hostname" ]; then
             if [ -n "$_PFSENSE_ALTHOSTNAMES" ]; then
-                _PFSENSE_ALTHOSTNAMES="$_PFSENSE_ALTHOSTNAMES $_HOSTNAME"
+                _PFSENSE_ALTHOSTNAMES="$_PFSENSE_ALTHOSTNAMES $hostname"
             else
-                _PFSENSE_ALTHOSTNAMES="$_HOSTNAME"
+                _PFSENSE_ALTHOSTNAMES="$hostname"
             fi
         fi
     done
     echo "$_PFSENSE_ALTHOSTNAMES"
 }
 
-get_pfsense_private_ipv4s() {
-    if [ -n "$_PFSENSE_PRIVATE_IPV4S" ]; then
-        echo "$_PFSENSE_PRIVATE_IPV4S"
-        return
-    fi
-    _PFSENSE_PRIVATE_IPV4S="$(get_pfsense_output_json | jq -r '.node_private_ipv4s?.value // [] | to_entries[]? | .value // empty')"
-    echo "$_PFSENSE_PRIVATE_IPV4S"
-}
-
-get_pfsense_public_ipv4s() {
-    if [ -n "$_PFSENSE_PUBLIC_IPV4S" ]; then
-        echo "$_PFSENSE_PUBLIC_IPV4S"
-        return
-    fi
-    _PFSENSE_PRIMARY_WAN_IPV4="$(get_pfsense_primary_wan_ipv4)"
-    _PFSENSE_SECONDARY_WAN_IPV4="$(get_pfsense_secondary_wan_ipv4)"
-    if [ -n "$_PFSENSE_SECONDARY_WAN_IPV4" ]; then
-        _PFSENSE_PUBLIC_IPV4S="$_PFSENSE_PRIMARY_WAN_IPV4 $_PFSENSE_SECONDARY_WAN_IPV4"
-    else
-        _PFSENSE_PUBLIC_IPV4S="$_PFSENSE_PRIMARY_WAN_IPV4"
-    fi
-    echo "$_PFSENSE_PUBLIC_IPV4S"
-}

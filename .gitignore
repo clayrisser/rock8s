@@ -6,7 +6,7 @@
 # ansible
 *.retry
 
-# terraform
+# opentofu
 **/.terraform/*
 *.tfstate
 *.tfstate.*
@@ -16,8 +16,10 @@
 *_override.tf.json
 .terraform.tfstate.lock.info
 .terraformrc
+.tofurc
 crash.*.log
 crash.log
 override.tf
 override.tf.json
 terraform.rc
+tofu.rc

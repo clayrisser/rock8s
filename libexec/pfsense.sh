@@ -10,14 +10,14 @@ NAME
        rock8s pfsense
 
 SYNOPSIS
-       rock8s pfsense [-h] [-o <format>] [-c|--cluster <cluster>] [-t <tenant>] <command>
+       rock8s pfsense [-h] [-o <format>] [-n|--name <name>] [-t|--tenant <tenant>] <command>
 
 DESCRIPTION
-       configure and manage pfsense firewall
+       provision and configure pfsense firewall (standalone, independent of clusters)
 
 COMMANDS
        apply
-              create and configure pfsense firewall nodes
+              provision and configure pfsense firewall nodes
 
        configure
               configure pfsense settings and rules
@@ -26,7 +26,7 @@ COMMANDS
               destroy pfsense firewall nodes
 
        publish
-              publish haproxy configuration
+              publish cluster haproxy rules to pfsense (requires --cluster)
 
 OPTIONS
        -h, --help
@@ -38,18 +38,18 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name
 
-       -c, --cluster <cluster>
-              cluster name
+       -n, --name <name>
+              pfsense instance name
 
 EXAMPLE
-       # create and configure pfsense for a cluster
-       rock8s pfsense apply --cluster mycluster
+       # provision and configure pfsense
+       rock8s pfsense apply --name mypfsense
 
-       # configure pfsense for a cluster
-       rock8s pfsense configure --cluster mycluster
+       # configure pfsense
+       rock8s pfsense configure --name mypfsense
 
-       # publish haproxy configuration
-       rock8s pfsense publish --cluster mycluster --password mypassword
+       # publish cluster haproxy rules to pfsense
+       rock8s pfsense publish --name mypfsense --cluster mycluster
 
 SEE ALSO
        rock8s pfsense apply --help
@@ -60,10 +60,11 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _CMD=""
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _TENANT="$ROCK8S_TENANT"
+    output="${ROCK8S_OUTPUT}"
+    cmd=""
+    pfsense="$ROCK8S_PFSENSE"
+    tenant="$ROCK8S_TENANT"
+    cluster="$ROCK8S_CLUSTER"
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -73,11 +74,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -85,11 +86,23 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
+                        shift 2
+                        ;;
+                esac
+                ;;
+            -n|--name|-n=*|--name=*)
+                case "$1" in
+                    *=*)
+                        pfsense="${1#*=}"
+                        shift
+                        ;;
+                    *)
+                        pfsense="$2"
                         shift 2
                         ;;
                 esac
@@ -97,17 +110,17 @@ _main() {
             -c|--cluster|-c=*|--cluster=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        cluster="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        cluster="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             apply|configure|destroy|publish)
-                _CMD="$1"
+                cmd="$1"
                 shift
                 break
                 ;;
@@ -117,18 +130,19 @@ _main() {
                 ;;
         esac
     done
-    if [ -z "$_CMD" ]; then
+    if [ -z "$cmd" ]; then
         _help
         exit 1
     fi
-    export ROCK8S_OUTPUT="$_OUTPUT"
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
-    _SUBCMD="$ROCK8S_LIB_PATH/libexec/pfsense/$_CMD.sh"
-    if [ ! -f "$_SUBCMD" ]; then
-        fail "unknown pfsense command $_CMD"
+    export ROCK8S_OUTPUT="$output"
+    export ROCK8S_PFSENSE="$pfsense"
+    export ROCK8S_TENANT="$tenant"
+    export ROCK8S_CLUSTER="$cluster"
+    subcmd="$ROCK8S_LIB_PATH/libexec/pfsense/$cmd.sh"
+    if [ ! -f "$subcmd" ]; then
+        fail "unknown pfsense command $cmd"
     fi
-    exec sh "$_SUBCMD" "$@"
+    exec sh "$subcmd" "$@"
 }
 
 _main "$@"

@@ -10,7 +10,7 @@ NAME
        rock8s pfsense configure
 
 SYNOPSIS
-       rock8s pfsense configure [-h] [-o <format>] [--cluster <cluster>] [-t <tenant>] [--update] [--password <password>] [--ssh-password]
+       rock8s pfsense configure [-h] [-o <format>] [--name <name>] [-t <tenant>] [--update] [--password <password>] [--ssh-password]
 
 DESCRIPTION
        configure pfsense
@@ -25,8 +25,8 @@ OPTIONS
        -t, --tenant <tenant>
               tenant name
 
-       -c, --cluster <cluster>
-              cluster name
+       -n, --name <name>
+              pfsense instance name
 
        --update
               update ansible collections
@@ -39,13 +39,13 @@ OPTIONS
 
 EXAMPLE
        # configure pfsense
-       rock8s pfsense configure --cluster mycluster
+       rock8s pfsense configure --name mypfsense
 
        # configure pfsense with a specific password
-       rock8s pfsense configure --cluster mycluster --password mypassword
+       rock8s pfsense configure --name mypfsense --password mypassword
 
        # configure pfsense using password authentication for ssh
-       rock8s pfsense configure --cluster mycluster --ssh-password --password mypassword
+       rock8s pfsense configure --name mypfsense --ssh-password --password mypassword
 
 SEE ALSO
        rock8s pfsense publish --help
@@ -55,12 +55,12 @@ EOF
 }
 
 _main() {
-    _OUTPUT="${ROCK8S_OUTPUT}"
-    _TENANT="$ROCK8S_TENANT"
-    _CLUSTER="$ROCK8S_CLUSTER"
-    _UPDATE=""
-    _PASSWORD=""
-    _SSH_PASSWORD=0
+    output="${ROCK8S_OUTPUT}"
+    tenant="$ROCK8S_TENANT"
+    pfsense="$ROCK8S_PFSENSE"
+    update=""
+    password=""
+    ssh_password=0
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -70,11 +70,11 @@ _main() {
             -o|--output|-o=*|--output=*)
                 case "$1" in
                     *=*)
-                        _OUTPUT="${1#*=}"
+                        output="${1#*=}"
                         shift
                         ;;
                     *)
-                        _OUTPUT="$2"
+                        output="$2"
                         shift 2
                         ;;
                 esac
@@ -82,23 +82,23 @@ _main() {
             -t|--tenant|-t=*|--tenant=*)
                 case "$1" in
                     *=*)
-                        _TENANT="${1#*=}"
+                        tenant="${1#*=}"
                         shift
                         ;;
                     *)
-                        _TENANT="$2"
+                        tenant="$2"
                         shift 2
                         ;;
                 esac
                 ;;
-            -c|--cluster|-c=*|--cluster=*)
+            -n|--name|-n=*|--name=*)
                 case "$1" in
                     *=*)
-                        _CLUSTER="${1#*=}"
+                        pfsense="${1#*=}"
                         shift
                         ;;
                     *)
-                        _CLUSTER="$2"
+                        pfsense="$2"
                         shift 2
                         ;;
                 esac
@@ -106,21 +106,21 @@ _main() {
             --password|--password=*)
                 case "$1" in
                     *=*)
-                        _PASSWORD="${1#*=}"
+                        password="${1#*=}"
                         shift
                         ;;
                     *)
-                        _PASSWORD="$2"
+                        password="$2"
                         shift 2
                         ;;
                 esac
                 ;;
             --ssh-password)
-                _SSH_PASSWORD=1
+                ssh_password=1
                 shift
                 ;;
             --update)
-                _UPDATE="1"
+                update="1"
                 shift
                 ;;
             -*)
@@ -133,55 +133,50 @@ _main() {
                 ;;
         esac
     done
-    if [ "$_SSH_PASSWORD" = "1" ]; then
+    if [ "$ssh_password" = "1" ]; then
         command -v sshpass >/dev/null 2>&1 || {
             fail "sshpass is not installed"
         }
     fi
-    export ROCK8S_CLUSTER="$_CLUSTER"
-    export ROCK8S_TENANT="$_TENANT"
-    if [ -z "$ROCK8S_CLUSTER" ]; then
-        fail "cluster name required"
+    export ROCK8S_PFSENSE="$pfsense"
+    export ROCK8S_TENANT="$tenant"
+    if [ -z "$ROCK8S_PFSENSE" ]; then
+        fail "pfsense name required"
     fi
-    _CLUSTER_DIR="$(get_cluster_dir)"
-    _PROVIDER="$(get_provider)"
-    _PFSENSE_DIR="$_CLUSTER_DIR/pfsense"
-    mkdir -p "$_PFSENSE_DIR"
-    _PFSENSE_SHARED_WAN_IPV4="$(get_pfsense_shared_wan_ipv4)"
-    _PFSENSE_SECONDARY_HOSTNAME="$(get_pfsense_secondary_hostname)"
-    if ([ "$_SSH_PASSWORD" = "1" ] || ([ -n "$_PFSENSE_SECONDARY_HOSTNAME" ])) && [ -z "$_PASSWORD" ]; then
-        _PASSWORD="$(whiptail --title "Enter admin password" \
-            --backtitle "Rock8s Configuration" \
-            --passwordbox " " \
-            0 0 \
-            3>&1 1>&2 2>&3)" || fail "password required"
+    pfsense_dir="$(get_pfsense_dir)"
+    provider="$(get_provider)"
+    mkdir -p "$pfsense_dir"
+    pfsense_shared_wan_ipv4="$(get_pfsense_shared_wan_ipv4)"
+    pfsense_secondary_hostname="$(get_pfsense_secondary_hostname)"
+    if ([ "$ssh_password" = "1" ] || [ -n "$pfsense_secondary_hostname" ]) && [ -z "$password" ]; then
+        fail "password required (use --password)"
     fi
-    _LAN_IPV4_SUBNET="$(get_lan_ipv4_subnet)"
-    _LAN_IPV4_PREFIX="$(echo "$_LAN_IPV4_SUBNET" | cut -d'/' -f2)"
-    _SYNC_IPV4_SUBNET="$(get_sync_ipv4_subnet)"
-    _SYNC_IPV4_PREFIX="$(echo "$_SYNC_IPV4_SUBNET" | cut -d'/' -f2)"
-    rm -rf "$_PFSENSE_DIR/ansible"
-    cp -r "$ROCK8S_LIB_PATH/pfsense" "$_PFSENSE_DIR/ansible"
-    mkdir -p "$_PFSENSE_DIR/collections"
+    lan_ipv4_subnet="$(get_lan_ipv4_subnet)"
+    lan_ipv4_prefix="$(echo "$lan_ipv4_subnet" | cut -d'/' -f2)"
+    sync_ipv4_subnet="$(get_sync_ipv4_subnet)"
+    sync_ipv4_prefix="$(echo "$sync_ipv4_subnet" | cut -d'/' -f2)"
+    rm -rf "$pfsense_dir/ansible"
+    cp -r "$ROCK8S_LIB_PATH/pfsense" "$pfsense_dir/ansible"
+    mkdir -p "$pfsense_dir/collections"
     ansible-galaxy collection install \
-        $([ "$_UPDATE" = "1" ] && echo "--force") \
-        -r "$_PFSENSE_DIR/ansible/requirements.yml" \
-        -p "$_PFSENSE_DIR/collections" >&2
-    mkdir -p "$_PFSENSE_DIR/collections/ansible_collections/pfsensible"
-    _DEFAULTS="$(yaml2json < "$_PFSENSE_DIR/ansible/vars.yml")"
-    _SYNC_INTERFACE="$(get_sync_interface)"
-    _PFSENSE_PRIMARY="$(get_pfsense_primary_lan_ipv4)"
-    _PFSENSE_SECONDARY="$_PFSENSE_SECONDARY_HOSTNAME"
-    _PFSENSE_SSH_PRIVATE_KEY="$(get_pfsense_ssh_private_key)"
-    if ! timeout 5s ssh -i "$_PFSENSE_SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no admin@$_PFSENSE_PRIMARY 'true' 2>/dev/null; then
-        _PFSENSE_PRIMARY="$(get_pfsense_primary_hostname)"
-        if [ -n "$_PFSENSE_SECONDARY_HOSTNAME" ]; then
-            _PFSENSE_SECONDARY="$(get_pfsense_secondary_lan_ipv4)"
+        $([ "$update" = "1" ] && echo "--force") \
+        -r "$pfsense_dir/ansible/requirements.yml" \
+        -p "$pfsense_dir/collections" >&2
+    mkdir -p "$pfsense_dir/collections/ansible_collections/pfsensible"
+    defaults="$(yaml2json < "$pfsense_dir/ansible/vars.yml")"
+    sync_interface="$(get_sync_interface)"
+    pfsense_primary="$(get_pfsense_primary_lan_ipv4)"
+    pfsense_secondary="$pfsense_secondary_hostname"
+    pfsense_ssh_private_key="$(get_pfsense_ssh_private_key)"
+    if ! timeout 5s ssh -i "$pfsense_ssh_private_key" -o StrictHostKeyChecking=no admin@$pfsense_primary 'true' 2>/dev/null; then
+        pfsense_primary="$(get_pfsense_primary_hostname)"
+        if [ -n "$pfsense_secondary_hostname" ]; then
+            pfsense_secondary="$(get_pfsense_secondary_lan_ipv4)"
         fi
     fi
-    _CONFIG="$(cat <<EOF | yaml2json
+    config="$(cat <<EOF | yaml2json
 pfsense:
-  provider: $_PROVIDER
+  provider: $provider
   password: '{{ lookup("env", "PFSENSE_ADMIN_PASSWORD") }}'
   system:
     dns: $(get_dns_servers)
@@ -189,60 +184,60 @@ pfsense:
   network:
     interfaces:
       lan:
-        subnet: ${_LAN_IPV4_SUBNET}
+        subnet: ${lan_ipv4_subnet}
         interface: $(get_lan_interface)
         dhcp: $(get_lan_ipv4_dhcp)
         ipv4:
-          primary: $(get_pfsense_primary_lan_ipv4)/${_LAN_IPV4_PREFIX}$([ -n "$_PFSENSE_SECONDARY" ] && echo "
-          secondary: $(get_pfsense_secondary_lan_ipv4)/${_LAN_IPV4_PREFIX}" || true)$([ "$(get_enable_network_dualstack)" = "1" ] && echo "
+          primary: $(get_pfsense_primary_lan_ipv4)/${lan_ipv4_prefix}$([ -n "$pfsense_secondary" ] && echo "
+          secondary: $(get_pfsense_secondary_lan_ipv4)/${lan_ipv4_prefix}" || true)$([ "$(get_enable_network_dualstack)" = "1" ] && echo "
         ipv6:
-          primary: $(get_pfsense_primary_lan_ipv6)/64$([ -n "$_PFSENSE_SECONDARY" ] && echo "
-          secondary: $(get_pfsense_secondary_lan_ipv6)/64" || true)" || true)$([ -n "$_PFSENSE_SECONDARY" ] && echo "
+          primary: $(get_pfsense_primary_lan_ipv6)/64$([ -n "$pfsense_secondary" ] && echo "
+          secondary: $(get_pfsense_secondary_lan_ipv6)/64" || true)" || true)$([ -n "$pfsense_secondary" ] && echo "
         ips:
-          - $(get_pfsense_shared_lan_ipv4)/${_LAN_IPV4_PREFIX}" || true)$([ -n "$_SYNC_INTERFACE" ] && [ -n "$_SYNC_IPV4_SUBNET" ] && echo "
+          - $(get_pfsense_shared_lan_ipv4)/${lan_ipv4_prefix}" || true)$([ -n "$sync_interface" ] && [ -n "$sync_ipv4_subnet" ] && echo "
       sync:
-        subnet: $_SYNC_IPV4_SUBNET
-        interface: $_SYNC_INTERFACE
+        subnet: $sync_ipv4_subnet
+        interface: $sync_interface
         ipv4:
-          primary: $(get_pfsense_primary_sync_ipv4)/${_SYNC_IPV4_PREFIX}
-          secondary: $(get_pfsense_secondary_sync_ipv4)/${_SYNC_IPV4_PREFIX}" || true)$([ -n "$_PFSENSE_SHARED_WAN_IPV4" ] && echo "
+          primary: $(get_pfsense_primary_sync_ipv4)/${sync_ipv4_prefix}
+          secondary: $(get_pfsense_secondary_sync_ipv4)/${sync_ipv4_prefix}" || true)$([ -n "$pfsense_shared_wan_ipv4" ] && echo "
       wan:
         ips:
-          - \"$_PFSENSE_SHARED_WAN_IPV4\"" || true)
+          - \"$pfsense_shared_wan_ipv4\"" || true)
 EOF
 )"
-    echo "$_DEFAULTS" | jq --argjson config "$_CONFIG" '. * $config' | json2yaml > "$_PFSENSE_DIR/vars.yml"
-    cat > "$_PFSENSE_DIR/hosts.yml" <<EOF
+    echo "$defaults" | jq --argjson config "$config" '. * $config' | json2yaml > "$pfsense_dir/vars.yml"
+    cat > "$pfsense_dir/hosts.yml" <<EOF
 all:
   vars:
     ansible_user: admin
   hosts:
     pfsense1:
-      ansible_host: $_PFSENSE_PRIMARY
+      ansible_host: $pfsense_primary
       primary: true
 EOF
-    if [ -n "$_PFSENSE_SECONDARY" ]; then
-        cat >> "$_PFSENSE_DIR/hosts.yml" <<EOF
+    if [ -n "$pfsense_secondary" ]; then
+        cat >> "$pfsense_dir/hosts.yml" <<EOF
     pfsense2:
-      ansible_host: $_PFSENSE_SECONDARY
+      ansible_host: $pfsense_secondary
       primary: false
 EOF
     fi
-    if [ -n "$_PFSENSE_SSH_PRIVATE_KEY" ] && [ "$_SSH_PASSWORD" = "0" ]; then
-        export ANSIBLE_PRIVATE_KEY_FILE="$_PFSENSE_SSH_PRIVATE_KEY"
+    if [ -n "$pfsense_ssh_private_key" ] && [ "$ssh_password" = "0" ]; then
+        export ANSIBLE_PRIVATE_KEY_FILE="$pfsense_ssh_private_key"
     fi
-    cd "$_PFSENSE_DIR/ansible"
-    ANSIBLE_COLLECTIONS_PATH="$_PFSENSE_DIR/collections:/usr/share/ansible/collections" \
+    cd "$pfsense_dir/ansible"
+    ANSIBLE_COLLECTIONS_PATH="$pfsense_dir/collections:/usr/share/ansible/collections" \
         ANSIBLE_HOST_KEY_CHECKING=False \
-        PFSENSE_ADMIN_PASSWORD="$_PASSWORD" \
+        PFSENSE_ADMIN_PASSWORD="$password" \
         ansible-playbook \
-        -i "$_PFSENSE_DIR/hosts.yml" \
-        -e "@$_PFSENSE_DIR/vars.yml" \
-        $([ "$_SSH_PASSWORD" = "1" ] && echo "-e ansible_ssh_pass='$_PASSWORD'") \
-        "$_PFSENSE_DIR/ansible/playbooks/configure.yml" -v >&2
-    printf '{"cluster":"%s","provider":"%s","tenant":"%s"}\n' \
-        "$_CLUSTER" "$(get_provider)" "$_TENANT" | \
-        format_output "$_OUTPUT"
+        -i "$pfsense_dir/hosts.yml" \
+        -e "@$pfsense_dir/vars.yml" \
+        $([ "$ssh_password" = "1" ] && echo "-e ansible_ssh_pass='$password'") \
+        "$pfsense_dir/ansible/playbooks/configure.yml" -v >&2
+    printf '{"pfsense":"%s","provider":"%s","tenant":"%s"}\n' \
+        "$pfsense" "$(get_provider)" "$tenant" | \
+        format_output "$output"
 }
 
 _main "$@"
