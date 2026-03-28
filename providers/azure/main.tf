@@ -45,19 +45,16 @@ resource "azurerm_network_security_group" "nodes" {
     destination_address_prefix = "VirtualNetwork"
   }
 
-  dynamic "security_rule" {
-    for_each = local.has_gateway ? [] : [1]
-    content {
-      name                       = "${local.cluster}-allow-ssh-in"
-      priority                   = 110
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "Tcp"
-      source_port_range          = "*"
-      destination_port_range     = "22"
-      source_address_prefix      = "*"
-      destination_address_prefix = "*"
-    }
+  security_rule {
+    name                       = "${local.cluster}-allow-ssh-in"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
   }
 
   security_rule {

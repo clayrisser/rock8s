@@ -49,8 +49,8 @@ variable "image" {
   default = "Debian 12"
   validation {
     condition = contains([
-      "Debian 12", "Debian 11",
-      "Ubuntu 22.04", "Ubuntu 20.04",
+      "Debian 13", "Debian 12", "Debian 11",
+      "Ubuntu 25.10", "Ubuntu 24.04", "Ubuntu 22.04", "Ubuntu 20.04",
       "Rocky Linux 9", "Fedora 37"
     ], var.image)
     error_message = "invalid image"

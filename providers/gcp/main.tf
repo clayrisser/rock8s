@@ -34,9 +34,9 @@ resource "google_compute_firewall" "internal" {
 }
 
 resource "google_compute_firewall" "ssh_public" {
-  count = var.purpose == "master" && !local.has_gateway ? 1 : 0
+  count = var.purpose == "master" ? 1 : 0
 
-  description = "rock8s ${var.cluster_name}: SSH from public (WAN-only mode)"
+  description = "rock8s ${var.cluster_name}: SSH from public"
   name        = "${local.cluster}-ssh-public"
   network     = data.google_compute_network.lan.name
 

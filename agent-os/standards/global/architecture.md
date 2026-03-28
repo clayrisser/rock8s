@@ -14,7 +14,7 @@ rock8s is a CLI for provisioning and managing Kubernetes clusters on cloud infra
 
 ## Network model
 
-Gateway (`network.gateway`) identifies the LAN router/firewall (e.g. pfSense). Cloud providers always keep their native public IPs; when a gateway is set, firewalls block all incoming traffic on the public interface (including SSH) so ingress flows through the LAN gateway instead. When omitted, nodes are WAN-only with SSH open on public IPs. On-prem providers (Proxmox, libvirt) are LAN-only; the gateway provides NAT for internet access. MetalLB assigns LAN IPs to LoadBalancer services.
+Cloud VMs use the provider VPC/private network for east-west traffic and a public IP for reachability. Terraform-managed firewalls allow SSH from the internet so k3sup/SSH provisioning works; tighten rules in the cloud console if you expose production clusters. On-prem providers (Proxmox, libvirt) use cloud images on your LAN/NAT as you configure outside rock8s. Optional `network.lan.metallb` documents a pool for in-cluster LoadBalancer services when you use MetalLB (or similar).
 
 ## Repository layout
 
@@ -39,4 +39,4 @@ providers/             # IaC per provider
 - OpenTofu state is offloaded to remote backends (S3, GCS, etc.)
 - Cluster infrastructure is purpose-based: master → worker
 - Provider code is copied per-apply for reproducibility
-- Gateway/firewall is external — not managed by rock8s
+- Upstream corporate firewalls and edge NAT are outside rock8s — only node-level rules in Terraform are defined here

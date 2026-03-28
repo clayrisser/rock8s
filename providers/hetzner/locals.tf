@@ -1,8 +1,6 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
-  cloud_init  = <<-EOT
+  cluster    = var.cluster_name
+  cloud_init = <<-EOT
 #cloud-config
 users:
   - name: admin
@@ -34,25 +32,21 @@ packages:
   - open-iscsi
 EOT
   arch_map = {
-    cpx11 = "amd64"
-    cpx21 = "amd64"
-    cpx31 = "amd64"
-    cpx41 = "amd64"
-    cpx51 = "amd64"
-    cax11 = "arm64"
-    cax21 = "arm64"
-    cax31 = "arm64"
-    cax41 = "arm64"
+    cx23  = "amd64"
+    cx33  = "amd64"
+    cx43  = "amd64"
+    cx53  = "amd64"
+    cpx22 = "amd64"
+    cpx32 = "amd64"
+    cpx42 = "amd64"
+    cpx52 = "amd64"
+    cpx62 = "amd64"
     ccx13 = "amd64"
     ccx23 = "amd64"
     ccx33 = "amd64"
     ccx43 = "amd64"
     ccx53 = "amd64"
     ccx63 = "amd64"
-    cx22  = "amd64"
-    cx32  = "amd64"
-    cx42  = "amd64"
-    cx52  = "amd64"
   }
   node_configs = flatten([
     for group in var.nodes : [

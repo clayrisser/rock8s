@@ -11,7 +11,14 @@ location="$(_dialog_menu "Select region" "eu-central-1" \
     ap-southeast-1 Singapore \
     ap-northeast-1 Tokyo)"
 
-image="$(_prompt "image" "debian-12")"
+image="$(_dialog_menu "Select image" "debian-12" \
+    debian-13 Debian_13 \
+    debian-12 Debian_12 \
+    debian-11 Debian_11 \
+    ubuntu-25.10 Ubuntu_25.10_latest \
+    ubuntu-24.04 Ubuntu_24.04_LTS \
+    ubuntu-22.04 Ubuntu_22.04_LTS \
+    ubuntu-20.04 Ubuntu_20.04_LTS)"
 
 master_type="$(_dialog_menu "Select master instance type" "t3.medium" \
     t3.medium 2vCPU/4GB \

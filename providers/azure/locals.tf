@@ -1,10 +1,14 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
+  cluster = var.cluster_name
 
   # Marketplace images (align with var.image validation).
   azure_image = {
+    "debian-13" = {
+      publisher = "Debian"
+      offer     = "debian-13"
+      sku       = "13-gen2"
+      version   = "latest"
+    }
     "debian-12" = {
       publisher = "Debian"
       offer     = "debian-12"
@@ -15,6 +19,18 @@ locals {
       publisher = "Debian"
       offer     = "debian-11"
       sku       = "11-gen2"
+      version   = "latest"
+    }
+    "ubuntu-25.10" = {
+      publisher = "Canonical"
+      offer     = "ubuntu-25_10"
+      sku       = "server"
+      version   = "latest"
+    }
+    "ubuntu-24.04" = {
+      publisher = "Canonical"
+      offer     = "0001-com-ubuntu-server-noble"
+      sku       = "24_04-lts-gen2"
       version   = "latest"
     }
     "ubuntu-22.04" = {

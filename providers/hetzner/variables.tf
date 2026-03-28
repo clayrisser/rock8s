@@ -23,7 +23,8 @@ variable "image" {
   default = "debian-12"
   validation {
     condition = contains([
-      "ubuntu-22.04", "ubuntu-20.04", "debian-11", "debian-12",
+      "ubuntu-25.10", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04",
+      "debian-11", "debian-12", "debian-13",
       "centos-7", "rocky-9", "fedora-37"
     ], var.image)
     error_message = "invalid image"
@@ -57,10 +58,9 @@ variable "nodes" {
     condition = alltrue([
       for group in var.nodes :
       contains([
-        "cpx11", "cpx21", "cpx31", "cpx41", "cpx51",
-        "cax11", "cax21", "cax31", "cax41",
+        "cx23", "cx33", "cx43", "cx53",
+        "cpx22", "cpx32", "cpx42", "cpx52", "cpx62",
         "ccx13", "ccx23", "ccx33", "ccx43", "ccx53", "ccx63",
-        "cx22", "cx32", "cx42", "cx52"
       ], group.type)
     ])
     error_message = "invalid type"

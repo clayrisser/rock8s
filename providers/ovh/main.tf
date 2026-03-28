@@ -113,7 +113,7 @@ resource "openstack_networking_secgroup_rule_v2" "ingress_lan_icmp" {
 }
 
 resource "openstack_networking_secgroup_rule_v2" "ingress_ssh" {
-  count             = var.purpose == "master" && !local.has_gateway ? 1 : 0
+  count             = var.purpose == "master" ? 1 : 0
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"

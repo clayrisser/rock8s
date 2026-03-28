@@ -15,7 +15,14 @@ location="$(_dialog_menu "Select region" "fra" \
     nrt Tokyo \
     syd Sydney)"
 
-image="$(_prompt "image" "debian-12")"
+image="$(_dialog_menu "Select image" "debian-12" \
+    debian-13 Debian_13 \
+    debian-12 Debian_12 \
+    debian-11 Debian_11 \
+    ubuntu-25.10 Ubuntu_25.10_latest \
+    ubuntu-24.04 Ubuntu_24.04_LTS \
+    ubuntu-22.04 Ubuntu_22.04_LTS \
+    ubuntu-20.04 Ubuntu_20.04_LTS)"
 
 master_type="$(_dialog_menu "Select master instance type" "vc2-2c-4gb" \
     vc2-1c-2gb 1vCPU/2GB \

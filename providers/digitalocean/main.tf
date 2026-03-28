@@ -33,13 +33,10 @@ resource "digitalocean_firewall" "default" {
     source_tags = [local.cluster]
   }
 
-  dynamic "inbound_rule" {
-    for_each = local.has_gateway ? [] : [1]
-    content {
-      protocol         = "tcp"
-      port_range       = "22"
-      source_addresses = ["0.0.0.0/0", "::/0"]
-    }
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "22"
+    source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
   outbound_rule {
