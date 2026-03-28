@@ -1,7 +1,5 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
+  cluster = var.cluster_name
 
   cloud_init = <<-EOT
 #cloud-config
@@ -25,10 +23,9 @@ bootcmd:
 runcmd:
   - systemctl enable iscsid
   - systemctl start iscsid
-  - apt-get update
-  - apt-get install -y qemu-guest-agent
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
+  - apt-get update
 package_update: true
 package_upgrade: true
 packages:
@@ -46,16 +43,9 @@ EOT
     "xlarge" = { cores = 8, memory = 16384, disk_gb = 160 }
   }
 
-  network = {
-    lan = {
-      name   = "${var.cluster_name}-lan"
-      subnet = var.network.lan.ipv4.subnet
-    }
-  }
 
   lan_network_parts = split("/", var.network.lan.ipv4.subnet)
   lan_network_base  = split(".", local.lan_network_parts[0])
-  lan_prefix_length = local.lan_network_parts[1]
 
   node_ip_offset = var.purpose == "master" ? 10 : 100
 

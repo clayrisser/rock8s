@@ -60,17 +60,15 @@ uninstall:
 .PHONY: reinstall
 reinstall: uninstall install
 
-SH_FILES := $(shell find lib libexec providers -name '*.sh' -type f) rock8s.sh manpages.sh
-
 .PHONY: format
 format:
-	@shfmt -ln posix -i 4 -w $(SH_FILES)
+	@shfmt -ln posix -i 4 -w .
 	@tofu fmt -recursive providers/
 	@tofu fmt -recursive addons/
 
 .PHONY: check-format
 check-format:
-	@shfmt -ln posix -i 4 -d $(SH_FILES)
+	@shfmt -ln posix -i 4 -d .
 	@tofu fmt -recursive -check providers/
 	@tofu fmt -recursive -check addons/
 

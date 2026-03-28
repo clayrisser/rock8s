@@ -25,8 +25,6 @@ master_type="$(_dialog_menu "Select master instance type" "b2-7" \
     b2-30 8vCPU/30GB \
     b2-60 16vCPU/60GB \
     b2-120 32vCPU/120GB)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker instance type" "b2-15" \
     b2-7 2vCPU/7GB \
     b2-15 4vCPU/15GB \

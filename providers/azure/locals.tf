@@ -69,30 +69,7 @@ bootcmd:
   - modprobe dm_snapshot
   - modprobe dm_mirror
   - modprobe dm_crypt
-  - systemctl restart networking || true
-  - |
-    IFACE=""
-    for n in eth0 ens4 enp0s3 enp0s4; do
-      if [ -e "/sys/class/net/$n" ]; then
-        IFACE=$n
-        break
-      fi
-    done
-    if [ -z "$IFACE" ]; then
-      IFACE=$(ls /sys/class/net/ 2>/dev/null | grep -vE '^lo$' | head -n1 || true)
-    fi
-    while [ -z "$IFACE" ]; do
-      sleep 5
-      IFACE=$(ls /sys/class/net/ 2>/dev/null | grep -vE '^lo$' | head -n1 || true)
-    done
-    echo "auto $IFACE" > /etc/network/interfaces.d/60-rock8s-lan
-    echo "iface $IFACE inet dhcp" >> /etc/network/interfaces.d/60-rock8s-lan
-    echo "  mtu ${try(var.network.lan.mtu, 1500)}" >> /etc/network/interfaces.d/60-rock8s-lan
-%{if local.has_gateway~}
-    echo "  up ip route replace default via ${local.gateway_ip} || true" >> /etc/network/interfaces.d/60-rock8s-lan
-%{endif~}
-  - systemctl restart networking || true
-  - sysctl -p /etc/sysctl.d/99-k8s.conf || true
+  - sysctl -p /etc/sysctl.d/99-k8s.conf
 runcmd:
   - systemctl enable iscsid
   - systemctl start iscsid
@@ -117,14 +94,6 @@ EOT
     Standard_E4s_v5  = "amd64"
     Standard_F2s_v2  = "amd64"
     Standard_F4s_v2  = "amd64"
-  }
-
-  network = {
-    lan = {
-      name   = "${var.cluster_name}-lan"
-      subnet = var.network.lan.ipv4.subnet
-      zone   = var.location
-    }
   }
 
   node_configs = flatten([
@@ -153,7 +122,7 @@ EOT
 
   rg_name = var.purpose == "master" ? azurerm_resource_group.cluster[0].name : data.azurerm_resource_group.cluster[0].name
 
-  subnet_id = var.purpose == "master" ? azurerm_subnet.lan[0].id : data.azurerm_subnet.lan[0].id
+  subnet_id = data.azurerm_subnet.lan.id
 
   node_private_ipv4s = {
     for idx, nic in azurerm_network_interface.nodes :

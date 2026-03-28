@@ -14,7 +14,7 @@ rock8s is a CLI for provisioning and managing Kubernetes clusters on cloud infra
 
 ## Network model
 
-Clusters can run with public IPs or behind a LAN gateway. When a gateway is configured (`network.gateway`), nodes are LAN-only with traffic routed through the gateway. When omitted, nodes get public IPs directly. MetalLB assigns LAN IPs to LoadBalancer services.
+Gateway (`network.gateway`) identifies the LAN router/firewall (e.g. pfSense). Cloud providers always keep their native public IPs; when a gateway is set, firewalls block all incoming traffic on the public interface (including SSH) so ingress flows through the LAN gateway instead. When omitted, nodes are WAN-only with SSH open on public IPs. On-prem providers (Proxmox, libvirt) are LAN-only; the gateway provides NAT for internet access. MetalLB assigns LAN IPs to LoadBalancer services.
 
 ## Repository layout
 

@@ -23,39 +23,21 @@ data "aws_ami" "debian" {
 }
 
 data "aws_vpc" "lan" {
-  count = var.purpose == "worker" ? 1 : 0
-
   filter {
-    name   = "tag:cluster"
-    values = [var.cluster_name]
-  }
-  filter {
-    name   = "tag:rock8s"
-    values = ["lan-vpc"]
+    name   = "tag:Name"
+    values = [var.network.lan.name]
   }
 }
 
 data "aws_subnet" "lan" {
-  count = var.purpose == "worker" ? 1 : 0
-
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.lan[0].id]
-  }
-  filter {
-    name   = "tag:cluster"
-    values = [var.cluster_name]
-  }
-  filter {
-    name   = "tag:rock8s"
-    values = ["lan-subnet"]
-  }
+  vpc_id     = data.aws_vpc.lan.id
+  cidr_block = var.network.lan.ipv4.subnet
 }
 
 data "aws_security_group" "nodes" {
   count = var.purpose == "worker" ? 1 : 0
 
-  vpc_id = data.aws_vpc.lan[0].id
+  vpc_id = data.aws_vpc.lan.id
 
   filter {
     name   = "tag:cluster"
@@ -83,91 +65,12 @@ resource "aws_key_pair" "node" {
   }
 }
 
-resource "aws_vpc" "lan" {
-  count = var.purpose == "master" ? 1 : 0
-
-  cidr_block           = var.network.lan.ipv4.subnet
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = {
-    Name    = local.network.lan.name
-    cluster = var.cluster_name
-    purpose = var.purpose
-    rock8s  = "lan-vpc"
-  }
-}
-
-resource "aws_subnet" "lan" {
-  count = var.purpose == "master" ? 1 : 0
-
-  vpc_id                  = aws_vpc.lan[0].id
-  cidr_block              = var.network.lan.ipv4.subnet
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  map_public_ip_on_launch = !local.has_gateway
-
-  tags = {
-    Name    = "${local.network.lan.name}-subnet"
-    cluster = var.cluster_name
-    purpose = var.purpose
-    rock8s  = "lan-subnet"
-  }
-
-  depends_on = [aws_vpc.lan]
-}
-
-resource "aws_internet_gateway" "igw" {
-  count = var.purpose == "master" && !local.has_gateway ? 1 : 0
-
-  vpc_id = aws_vpc.lan[0].id
-
-  tags = {
-    Name    = "${local.cluster}-igw"
-    cluster = var.cluster_name
-    purpose = var.purpose
-    rock8s  = "lan-igw"
-  }
-}
-
-resource "aws_route_table" "default" {
-  count = var.purpose == "master" ? 1 : 0
-
-  vpc_id = aws_vpc.lan[0].id
-
-  tags = {
-    Name    = "${local.cluster}-lan-rt"
-    cluster = var.cluster_name
-    purpose = var.purpose
-    rock8s  = "lan-rt"
-  }
-}
-
-resource "aws_route" "public_ipv4" {
-  count = var.purpose == "master" && !local.has_gateway ? 1 : 0
-
-  route_table_id         = aws_route_table.default[0].id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.igw[0].id
-
-  depends_on = [
-    aws_route_table.default,
-    aws_internet_gateway.igw,
-  ]
-}
-
-resource "aws_route_table_association" "lan" {
-  count = var.purpose == "master" ? 1 : 0
-
-  subnet_id      = aws_subnet.lan[0].id
-  route_table_id = aws_route_table.default[0].id
-}
-
 resource "aws_security_group" "nodes" {
   count = var.purpose == "master" ? 1 : 0
 
   name        = "${local.cluster}-nodes"
   description = "rock8s node traffic within VPC"
-  vpc_id      = aws_vpc.lan[0].id
+  vpc_id      = data.aws_vpc.lan.id
 
   ingress {
     description = "All traffic from VPC LAN"
@@ -175,6 +78,17 @@ resource "aws_security_group" "nodes" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = [var.network.lan.ipv4.subnet]
+  }
+
+  dynamic "ingress" {
+    for_each = local.has_gateway ? [] : [1]
+    content {
+      description = "SSH from public (WAN-only mode)"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
 
   egress {
@@ -201,12 +115,12 @@ resource "aws_instance" "nodes" {
   key_name      = aws_key_pair.node.key_name
   user_data     = local.cloud_init
 
-  subnet_id = var.purpose == "master" ? aws_subnet.lan[0].id : data.aws_subnet.lan[0].id
+  subnet_id = data.aws_subnet.lan.id
   vpc_security_group_ids = [
     var.purpose == "master" ? aws_security_group.nodes[0].id : data.aws_security_group.nodes[0].id
   ]
 
-  associate_public_ip_address = !local.has_gateway
+  associate_public_ip_address = true
   private_ip                  = local.node_configs[count.index].ipv4
 
   disable_api_termination = true

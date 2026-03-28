@@ -157,6 +157,7 @@ _main() {
     cd "$addons_dir/terraform"
     state_key="$(get_state_key "$cluster" "addons")"
     generate_backend_config "$state_key" "$addons_dir" >"$addons_dir/terraform/_backend.tf"
+    unset_s3_env
     tofu init -upgrade -reconfigure >&2
     mkdir -p "$addons_dir/artifacts/olm"
     if [ ! -f "$addons_dir/artifacts/olm/crds.yaml" ]; then

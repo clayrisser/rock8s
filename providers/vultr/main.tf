@@ -15,20 +15,10 @@ data "vultr_os" "default" {
   }
 }
 
-resource "vultr_vpc2" "lan" {
-  count         = var.purpose == "master" ? 1 : 0
-  description   = local.vpc_description
-  region        = local.vultr_region
-  ip_type       = "v4"
-  ip_block      = local.vpc_ip_block
-  prefix_length = local.vpc_prefix
-}
-
 data "vultr_vpc2" "lan" {
-  count = var.purpose == "worker" ? 1 : 0
   filter {
     name   = "description"
-    values = [local.vpc_description]
+    values = [var.network.lan.name]
   }
 }
 
@@ -74,6 +64,16 @@ resource "vultr_firewall_rule" "egress_icmp" {
   subnet_size       = 0
 }
 
+resource "vultr_firewall_rule" "ssh_public" {
+  count             = var.purpose == "master" && !local.has_gateway ? 1 : 0
+  firewall_group_id = vultr_firewall_group.default[0].id
+  protocol          = "tcp"
+  ip_type           = "v4"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+  port              = "22"
+}
+
 resource "vultr_firewall_rule" "lan_tcp" {
   count             = var.purpose == "master" ? 1 : 0
   firewall_group_id = vultr_firewall_group.default[0].id
@@ -107,7 +107,7 @@ resource "vultr_instance" "nodes" {
   backups           = "enabled"
   enable_ipv6       = try(var.network.lan.ipv6, null) != null
   tags              = [local.cluster, var.purpose]
-  vpc2_ids          = [var.purpose == "master" ? vultr_vpc2.lan[0].id : data.vultr_vpc2.lan[0].id]
+  vpc2_ids          = [data.vultr_vpc2.lan.id]
   lifecycle {
     ignore_changes = [
       os_id,

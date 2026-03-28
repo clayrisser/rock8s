@@ -23,8 +23,6 @@ master_type="$(_dialog_menu "Select master instance type" "vc2-2c-4gb" \
     vc2-4c-8gb 4vCPU/8GB \
     vc2-6c-16gb 6vCPU/16GB \
     vc2-8c-32gb 8vCPU/32GB)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker instance type" "vc2-4c-8gb" \
     vc2-1c-2gb 1vCPU/2GB \
     vc2-2c-4gb 2vCPU/4GB \

@@ -22,8 +22,6 @@ master_type="$(_dialog_menu "Select master machine type" "e2-medium" \
     n2-standard-2 2vCPU/8GB \
     n2-standard-4 4vCPU/16GB \
     n2-standard-8 8vCPU/32GB)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker machine type" "e2-standard-2" \
     e2-medium 2vCPU/4GB \
     e2-standard-2 2vCPU/8GB \

@@ -145,6 +145,7 @@ _main() {
     cp -r "$provider_dir" "$cluster_dir/provider"
     state_key="$(get_state_key "$cluster" "$purpose")"
     write_backend_config "$cluster_dir/provider" "$state_key" "$purpose_dir"
+    unset_s3_env
     export TF_VAR_cluster_name="$cluster"
     export TF_VAR_purpose="$purpose"
     export TF_DATA_DIR="$purpose_dir/.terraform"

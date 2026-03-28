@@ -18,7 +18,3 @@ output "node_ssh_public_key" {
 output "node_architectures" {
   value = local.node_architectures
 }
-
-output "network" {
-  value = local.network
-}
