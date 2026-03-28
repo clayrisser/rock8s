@@ -19,8 +19,8 @@ resource "google_compute_firewall" "internal" {
   name        = "${local.cluster}-internal"
   network     = data.google_compute_network.lan.name
 
-  source_ranges = [var.network.lan.ipv4.subnet]
-  target_tags   = local.node_tags
+  source_tags = local.node_tags
+  target_tags = local.node_tags
 
   allow {
     protocol = "icmp"

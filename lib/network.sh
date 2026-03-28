@@ -103,9 +103,6 @@ get_lan_ipv4_subnet() {
     fi
     _CONFIG_JSON="$(get_config_json)"
     _LAN_IPV4_SUBNET="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.ipv4.subnet // ""')"
-    if [ -z "$_LAN_IPV4_SUBNET" ]; then
-        fail ".network.lan.ipv4.subnet not found in config.yaml"
-    fi
     echo "$_LAN_IPV4_SUBNET"
 }
 
@@ -132,7 +129,10 @@ get_lan_metallb() {
     _CONFIG_JSON="$(get_config_json)"
     _LAN_METALLB="$(echo "$_CONFIG_JSON" | jq -r '.network.lan.metallb // ""')"
     if [ -z "$_LAN_METALLB" ]; then
-        _LAN_METALLB="$(calculate_metallb "$(get_lan_ipv4_subnet)")"
+        _subnet="$(get_lan_ipv4_subnet)"
+        if [ -n "$_subnet" ]; then
+            _LAN_METALLB="$(calculate_metallb "$_subnet")"
+        fi
     fi
     echo "$_LAN_METALLB"
 }

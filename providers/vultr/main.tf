@@ -79,8 +79,8 @@ resource "vultr_firewall_rule" "lan_tcp" {
   firewall_group_id = vultr_firewall_group.default[0].id
   protocol          = "tcp"
   ip_type           = "v4"
-  subnet            = local.vpc_ip_block
-  subnet_size       = local.vpc_prefix
+  subnet            = data.vultr_vpc2.lan.ip_block
+  subnet_size       = data.vultr_vpc2.lan.prefix
   port              = "1:65535"
 }
 
@@ -89,8 +89,8 @@ resource "vultr_firewall_rule" "lan_udp" {
   firewall_group_id = vultr_firewall_group.default[0].id
   protocol          = "udp"
   ip_type           = "v4"
-  subnet            = local.vpc_ip_block
-  subnet_size       = local.vpc_prefix
+  subnet            = data.vultr_vpc2.lan.ip_block
+  subnet_size       = data.vultr_vpc2.lan.prefix
   port              = "1:65535"
 }
 

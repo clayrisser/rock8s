@@ -16,30 +16,21 @@ resource "digitalocean_firewall" "default" {
   count = var.purpose == "master" ? 1 : 0
   name  = local.cluster
 
-  dynamic "inbound_rule" {
-    for_each = local.vpc_inbound_cidrs
-    content {
-      protocol         = "tcp"
-      port_range       = "1-65535"
-      source_addresses = [inbound_rule.value]
-    }
+  inbound_rule {
+    protocol    = "tcp"
+    port_range  = "1-65535"
+    source_tags = [local.cluster]
   }
 
-  dynamic "inbound_rule" {
-    for_each = local.vpc_inbound_cidrs
-    content {
-      protocol         = "udp"
-      port_range       = "1-65535"
-      source_addresses = [inbound_rule.value]
-    }
+  inbound_rule {
+    protocol    = "udp"
+    port_range  = "1-65535"
+    source_tags = [local.cluster]
   }
 
-  dynamic "inbound_rule" {
-    for_each = local.vpc_inbound_cidrs
-    content {
-      protocol         = "icmp"
-      source_addresses = [inbound_rule.value]
-    }
+  inbound_rule {
+    protocol    = "icmp"
+    source_tags = [local.cluster]
   }
 
   dynamic "inbound_rule" {

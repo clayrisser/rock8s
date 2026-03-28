@@ -29,9 +29,15 @@ data "aws_vpc" "lan" {
   }
 }
 
+data "aws_subnets" "lan" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.lan.id]
+  }
+}
+
 data "aws_subnet" "lan" {
-  vpc_id     = data.aws_vpc.lan.id
-  cidr_block = var.network.lan.ipv4.subnet
+  id = sort(data.aws_subnets.lan.ids)[0]
 }
 
 data "aws_security_group" "nodes" {
@@ -77,7 +83,7 @@ resource "aws_security_group" "nodes" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [var.network.lan.ipv4.subnet]
+    self        = true
   }
 
   dynamic "ingress" {
