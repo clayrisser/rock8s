@@ -68,12 +68,12 @@ _show_available_nodes() {
     fi
 }
 
-fail_with_nodes() {
-    msg="$1"
-    purpose="$2"
-    echo "Error: $msg" >&2
+_fail_with_nodes() {
+    _msg="$1"
+    _purpose="$2"
+    error "$_msg"
     echo >&2
-    _show_available_nodes "$purpose"
+    _show_available_nodes "$_purpose"
     exit 1
 }
 
@@ -148,7 +148,7 @@ _main() {
                 node_num="${1##*-}"
                 case "$purpose" in
                 master | worker) ;;
-                *) fail_with_nodes "invalid node name: $1 (must be master-N or worker-N)" ;;
+                *) _fail_with_nodes "invalid node name: $1 (must be master-N or worker-N)" ;;
                 esac
                 shift
                 if [ $# -gt 0 ]; then
@@ -197,15 +197,15 @@ _main() {
                 count=$((count + 1))
             done
         fi
-        [ -z "$purpose" ] && fail_with_nodes "no node found with ip $node_ip"
+        [ -z "$purpose" ] && _fail_with_nodes "no node found with ip $node_ip"
     else
-        [ -z "$purpose" ] && fail_with_nodes "node identifier required"
+        [ -z "$purpose" ] && _fail_with_nodes "node identifier required"
         if [ -z "$node_num" ]; then
             node_count="$(_count_nodes "$purpose")"
             if [ "$node_count" -eq 1 ]; then
                 node_num=1
             else
-                fail_with_nodes "node number required (found $node_count ${purpose} nodes)" "$purpose"
+                _fail_with_nodes "node number required (found $node_count ${purpose} nodes)" "$purpose"
             fi
         fi
     fi
@@ -219,10 +219,10 @@ _main() {
         private_ips="$(get_worker_private_ipv4s)"
         ;;
     esac
-    [ -z "$ssh_key" ] && fail_with_nodes "ssh key not found for $purpose nodes" "$purpose"
+    [ -z "$ssh_key" ] && _fail_with_nodes "ssh key not found for $purpose nodes" "$purpose"
     if [ -z "$node_ip" ]; then
         node_ip="$(echo "$private_ips" | tr ' ' '\n' | sed -n "${node_num}p")"
-        [ -z "$node_ip" ] && fail_with_nodes "$purpose-$node_num not found" "$purpose"
+        [ -z "$node_ip" ] && _fail_with_nodes "$purpose-$node_num not found" "$purpose"
     fi
     exec ssh -i "$ssh_key" "$(get_node_ssh_user)@$node_ip" $ssh_args
 }

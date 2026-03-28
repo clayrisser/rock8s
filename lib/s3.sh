@@ -38,11 +38,13 @@ s3_put_stdin() {
     _endpoint="$4"
     _access_key="$5"
     _secret_key="$6"
-    _tmp="$(mktemp)"
-    cat >"$_tmp"
+    _tmpfile="$(mktemp)"
+    trap 'rm -f "$_tmpfile"' EXIT
+    cat >"$_tmpfile"
     _s3cmd "$_bucket" "$_region" "$_endpoint" "$_access_key" "$_secret_key" \
-        put "$_tmp" "s3://${_bucket}/${_key}"
-    rm -f "$_tmp"
+        put "$_tmpfile" "s3://${_bucket}/${_key}"
+    rm -f "$_tmpfile"
+    trap - EXIT
 }
 
 s3_delete_prefix() {

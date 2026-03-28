@@ -51,6 +51,9 @@ variable "external_dns" {
   default = null
 }
 
+# flux: {} enables Flux; optional capacitor_next installs
+# https://github.com/gimlet-io/capacitor/tree/main/self-host/charts/capacitor-next
+# (disable UI: capacitor_next.enabled: false under addons in rock8s.yaml).
 variable "flux" {
   default = null
 }

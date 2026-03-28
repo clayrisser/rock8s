@@ -15,6 +15,26 @@ MAN_DIR = man
 MAN1_DIR = $(MAN_DIR)/man1
 BUILD_DIR = .build
 
+SHFMT_DIRS := rock8s.sh lib libexec manpages.sh providers addons
+
+SHELL_SCRIPTS := rock8s.sh manpages.sh \
+	$(wildcard lib/*.sh) \
+	$(wildcard libexec/*.sh) \
+	$(wildcard libexec/*/*.sh) \
+	$(wildcard libexec/*/*/*.sh) \
+	$(wildcard providers/*/*.sh) \
+	$(wildcard addons/modules/*/init.sh)
+
+# SC1007: false positive on CDPATH= cd -- …
+# SC1091: dynamic source paths (ROCK8S_LIB_PATH)
+# SC2046: intentional word-splitting for command args / lists
+.PHONY: lint
+lint:
+	@command -v shellcheck >/dev/null 2>&1 || { printf '%s\n' >&2 'shellcheck: command not found'; exit 1; }
+	shellcheck -s sh --severity=warning \
+		--exclude=SC1007,SC1091,SC2046 \
+		$(SHELL_SCRIPTS)
+
 .PHONY: all
 all: build
 
@@ -62,15 +82,9 @@ reinstall: uninstall install
 
 .PHONY: format
 format:
-	@shfmt -ln posix -i 4 -w .
+	@shfmt -ln posix -i 4 -w $(SHFMT_DIRS)
 	@tofu fmt -recursive providers/
 	@tofu fmt -recursive addons/
-
-.PHONY: check-format
-check-format:
-	@shfmt -ln posix -i 4 -d .
-	@tofu fmt -recursive -check providers/
-	@tofu fmt -recursive -check addons/
 
 .PHONY: clean
 clean:

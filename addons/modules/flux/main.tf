@@ -33,3 +33,27 @@ EOF
     var.values
   ]
 }
+
+# Capacitor Next — Flux-oriented cluster UI (chart source:
+# https://github.com/gimlet-io/capacitor/tree/main/self-host/charts/capacitor-next).
+# Published as: oci://ghcr.io/gimlet-io/charts/capacitor-next
+resource "helm_release" "capacitor_next" {
+  count     = var.enabled && var.capacitor_next_enabled ? 1 : 0
+  name      = "capacitor-next"
+  chart     = "oci://ghcr.io/gimlet-io/charts/capacitor-next"
+  version   = var.capacitor_next_chart_version
+  namespace = var.namespace
+
+  depends_on = [helm_release.this]
+
+  values = concat(
+    [<<-EOF
+    # Chart reads .Values.env.*; a nil env map breaks template render. This key is only for AKS
+    # Workload Identity (pod label); "false" is correct for non-Azure clusters.
+    env:
+      AZURE_WORKLOAD_IDENTITY_ENABLED: "false"
+    EOF
+    ],
+    var.capacitor_next_values != "" ? [var.capacitor_next_values] : []
+  )
+}

@@ -1,0 +1,3 @@
+# Extra disables beyond Makefile (aligned with ../pfsense pfsedge:
+# --exclude=SC1007,SC1091,SC2046). These are rock8s-specific patterns.
+disable=SC1090,SC2034,SC2154,SC2155

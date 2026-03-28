@@ -35,6 +35,10 @@ Supported schemes: `ref+env`, `ref+file`, `ref+pass`, `ref+kms`, `ref+secretsman
 
 Fragment (`#key`) extracts a field from JSON responses.
 
+### `ref+env` and `.env` files
+
+`ref+env://VAR` reads **`VAR` from the process environment**. Before resolving refs, rock8s merges **`.env` files** into the shell without overriding variables already exported: **`./.env`**, then **`<config-directory>/.env`** (same directory as `rock8s.yaml` or `ROCK8S_CONFIG`), then the file path in **`ROCK8S_DOTENV`** if that variable is set in the real environment. Among `.env` sources, later files win for keys that are still unset. Exporting `FOO` in your shell or CI always beats `.env`.
+
 ## Fail-fast behavior
 
 - Missing config file → fail with path

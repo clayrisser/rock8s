@@ -6,7 +6,7 @@ format_json_table() {
     json="$1"
     keys="$2"
     [ -z "$json" ] && return
-    temp_file=$(mktemp)
+    _tmpfile=$(mktemp)
     type=$(printf "%s\n" "$json" | jq -r 'type')
     if [ "$type" = "object" ]; then
         key_count=$(printf "%s\n" "$json" | jq -r 'keys | length')
@@ -14,7 +14,7 @@ format_json_table() {
             single_key=$(printf "%s\n" "$json" | jq -r 'keys[0]')
             single_value=$(printf "%s\n" "$json" | jq -r --arg k "$single_key" '.[$k] | if type == "object" or type == "array" then tojson else tostring end')
             echo "$single_value"
-            rm -f "$temp_file"
+            rm -f "$_tmpfile"
             return
         fi
     fi
@@ -22,7 +22,7 @@ format_json_table() {
         if [ "$type" = "array" ]; then
             array_length=$(printf "%s\n" "$json" | jq 'length')
             if [ "$array_length" -eq 0 ]; then
-                rm -f "$temp_file"
+                rm -f "$_tmpfile"
                 return
             fi
             keys=$(printf "%s\n" "$json" | jq -r '.[0] | keys | join(" ")')
@@ -31,28 +31,28 @@ format_json_table() {
         fi
     fi
     for key in $keys; do
-        printf "%s⋮" "$(echo "$key" | tr '[:lower:]' '[:upper:]')" >>"$temp_file"
+        printf "%s⋮" "$(echo "$key" | tr '[:lower:]' '[:upper:]')" >>"$_tmpfile"
     done
-    printf "\n" >>"$temp_file"
+    printf "\n" >>"$_tmpfile"
     if [ "$type" = "array" ]; then
         length=$(printf "%s\n" "$json" | jq 'length')
         for i in $(seq 0 $((length - 1))); do
             for key in $keys; do
                 value=$(printf "%s\n" "$json" | jq -r --arg k "$key" "try (.[${i}] | .[\$k] | if type == \"object\" or type == \"array\" then tojson else tostring end) catch \"-\"")
                 value=$(echo "$value" | tr '⋮' ' ')
-                printf "%s⋮" "$value" >>"$temp_file"
+                printf "%s⋮" "$value" >>"$_tmpfile"
             done
-            printf "\n" >>"$temp_file"
+            printf "\n" >>"$_tmpfile"
         done
     else
         for key in $keys; do
             value=$(printf "%s\n" "$json" | jq -r --arg k "$key" "try (.[\$k] | if type == \"object\" or type == \"array\" then tojson else tostring end) catch \"-\"")
             value=$(echo "$value" | tr '⋮' ' ')
-            printf "%s⋮" "$value" >>"$temp_file"
+            printf "%s⋮" "$value" >>"$_tmpfile"
         done
-        printf "\n" >>"$temp_file"
+        printf "\n" >>"$_tmpfile"
     fi
-    formatted=$(column -t -s '⋮' -o '  ' <"$temp_file")
+    formatted=$(column -t -s '⋮' -o '  ' <"$_tmpfile")
     header=$(echo "$formatted" | head -1)
     data=$(echo "$formatted" | tail -n +2)
     header_trimmed=$(echo "$header" | sed 's/ *$//')
@@ -73,7 +73,7 @@ EOF
         echo "$sep"
         echo "$data"
     } | while IFS= read -r line; do printf "%.${width}s\n" "$line"; done
-    rm -f "$temp_file"
+    rm -f "$_tmpfile"
 }
 
 format_output() {
