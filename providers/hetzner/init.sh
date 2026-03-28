@@ -27,8 +27,6 @@ master_type="$(_dialog_menu "Select master node type" "cpx21" \
     cx32 4vCPU/8GB_shared \
     cx42 8vCPU/16GB_shared \
     cx52 16vCPU/32GB_shared)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker node type" "cpx31" \
     cpx11 2vCPU/2GB \
     cpx21 3vCPU/4GB \

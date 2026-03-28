@@ -8,32 +8,8 @@ resource "hcloud_ssh_key" "node" {
   public_key = tls_private_key.node.public_key_openssh
 }
 
-resource "hcloud_network" "lan" {
-  count             = var.purpose == "master" ? 1 : 0
-  name              = local.network.lan.name
-  ip_range          = local.network.lan.subnet
-  delete_protection = true
-}
-
 data "hcloud_network" "lan" {
-  count = var.purpose == "worker" ? 1 : 0
-  name  = local.network.lan.name
-}
-
-resource "hcloud_network_subnet" "lan" {
-  count        = var.purpose == "master" ? 1 : 0
-  network_id   = hcloud_network.lan[0].id
-  type         = "server"
-  network_zone = local.network.lan.zone
-  ip_range     = local.network.lan.subnet
-}
-
-resource "hcloud_network_route" "default" {
-  count       = var.purpose == "master" && local.has_gateway ? 1 : 0
-  network_id  = hcloud_network.lan[0].id
-  destination = "0.0.0.0/0"
-  gateway     = local.gateway_ip
-  depends_on  = [hcloud_network_subnet.lan]
+  name = var.network.lan.name
 }
 
 resource "hcloud_placement_group" "nodes" {
@@ -75,6 +51,16 @@ resource "hcloud_firewall" "default" {
     protocol        = "esp"
     destination_ips = ["0.0.0.0/0", "::/0"]
   }
+  dynamic "rule" {
+    for_each = local.has_gateway ? [] : [1]
+    content {
+      direction  = "in"
+      protocol   = "tcp"
+      port       = "22"
+      source_ips = ["0.0.0.0/0", "::/0"]
+    }
+  }
+
   labels = {
     cluster = var.cluster_name
   }
@@ -103,11 +89,11 @@ resource "hcloud_server" "nodes" {
     purpose = var.purpose
   }
   public_net {
-    ipv4_enabled = !local.has_gateway
+    ipv4_enabled = true
     ipv6_enabled = try(var.network.lan.ipv6, null) != null
   }
   network {
-    network_id = var.purpose == "master" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
+    network_id = data.hcloud_network.lan.id
     ip         = local.node_configs[count.index].ipv4
   }
   lifecycle {
@@ -118,5 +104,4 @@ resource "hcloud_server" "nodes" {
       user_data
     ]
   }
-  depends_on = [hcloud_network_subnet.lan]
 }

@@ -21,7 +21,3 @@ output "node_architectures" {
     cfg.name => var.arch != "" ? (var.arch == "aarch64" ? "arm64" : "amd64") : "amd64"
   }
 }
-
-output "network" {
-  value = local.network
-}

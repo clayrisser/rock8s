@@ -135,6 +135,7 @@ _main() {
             --ssh-key "$worker_ssh_key" \
             --k3s-version "$K3S_VERSION" >&2
     done
+    setup_litestream
     sh "$ROCK8S_LIBEXEC_PATH/cluster/login.sh" \
         --output="$output" \
         --cluster="$cluster" \

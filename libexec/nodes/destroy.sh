@@ -142,6 +142,7 @@ _main() {
     cp -r "$provider_dir" "$cluster_dir/provider"
     state_key="$(get_state_key "$cluster" "$purpose")"
     write_backend_config "$cluster_dir/provider" "$state_key" "$purpose_dir"
+    unset_s3_env
     export TF_VAR_cluster_name="$cluster"
     export TF_VAR_purpose="$purpose"
     export TF_DATA_DIR="$purpose_dir/.terraform"
@@ -154,6 +155,17 @@ _main() {
     cd "$cluster_dir/provider"
     tofu init -upgrade -reconfigure >&2
     tofu destroy $([ "$yes" = "1" ] && echo "-auto-approve" || true) -var-file="$purpose_dir/terraform.tfvars.json" >&2
+    if [ "$purpose" = "master" ] && [ "$(get_state_backend)" = "s3" ]; then
+        _s3_bucket="$(get_config '.state.bucket // ""')"
+        _s3_region="$(get_config '.state.region // "us-east-1"')"
+        _s3_endpoint="$(get_config '.state.endpoint // ""')"
+        _s3_ak="$(get_config '.state.access_key // ""' "${AWS_ACCESS_KEY_ID:-}")"
+        _s3_sk="$(get_config '.state.secret_key // ""' "${AWS_SECRET_ACCESS_KEY:-}")"
+        if [ -n "$_s3_ak" ] && [ -n "$_s3_sk" ] && [ -n "$_s3_bucket" ]; then
+            log "cleaning up litestream replicas from s3://$_s3_bucket/${cluster}/k3s"
+            s3_delete_prefix "$_s3_bucket" "${cluster}/k3s/" "$_s3_region" "$_s3_endpoint" "$_s3_ak" "$_s3_sk" || true
+        fi
+    fi
     rm -rf "$purpose_dir"
     if [ ! -d "$cluster_dir/worker" ] && [ ! -d "$cluster_dir/master" ]; then
         rm -rf "$cluster_dir/addons"

@@ -21,8 +21,6 @@ master_type="$(_dialog_menu "Select master droplet size" "s-2vcpu-4gb" \
     s-2vcpu-4gb 2vCPU/4GB \
     s-4vcpu-8gb 4vCPU/8GB \
     s-8vcpu-16gb 8vCPU/16GB)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker droplet size" "s-4vcpu-8gb" \
     s-2vcpu-4gb 2vCPU/4GB \
     s-4vcpu-8gb 4vCPU/8GB \

@@ -123,6 +123,7 @@ _main() {
         ssh -o StrictHostKeyChecking=no -i "$worker_ssh_key" "$(get_node_ssh_user)@$ip" \
             "curl -sfL $k3s_install_url | INSTALL_K3S_VERSION=$K3S_VERSION sh -s - agent" >&2
     done
+    setup_litestream
     sh "$ROCK8S_LIBEXEC_PATH/cluster/login.sh" \
         --output="$output" \
         --cluster="$cluster" \

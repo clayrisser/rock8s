@@ -8,16 +8,8 @@ resource "digitalocean_ssh_key" "node" {
   public_key = tls_private_key.node.public_key_openssh
 }
 
-resource "digitalocean_vpc" "lan" {
-  count    = var.purpose == "master" ? 1 : 0
-  name     = local.network_lan.name
-  region   = var.location
-  ip_range = local.network_lan.subnet
-}
-
 data "digitalocean_vpc" "lan" {
-  count = var.purpose == "worker" ? 1 : 0
-  name  = local.network_lan.name
+  name = var.network.lan.name
 }
 
 resource "digitalocean_firewall" "default" {
@@ -50,10 +42,13 @@ resource "digitalocean_firewall" "default" {
     }
   }
 
-  inbound_rule {
-    protocol         = "tcp"
-    port_range       = "22"
-    source_addresses = ["0.0.0.0/0", "::/0"]
+  dynamic "inbound_rule" {
+    for_each = local.has_gateway ? [] : [1]
+    content {
+      protocol         = "tcp"
+      port_range       = "22"
+      source_addresses = ["0.0.0.0/0", "::/0"]
+    }
   }
 
   outbound_rule {
@@ -83,7 +78,7 @@ resource "digitalocean_droplet" "nodes" {
   region    = var.location
   size      = local.node_configs[count.index].server_type
   image     = coalesce(local.node_configs[count.index].image, var.image)
-  vpc_uuid  = var.purpose == "master" ? digitalocean_vpc.lan[0].id : data.digitalocean_vpc.lan[0].id
+  vpc_uuid  = data.digitalocean_vpc.lan.id
   ssh_keys  = [digitalocean_ssh_key.node.id]
   user_data = local.cloud_init
   backups   = true
@@ -99,7 +94,6 @@ resource "digitalocean_droplet" "nodes" {
   }
 
   depends_on = [
-    digitalocean_vpc.lan,
     digitalocean_firewall.default
   ]
 }

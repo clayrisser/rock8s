@@ -54,23 +54,6 @@ bootcmd:
   - modprobe dm_snapshot
   - modprobe dm_mirror
   - modprobe dm_crypt
-  - systemctl restart networking
-  - |
-    IFACE=""
-    while [ -z "$IFACE" ]; do
-      IFACE=$(ip link show | grep -E "^[0-9]" | grep -vE "eth0|lo" | head -n1 | cut -d':' -f2 | tr -d ' ')
-      if [ -z "$IFACE" ]; then
-        sleep 10
-        systemctl restart networking
-      fi
-    done
-    echo "auto $IFACE" > /etc/network/interfaces.d/60-lan
-    echo "iface $IFACE inet dhcp" >> /etc/network/interfaces.d/60-lan
-    echo "  mtu ${try(var.network.lan.mtu, 1450)}" >> /etc/network/interfaces.d/60-lan
-%{if local.has_gateway~}
-    echo "  up route add default gw ${local.gateway_ip}" >> /etc/network/interfaces.d/60-lan
-%{endif~}
-  - systemctl restart networking
   - sysctl -p /etc/sysctl.d/99-k8s.conf
 runcmd:
   - systemctl enable iscsid
@@ -82,14 +65,6 @@ packages:
   - nfs-common
   - open-iscsi
 EOT
-
-  network = {
-    lan = {
-      name   = "${var.cluster_name}-lan"
-      subnet = var.network.lan.ipv4.subnet
-      zone   = var.location
-    }
-  }
 
   node_configs = flatten([
     for group in var.nodes : [

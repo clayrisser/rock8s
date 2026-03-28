@@ -5,10 +5,10 @@ resource "tls_private_key" "node" {
 
 resource "libvirt_network" "lan" {
   count     = var.purpose == "master" ? 1 : 0
-  name      = local.network.lan.name
+  name      = var.network.lan.name
   mode      = "nat"
   domain    = "${local.cluster}.local"
-  addresses = [local.network.lan.subnet]
+  addresses = [var.network.lan.ipv4.subnet]
   autostart = true
 
   dhcp {
@@ -72,7 +72,7 @@ resource "libvirt_domain" "nodes" {
   }
 
   network_interface {
-    network_name   = local.network.lan.name
+    network_name   = var.network.lan.name
     addresses      = [local.node_configs[count.index].ipv4]
     wait_for_lease = true
   }

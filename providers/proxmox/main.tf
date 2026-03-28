@@ -57,11 +57,7 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   initialization {
     ip_config {
       ipv4 {
-        address = "${local.node_configs[count.index].ipv4}/${local.lan_prefix_length}"
-        gateway = local.has_gateway ? local.gateway_ip : format("%s.%s.%s.1",
-          local.lan_network_base[0], local.lan_network_base[1],
-          local.lan_network_base[2]
-        )
+        address = "dhcp"
       }
     }
 

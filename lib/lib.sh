@@ -16,5 +16,7 @@ NC='\033[0m'
 . "$ROCK8S_LIB_PATH/k3s.sh"
 . "$ROCK8S_LIB_PATH/master.sh"
 . "$ROCK8S_LIB_PATH/worker.sh"
+. "$ROCK8S_LIB_PATH/s3.sh"
+. "$ROCK8S_LIB_PATH/litestream.sh"
 
 ensure_system

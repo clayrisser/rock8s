@@ -22,24 +22,6 @@ bootcmd:
   - modprobe dm_snapshot
   - modprobe dm_mirror
   - modprobe dm_crypt
-  - systemctl restart networking
-  - |
-    IFACE=""
-    while [ -z "$IFACE" ]; do
-      IFACE=$(ip link show | grep -E "^[0-9]" | grep -vE "eth0|lo" | head -n1 | cut -d':' -f2 | tr -d ' ')
-      if [ -z "$IFACE" ]; then
-        sleep 10
-        systemctl restart networking
-      fi
-    done
-    echo "auto $IFACE" > /etc/network/interfaces.d/60-lan
-    echo "iface $IFACE inet dhcp" >> /etc/network/interfaces.d/60-lan
-    echo "  mtu ${try(var.network.lan.mtu, 1450)}" >> /etc/network/interfaces.d/60-lan
-%{if local.has_gateway~}
-    echo "  up route add default gw ${local.gateway_ip}" >> /etc/network/interfaces.d/60-lan
-%{endif~}
-    echo "  dns-nameservers 185.12.64.2 185.12.64.1" >> /etc/network/interfaces.d/60-lan
-  - systemctl restart networking
   - sysctl -p /etc/sysctl.d/99-k8s.conf
 runcmd:
   - systemctl enable iscsid
@@ -72,20 +54,6 @@ EOT
     cx42  = "amd64"
     cx52  = "amd64"
   }
-  location_zones = {
-    "nbg1" = "eu-central"
-    "fsn1" = "eu-central"
-    "hel1" = "eu-central"
-    "ash"  = "us-east"
-    "hil"  = "us-east"
-  }
-  network = {
-    lan = {
-      name   = "${var.cluster_name}-lan"
-      subnet = var.network.lan.ipv4.subnet
-      zone   = lookup(local.location_zones, var.location, "eu-central")
-    }
-  }
   node_configs = flatten([
     for group in var.nodes : [
       for i in range(
@@ -111,9 +79,7 @@ EOT
   node_private_ipv4s = {
     for idx, server in hcloud_server.nodes :
     server.name => coalesce(
-      try([for net in server.network : net.ip if net.network_id == (
-        var.purpose == "master" ? hcloud_network.lan[0].id : data.hcloud_network.lan[0].id
-      )][0], null),
+      try([for net in server.network : net.ip if net.network_id == data.hcloud_network.lan.id][0], null),
       tolist(server.network)[0].ip
     )
   }

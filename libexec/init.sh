@@ -163,12 +163,15 @@ _write_config() {
             echo "  gateway: $gateway"
         fi
         echo "  lan:"
+        echo "    name: $lan_name"
+        if [ -n "$_lan_resource_group" ]; then
+            echo "    resource_group: $_lan_resource_group"
+        fi
         echo "    ipv4:"
         echo "      subnet: $lan_subnet"
         echo ""
         echo "masters:"
         echo "  - type: $master_type"
-        echo "    count: $master_count"
         echo ""
         echo "workers:"
         echo "  - type: $worker_type"
@@ -242,7 +245,8 @@ _main() {
     # --- network ---
     printf "${BLUE}network${NC}\n" >&2
     entrypoint="$(_prompt "entrypoint (DNS hostname)" "cluster.example.com")"
-    gateway="$(_prompt "gateway (leave empty for public IPs)" "")"
+    gateway="$(_prompt "LAN gateway IP (leave empty for WAN-only)" "")"
+    lan_name="$(_prompt "LAN network name" "")"
     lan_subnet="$(_prompt "LAN IPv4 subnet" "10.0.1.0/24")"
     echo >&2
 
@@ -258,13 +262,22 @@ _main() {
         _s3_bucket="$(_prompt "bucket" "")"
         _s3_region="$(_prompt "region" "us-east-1")"
         _s3_endpoint="$(_prompt "endpoint (leave empty for AWS)" "")"
+        _s3_access_key="$(_prompt "access_key" "ref+env://AWS_ACCESS_KEY_ID")"
+        _s3_secret_key="$(_prompt "secret_key" "ref+env://AWS_SECRET_ACCESS_KEY")"
+        _s3_lock="$(_prompt_yn "enable state locking (requires S3 conditional writes)" "y")"
         _state_yaml="state:
   backend: s3
   bucket: $_s3_bucket
-  region: $_s3_region"
+  region: $_s3_region
+  access_key: $_s3_access_key
+  secret_key: $_s3_secret_key"
         if [ -n "$_s3_endpoint" ]; then
             _state_yaml="$_state_yaml
   endpoint: $_s3_endpoint"
+        fi
+        if [ "$_s3_lock" = "n" ]; then
+            _state_yaml="$_state_yaml
+  lock: false"
         fi
         ;;
     gcs)

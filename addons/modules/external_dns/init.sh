@@ -38,7 +38,10 @@ _dns_provider_yaml() {
     esac
 }
 
-_cf="off"; _r53="off"; _hz="off"; _do="off"
+_cf="off"
+_r53="off"
+_hz="off"
+_do="off"
 case "$provider" in
 hetzner) _hz="on" ;;
 aws) _r53="on" ;;

@@ -12,48 +12,13 @@ resource "openstack_compute_keypair_v2" "node" {
   public_key = tls_private_key.node.public_key_openssh
 }
 
-resource "openstack_networking_network_v2" "lan" {
-  count          = var.purpose == "master" ? 1 : 0
-  name           = local.network.lan.name
-  admin_state_up = "true"
-  tags           = [var.cluster_name, var.purpose]
-}
-
 data "openstack_networking_network_v2" "lan" {
-  count = var.purpose == "worker" ? 1 : 0
-  name  = local.network.lan.name
-}
-
-resource "openstack_networking_subnet_v2" "lan" {
-  count           = var.purpose == "master" ? 1 : 0
-  name            = "${local.cluster}-lan-subnet"
-  network_id      = openstack_networking_network_v2.lan[0].id
-  cidr            = var.network.lan.ipv4.subnet
-  ip_version      = 4
-  dns_nameservers = ["213.186.33.99", "1.1.1.1"]
-  no_gateway      = false
-  enable_dhcp     = true
-  tags            = [var.cluster_name, var.purpose]
+  name = var.network.lan.name
 }
 
 data "openstack_networking_subnet_v2" "lan" {
-  count      = var.purpose == "worker" ? 1 : 0
-  name       = "${local.cluster}-lan-subnet"
-  network_id = data.openstack_networking_network_v2.lan[0].id
-}
-
-resource "openstack_networking_router_v2" "default" {
-  count               = var.purpose == "master" && !local.has_gateway ? 1 : 0
-  name                = "${local.cluster}-router"
-  admin_state_up      = true
-  external_network_id = data.openstack_networking_network_v2.external.id
-  tags                = [var.cluster_name, var.purpose]
-}
-
-resource "openstack_networking_router_interface_v2" "default" {
-  count     = var.purpose == "master" && !local.has_gateway ? 1 : 0
-  router_id = openstack_networking_router_v2.default[0].id
-  subnet_id = openstack_networking_subnet_v2.lan[0].id
+  network_id = data.openstack_networking_network_v2.lan.id
+  cidr       = var.network.lan.ipv4.subnet
 }
 
 resource "openstack_networking_secgroup_v2" "nodes" {
@@ -170,7 +135,7 @@ resource "openstack_networking_port_v2" "nodes" {
   dynamic "fixed_ip" {
     for_each = local.node_configs[count.index].ipv4 != null ? [1] : []
     content {
-      subnet_id  = var.purpose == "master" ? openstack_networking_subnet_v2.lan[0].id : data.openstack_networking_subnet_v2.lan[0].id
+      subnet_id  = data.openstack_networking_subnet_v2.lan.id
       ip_address = local.node_configs[count.index].ipv4
     }
   }
@@ -194,11 +159,8 @@ resource "openstack_compute_instance_v2" "nodes" {
     port = openstack_networking_port_v2.nodes[count.index].id
   }
 
-  dynamic "network" {
-    for_each = local.has_gateway ? [] : [1]
-    content {
-      uuid = data.openstack_networking_network_v2.external.id
-    }
+  network {
+    uuid = data.openstack_networking_network_v2.external.id
   }
 
   lifecycle {
@@ -211,9 +173,6 @@ resource "openstack_compute_instance_v2" "nodes" {
   }
 
   depends_on = [
-    openstack_networking_network_v2.lan,
-    openstack_networking_subnet_v2.lan,
-    openstack_networking_router_v2.default,
-    openstack_networking_router_interface_v2.default,
+    openstack_networking_port_v2.nodes,
   ]
 }

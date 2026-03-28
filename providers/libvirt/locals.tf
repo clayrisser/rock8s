@@ -40,13 +40,6 @@ EOT
     "xlarge" = { vcpu = 8, memory = 16384, disk_gb = 160 }
   }
 
-  network = {
-    lan = {
-      name   = "${var.cluster_name}-lan"
-      subnet = var.network.lan.ipv4.subnet
-    }
-  }
-
   lan_network_parts = split("/", var.network.lan.ipv4.subnet)
   lan_network_base  = split(".", local.lan_network_parts[0])
 

@@ -29,8 +29,6 @@ master_type="$(_dialog_menu "Select master instance type" "t3.medium" \
     c6g.xlarge 4vCPU/8GB_ARM \
     r5.large 2vCPU/16GB \
     r5.xlarge 4vCPU/32GB)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker instance type" "t3.large" \
     t3.medium 2vCPU/4GB \
     t3.large 2vCPU/8GB \

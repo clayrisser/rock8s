@@ -4,9 +4,7 @@ locals {
   has_gateway = local.gateway_ip != ""
   zone        = "${var.location}-b"
 
-  vpc_name    = "${var.cluster_name}-lan"
-  subnet_name = "${var.cluster_name}-lan-subnet"
-  node_tags   = ["${var.cluster_name}-node"]
+  node_tags = ["${var.cluster_name}-node"]
 
   cloud_init = <<-EOT
 #cloud-config
@@ -64,14 +62,6 @@ EOT
     "centos-7"     = "centos-cloud/centos-7"
     "rocky-9"      = "rocky-linux-cloud/rocky-linux-9"
     "fedora-37"    = "fedora-cloud/fedora-37"
-  }
-
-  network = {
-    lan = {
-      name   = local.vpc_name
-      subnet = var.network.lan.ipv4.subnet
-      zone   = local.zone
-    }
   }
 
   node_configs = flatten([

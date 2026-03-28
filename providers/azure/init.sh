@@ -5,6 +5,8 @@ _provider_yaml="  subscription_id: ref+env://ARM_SUBSCRIPTION_ID
   client_secret: ref+env://ARM_CLIENT_SECRET
   tenant_id: ref+env://ARM_TENANT_ID"
 
+_lan_resource_group="$(_prompt "network resource group" "")"
+
 location="$(_dialog_menu "Select region" "westeurope" \
     eastus East_US \
     westus2 West_US_2 \
@@ -27,8 +29,6 @@ master_type="$(_dialog_menu "Select master VM size" "Standard_B2s" \
     Standard_E4s_v5 4vCPU/32GB \
     Standard_F2s_v2 2vCPU/4GB \
     Standard_F4s_v2 4vCPU/8GB)"
-master_count="$(_prompt "master count" "1")"
-
 worker_type="$(_dialog_menu "Select worker VM size" "Standard_B4ms" \
     Standard_B2s 2vCPU/4GB \
     Standard_B4ms 4vCPU/16GB \

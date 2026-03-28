@@ -13,7 +13,7 @@ Complete architectural rewrite of rock8s core. No backward compatibility with v1
 - OpenTofu state backend configurable (local or S3/GCS/Azure) from config `state:` section
 - SSH keys managed as OpenTofu resources (in state), not local files
 - pfSense fully decoupled — managed in a separate project/repo
-- Gateway is optional — clusters work on public networks or behind any LAN gateway
+- Gateway is the LAN router/firewall — cloud nodes keep public IPs (firewalled when gateway set), on-prem uses NAT
 - k3s replaces kubespray
 - Multi-arch: provider exports arch hints, runtime fallback via `uname -m`
 - All shell remains POSIX `/bin/sh` compliant

@@ -21,7 +21,3 @@ output "node_architectures" {
     cfg.name => "amd64"
   }
 }
-
-output "network" {
-  value = local.network
-}

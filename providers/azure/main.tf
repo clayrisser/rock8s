@@ -15,58 +15,15 @@ data "azurerm_resource_group" "cluster" {
   name  = "${local.cluster}-rg"
 }
 
-resource "azurerm_virtual_network" "lan" {
-  count               = var.purpose == "master" ? 1 : 0
-  name                = local.network.lan.name
-  location            = var.location
-  resource_group_name = azurerm_resource_group.cluster[0].name
-  address_space       = [var.network.lan.ipv4.subnet]
-  tags                = local.common_tags
-}
-
 data "azurerm_virtual_network" "lan" {
-  count               = var.purpose == "worker" ? 1 : 0
-  name                = local.network.lan.name
-  resource_group_name = data.azurerm_resource_group.cluster[0].name
-}
-
-resource "azurerm_subnet" "lan" {
-  count                = var.purpose == "master" ? 1 : 0
-  name                 = "${local.cluster}-nodes"
-  resource_group_name  = azurerm_resource_group.cluster[0].name
-  virtual_network_name = azurerm_virtual_network.lan[0].name
-  address_prefixes     = [var.network.lan.ipv4.subnet]
+  name                = var.network.lan.name
+  resource_group_name = var.network.lan.resource_group
 }
 
 data "azurerm_subnet" "lan" {
-  count                = var.purpose == "worker" ? 1 : 0
-  name                 = "${local.cluster}-nodes"
-  virtual_network_name = data.azurerm_virtual_network.lan[0].name
-  resource_group_name  = data.azurerm_resource_group.cluster[0].name
-}
-
-resource "azurerm_route_table" "lan" {
-  count               = var.purpose == "master" && local.has_gateway ? 1 : 0
-  name                = "${local.cluster}-routes"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.cluster[0].name
-  tags                = local.common_tags
-}
-
-resource "azurerm_route" "default_via_gateway" {
-  count                  = var.purpose == "master" && local.has_gateway ? 1 : 0
-  name                   = "${local.cluster}-default"
-  resource_group_name    = azurerm_resource_group.cluster[0].name
-  route_table_name       = azurerm_route_table.lan[0].name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = local.gateway_ip
-}
-
-resource "azurerm_subnet_route_table_association" "lan" {
-  count          = var.purpose == "master" && local.has_gateway ? 1 : 0
-  subnet_id      = azurerm_subnet.lan[0].id
-  route_table_id = azurerm_route_table.lan[0].id
+  name                 = "${var.network.lan.name}-subnet"
+  virtual_network_name = data.azurerm_virtual_network.lan.name
+  resource_group_name  = var.network.lan.resource_group
 }
 
 resource "azurerm_network_security_group" "nodes" {
@@ -88,16 +45,19 @@ resource "azurerm_network_security_group" "nodes" {
     destination_address_prefix = "VirtualNetwork"
   }
 
-  security_rule {
-    name                       = "${local.cluster}-allow-ssh-in"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+  dynamic "security_rule" {
+    for_each = local.has_gateway ? [] : [1]
+    content {
+      name                       = "${local.cluster}-allow-ssh-in"
+      priority                   = 110
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "22"
+      source_address_prefix      = "*"
+      destination_address_prefix = "*"
+    }
   }
 
   security_rule {
@@ -121,12 +81,12 @@ data "azurerm_network_security_group" "nodes" {
 
 resource "azurerm_subnet_network_security_group_association" "lan" {
   count                     = var.purpose == "master" ? 1 : 0
-  subnet_id                 = azurerm_subnet.lan[0].id
+  subnet_id                 = data.azurerm_subnet.lan.id
   network_security_group_id = azurerm_network_security_group.nodes[0].id
 }
 
 resource "azurerm_public_ip" "nodes" {
-  count               = local.has_gateway ? 0 : length(local.node_configs)
+  count               = length(local.node_configs)
   name                = "${local.node_configs[count.index].name}-pip"
   location            = var.location
   resource_group_name = local.rg_name
@@ -146,7 +106,7 @@ resource "azurerm_network_interface" "nodes" {
     subnet_id                     = local.subnet_id
     private_ip_address_allocation = local.node_configs[count.index].ipv4 != null ? "Static" : "Dynamic"
     private_ip_address            = local.node_configs[count.index].ipv4
-    public_ip_address_id          = local.has_gateway ? null : azurerm_public_ip.nodes[count.index].id
+    public_ip_address_id          = azurerm_public_ip.nodes[count.index].id
   }
 
   tags = merge(local.common_tags, { node = local.node_configs[count.index].name })
