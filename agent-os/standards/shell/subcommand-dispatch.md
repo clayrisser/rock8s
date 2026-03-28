@@ -9,9 +9,9 @@ CLI entry: `rock8s.sh` → `libexec/<group>.sh` → `libexec/<group>/<cmd>.sh`
 
 ## Dispatch chain
 
-1. `rock8s.sh` parses global flags (`-o`, `-c`, `-t`), matches command name, `exec sh` to router
+1. `rock8s.sh` parses global flags (`-h`, `-d`, `-o`, `-c`/`--config`), matches command name, `exec sh` to router
 2. Router (`cluster.sh`, `nodes.sh`) parses group-level flags, matches subcommand, `exec sh` to command script
-3. Command script (`cluster/init.sh`, `nodes/apply.sh`, etc.) does the actual work
+3. Command script (`init.sh`, `nodes/apply.sh`, etc.) does the actual work
 
 ```sh
 _SUBCMD="$ROCK8S_LIBEXEC_PATH/<group>/$_CMD.sh"

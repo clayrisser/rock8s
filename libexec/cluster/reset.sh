@@ -10,7 +10,7 @@ NAME
        rock8s cluster reset
 
 SYNOPSIS
-       rock8s cluster reset [-h] [-o <format>] [--cluster <cluster>] [-y|--yes]
+       rock8s cluster reset [-h] [-o <format>] [--cluster <cluster>]
 
 DESCRIPTION
        reset kubernetes cluster by uninstalling k3s from all nodes
@@ -25,15 +25,9 @@ OPTIONS
        -c, --cluster <cluster>
               cluster name
 
-       -y, --yes
-              skip confirmation prompt
-
 EXAMPLE
-       # reset a cluster with confirmation
+       # reset a cluster
        rock8s cluster reset --cluster mycluster
-
-       # reset a cluster without confirmation
-       rock8s cluster reset --cluster mycluster --yes
 
 SEE ALSO
        rock8s cluster install --help
@@ -45,7 +39,6 @@ EOF
 _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
-    yes=""
     while test $# -gt 0; do
         case "$1" in
         -h | --help)
@@ -75,10 +68,6 @@ _main() {
                 shift 2
                 ;;
             esac
-            ;;
-        -y | --yes)
-            yes="1"
-            shift
             ;;
         -*)
             _help

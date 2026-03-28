@@ -111,36 +111,3 @@ format_output() {
         ;;
     esac
 }
-
-format_size() {
-    size=$1
-    if [ $size -ge 1073741824 ]; then
-        printf "%.2fG" "$(echo "scale=2; $size / 1073741824" | bc)"
-    elif [ $size -ge 1048576 ]; then
-        printf "%.2fM" "$(echo "scale=2; $size / 1048576" | bc)"
-    else
-        printf "%.2fK" "$(echo "scale=2; $size / 1024" | bc)"
-    fi
-}
-
-show_progress() {
-    name=$1
-    current=$2
-    total=$3
-    rate=$4
-    percent=$5
-    [ $percent -gt 100 ] && percent=99
-    bar_width=20
-    filled=$((percent * bar_width / 100))
-    i=0
-    bar=""
-    while [ $i -lt $bar_width ]; do
-        if [ $i -lt $filled ]; then
-            bar="${bar}█"
-        else
-            bar="${bar}░"
-        fi
-        i=$((i + 1))
-    done
-    printf "\033[2K\r%s %s %s/%s %s/s" "$name" "$bar" "$(format_size $current)" "$(format_size $total)" "$(format_size $rate)" >&2
-}

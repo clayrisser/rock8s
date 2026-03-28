@@ -134,7 +134,7 @@ _main() {
             ;;
         esac
     fi
-    provider_dir="$ROCK8S_LIB_PATH/providers/$provider"
+    provider_dir="$ROCK8S_HOME/providers/$provider"
     if [ ! -d "$provider_dir" ]; then
         fail "provider $provider not found"
     fi

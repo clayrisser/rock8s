@@ -55,11 +55,8 @@ workers:
   - type: cpx51
     count: 3
 addons:
-  source:
-    repo: https://gitlab.com/bitspur/rock8s/addons.git
-    version: main
   longhorn: {}
-  cert_manager: true
+  cluster_issuer: {}
 ```
 
 ## Context

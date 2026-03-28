@@ -40,9 +40,6 @@ ensure_system() {
     command -v tofu >/dev/null 2>&1 || {
         fail "tofu is not installed"
     }
-    command -v ansible >/dev/null 2>&1 || {
-        fail "ansible is not installed"
-    }
     command -v kubectl >/dev/null 2>&1 || {
         fail "kubectl is not installed"
     }
@@ -53,22 +50,4 @@ ensure_system() {
         fail "python3 is not installed"
     }
     _ENSURED_SYSTEM=1
-}
-
-try() {
-    i=0
-    trap 'exit 130' INT
-    while [ $i -lt $RETRIES ]; do
-        i=$((i + 1))
-        if [ $i -gt 1 ]; then
-            echo "retry $i/$RETRIES"
-            sleep 1
-        fi
-        if eval "$@"; then
-            trap - INT
-            return 0
-        fi
-    done
-    trap - INT
-    return 1
 }

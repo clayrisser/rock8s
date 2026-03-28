@@ -52,13 +52,18 @@ _prompt() {
         echo "$_default"
         return
     fi
-    if [ -n "$_default" ]; then
-        printf "  %s [%s]: " "$_label" "$_default" >&2
+    if command -v dialog >/dev/null 2>&1 && [ -t 0 ]; then
+        _result=$(dialog --stdout --inputbox "$_label" 0 50 "$_default") || exit 0
+        echo "$_result"
     else
-        printf "  %s: " "$_label" >&2
+        if [ -n "$_default" ]; then
+            printf "  %s [%s]: " "$_label" "$_default" >&2
+        else
+            printf "  %s: " "$_label" >&2
+        fi
+        read -r _value
+        echo "${_value:-$_default}"
     fi
-    read -r _value
-    echo "${_value:-$_default}"
 }
 
 _prompt_yn() {
@@ -68,161 +73,74 @@ _prompt_yn() {
         echo "$_default"
         return
     fi
-    printf "  %s [%s]: " "$_label" "$_default" >&2
-    read -r _value
-    _value="${_value:-$_default}"
-    case "$_value" in
-    y | Y | yes | Yes | YES) echo "y" ;;
-    *) echo "n" ;;
-    esac
+    if command -v dialog >/dev/null 2>&1 && [ -t 0 ]; then
+        if [ "$_default" = "n" ]; then
+            dialog --stdout --defaultno --yesno "$_label" 0 0 && echo "y" || echo "n"
+        else
+            dialog --stdout --yesno "$_label" 0 0 && echo "y" || echo "n"
+        fi
+    else
+        printf "  %s [%s]: " "$_label" "$_default" >&2
+        read -r _value
+        _value="${_value:-$_default}"
+        case "$_value" in
+        y | Y | yes | Yes | YES) echo "y" ;;
+        *) echo "n" ;;
+        esac
+    fi
 }
 
-_provider_defaults() {
-    case "$1" in
-    hetzner)
-        _def_location="nbg1"
-        _def_image="debian-12"
-        _def_master="cpx21"
-        _def_worker="cpx31"
-        ;;
-    aws)
-        _def_location="eu-central-1"
-        _def_image="debian-12"
-        _def_master="t3.medium"
-        _def_worker="t3.large"
-        ;;
-    azure)
-        _def_location="eastus"
-        _def_image="debian-12"
-        _def_master="Standard_B2s"
-        _def_worker="Standard_B4ms"
-        ;;
-    gcp)
-        _def_location="europe-west1"
-        _def_image="debian-12"
-        _def_master="e2-medium"
-        _def_worker="e2-standard-2"
-        ;;
-    digitalocean)
-        _def_location="fra1"
-        _def_image="debian-12-x64"
-        _def_master="s-2vcpu-4gb"
-        _def_worker="s-4vcpu-8gb"
-        ;;
-    ovh)
-        _def_location="GRA7"
-        _def_image="Debian 12"
-        _def_master="b2-7"
-        _def_worker="b2-15"
-        ;;
-    vultr)
-        _def_location="fra"
-        _def_image="debian-12"
-        _def_master="vc2-2c-4gb"
-        _def_worker="vc2-4c-8gb"
-        ;;
-    libvirt)
-        _def_location=""
-        _def_image=""
-        _def_master=""
-        _def_worker=""
-        ;;
-    proxmox)
-        _def_location=""
-        _def_image=""
-        _def_master="medium"
-        _def_worker="large"
-        ;;
-    esac
+_dialog_menu() {
+    _title="$1"
+    _default="$2"
+    shift 2
+    if [ "$_YES" = "1" ]; then
+        echo "$_default"
+        return
+    fi
+    if command -v dialog >/dev/null 2>&1 && [ -t 0 ]; then
+        dialog --stdout --default-item "$_default" --menu "$_title" 0 0 0 "$@" || exit 0
+    else
+        _opts=""
+        while [ $# -ge 2 ]; do
+            _opts="${_opts:+$_opts, }$1"
+            shift 2
+        done
+        _prompt "$_title ($_opts)" "$_default"
+    fi
 }
 
-_provider_credentials() {
-    case "$1" in
-    hetzner)
-        _provider_yaml="  token: ref+env://HETZNER_TOKEN"
-        ;;
-    aws)
-        _provider_yaml="  access_key: ref+env://AWS_ACCESS_KEY_ID
-  secret_key: ref+env://AWS_SECRET_ACCESS_KEY"
-        ;;
-    azure)
-        _provider_yaml="  subscription_id: ref+env://ARM_SUBSCRIPTION_ID
-  client_id: ref+env://ARM_CLIENT_ID
-  client_secret: ref+env://ARM_CLIENT_SECRET
-  tenant_id: ref+env://ARM_TENANT_ID"
-        ;;
-    gcp)
-        _cred_project="$(_prompt "project" "my-project")"
-        _provider_yaml="  project: $_cred_project"
-        ;;
-    digitalocean)
-        _provider_yaml="  token: ref+env://DIGITALOCEAN_TOKEN"
-        ;;
-    ovh)
-        _cred_tenant="$(_prompt "tenant_name" "")"
-        _cred_osuser="$(_prompt "openstack_user" "")"
-        _provider_yaml="  application_key: ref+env://OVH_APPLICATION_KEY
-  application_secret: ref+env://OVH_APPLICATION_SECRET
-  consumer_key: ref+env://OVH_CONSUMER_KEY
-  tenant_name: $_cred_tenant
-  openstack_user: $_cred_osuser
-  openstack_password: ref+env://OS_PASSWORD"
-        ;;
-    vultr)
-        _provider_yaml="  api_key: ref+env://VULTR_API_KEY"
-        ;;
-    libvirt)
-        _cred_uri="$(_prompt "uri" "qemu:///system")"
-        _provider_yaml="  uri: $_cred_uri"
-        ;;
-    proxmox)
-        _cred_endpoint="$(_prompt "endpoint URL" "https://10.0.0.2:8006/")"
-        _cred_node="$(_prompt "node name" "pve")"
-        _cred_insecure="$(_prompt "insecure TLS (true/false)" "true")"
-        _provider_yaml="  endpoint: $_cred_endpoint
-  api_token: ref+env://PROXMOX_VE_API_TOKEN
-  node: $_cred_node
-  insecure: $_cred_insecure"
-        ;;
-    esac
+_dialog_checklist() {
+    _title="$1"
+    shift
+    if [ "$_YES" = "1" ]; then
+        while [ $# -ge 3 ]; do
+            [ "$3" = "on" ] && printf "%s " "$1"
+            shift 3
+        done
+        return
+    fi
+    if command -v dialog >/dev/null 2>&1 && [ -t 0 ]; then
+        _result=$(dialog --stdout --checklist "$_title" 0 0 0 "$@") || exit 0
+        printf "%s" "$_result" | tr -d '"'
+    else
+        while [ $# -ge 3 ]; do
+            _tag="$1"
+            _desc="$2"
+            _state="$3"
+            shift 3
+            [ "$_state" = "on" ] && _def="y" || _def="n"
+            _val=$(_prompt_yn "$_tag ($_desc)" "$_def")
+            [ "$_val" = "y" ] && printf "%s " "$_tag"
+        done
+    fi
 }
 
-_dns_provider_yaml() {
-    case "$1" in
-    cloudflare)
-        _dns_yaml="$_dns_yaml
-    cloudflare:
-      email: ref+env://CLOUDFLARE_EMAIL
-      api_key: ref+env://CLOUDFLARE_API_KEY"
-        ;;
-    route53)
-        _dns_yaml="$_dns_yaml
-    route53:
-      access_key: ref+env://AWS_ACCESS_KEY_ID
-      secret_key: ref+env://AWS_SECRET_ACCESS_KEY
-      region: us-east-1"
-        ;;
-    hetzner)
-        _dns_yaml="$_dns_yaml
-    hetzner:
-      api_key: ref+env://HETZNER_DNS_TOKEN"
-        ;;
-    digitalocean)
-        _dns_yaml="$_dns_yaml
-    digitalocean:
-      api_token: ref+env://DIGITALOCEAN_TOKEN"
-        ;;
-    powerdns)
-        _dns_url="$(_prompt "powerdns api_url" "")"
-        _dns_yaml="$_dns_yaml
-    powerdns:
-      api_url: $_dns_url
-      api_key: ref+env://PDNS_API_KEY"
-        ;;
-    *)
-        fail "unsupported dns provider: $1"
-        ;;
-    esac
+_has_addon() {
+    for _a in $_addon_selection; do
+        [ "$_a" = "$1" ] && return 0
+    done
+    return 1
 }
 
 _write_config() {
@@ -231,11 +149,11 @@ _write_config() {
         echo "provider:"
         echo "  type: $provider"
         printf '%s\n' "$_provider_yaml"
-        if [ -n "$_def_location" ]; then
+        if [ -n "$location" ]; then
             echo ""
             echo "location: $location"
         fi
-        if [ -n "$_def_image" ]; then
+        if [ -n "$image" ]; then
             echo "image: $image"
         fi
         echo ""
@@ -262,6 +180,10 @@ _write_config() {
         if [ -n "$_addons_yaml" ]; then
             echo ""
             echo "addons:"
+            if [ "$ROCK8S_DEBUG" != "1" ]; then
+                echo "  source:"
+                echo "    version: $ROCK8S_VERSION"
+            fi
             if [ -n "$_email" ]; then
                 echo "  email: $_email"
             fi
@@ -301,22 +223,21 @@ _main() {
     echo >&2
 
     # --- provider ---
-    printf "${BLUE}provider${NC}\n" >&2
-    provider="$(_prompt "type (hetzner, aws, azure, gcp, digitalocean, ovh, vultr, libvirt, proxmox)" "hetzner")"
-    if ! echo "$provider" | grep -qE '^(hetzner|aws|azure|gcp|digitalocean|ovh|vultr|libvirt|proxmox)$'; then
-        fail "invalid provider: $provider"
+    _provider_init_dir="$ROCK8S_HOME/providers"
+    _provider_menu=""
+    for _p in "$_provider_init_dir"/*/; do
+        [ -d "$_p" ] || continue
+        _pname="$(basename "$_p")"
+        _provider_menu="$_provider_menu $_pname $_pname"
+    done
+    provider="$(_dialog_menu "Select provider" "hetzner" $_provider_menu)"
+    _provider_init="$_provider_init_dir/$provider/init.sh"
+    if [ ! -f "$_provider_init" ]; then
+        fail "provider $provider has no init.sh"
     fi
-    _provider_defaults "$provider"
-    _provider_credentials "$provider"
-    echo >&2
-
-    # --- infrastructure ---
-    if [ -n "$_def_location" ]; then
-        printf "${BLUE}infrastructure${NC}\n" >&2
-        location="$(_prompt "location" "$_def_location")"
-        image="$(_prompt "image" "$_def_image")"
-        echo >&2
-    fi
+    location=""
+    image=""
+    . "$_provider_init"
 
     # --- network ---
     printf "${BLUE}network${NC}\n" >&2
@@ -325,20 +246,12 @@ _main() {
     lan_subnet="$(_prompt "LAN IPv4 subnet" "10.0.1.0/24")"
     echo >&2
 
-    # --- nodes ---
-    printf "${BLUE}master nodes${NC}\n" >&2
-    master_type="$(_prompt "instance type" "$_def_master")"
-    master_count="$(_prompt "count" "1")"
-    echo >&2
-
-    printf "${BLUE}worker nodes${NC}\n" >&2
-    worker_type="$(_prompt "instance type" "$_def_worker")"
-    worker_count="$(_prompt "count" "2")"
-    echo >&2
-
     # --- state backend ---
-    printf "${BLUE}state backend${NC}\n" >&2
-    state_backend="$(_prompt "backend (local, s3, gcs, azblob)" "local")"
+    state_backend="$(_dialog_menu "Select state backend" "local" \
+        local "Local filesystem" \
+        s3 "S3-compatible storage" \
+        gcs "Google Cloud Storage" \
+        azblob "Azure Blob Storage")"
     _state_yaml=""
     case "$state_backend" in
     s3)
@@ -376,96 +289,61 @@ _main() {
     echo >&2
 
     # --- addons ---
-    printf "${BLUE}addons${NC}\n" >&2
     _addons_yaml=""
     _email=""
-    _kyverno="$(_prompt_yn "kyverno (policy engine)" "y")"
-    _cluster_issuer="$(_prompt_yn "cluster_issuer (TLS certificates)" "y")"
-    _reloader="$(_prompt_yn "reloader (auto-restart on config changes)" "n")"
-    _rancher="$(_prompt_yn "rancher (cluster management UI)" "n")"
-    _monitoring="$(_prompt_yn "rancher_monitoring (Prometheus/Grafana)" "n")"
-    _logging="n"
-    _istio="n"
-    _tempo="n"
-    if [ "$_monitoring" = "y" ]; then
-        _logging="$(_prompt_yn "rancher_logging (log collection)" "n")"
-        _istio="$(_prompt_yn "rancher_istio (service mesh)" "n")"
-        if [ "$_logging" = "y" ]; then
-            _tempo="$(_prompt_yn "tempo (distributed tracing)" "n")"
+    _addons_dir="$ROCK8S_HOME/addons/modules"
+
+    # build checklist dynamically from addon modules
+    set --
+    for _addon_dir in "$_addons_dir"/*/; do
+        [ -d "$_addon_dir" ] || continue
+        _name="$(basename "$_addon_dir")"
+        _desc="$_name"
+        if [ -f "$_addon_dir/description" ]; then
+            _desc="$(cat "$_addon_dir/description")"
         fi
-    fi
-    _external_dns="$(_prompt_yn "external_dns (automatic DNS records)" "n")"
-    _dns_yaml=""
-    if [ "$_external_dns" = "y" ]; then
-        _dns_default="cloudflare"
-        case "$provider" in
-        hetzner) _dns_default="hetzner" ;;
-        aws) _dns_default="route53" ;;
-        digitalocean) _dns_default="digitalocean" ;;
-        esac
-        _dns_pick="$(_prompt "dns provider (cloudflare, route53, hetzner, digitalocean, powerdns)" "$_dns_default")"
-        _dns_provider_yaml "$_dns_pick"
-        if [ "$_YES" != "1" ]; then
-            while true; do
-                _dns_more="$(_prompt_yn "add another dns provider" "n")"
-                if [ "$_dns_more" != "y" ]; then
-                    break
-                fi
-                _dns_pick="$(_prompt "dns provider (cloudflare, route53, hetzner, digitalocean, powerdns)" "")"
-                _dns_provider_yaml "$_dns_pick"
-            done
+        _default="off"
+        if [ -f "$_addon_dir/default_enabled" ]; then
+            _default="on"
         fi
+        set -- "$@" "$_name" "$_desc" "$_default"
+    done
+    _addon_selection=$(_dialog_checklist "Select addons to enable" "$@")
+
+    # auto-enable dependencies
+    if _has_addon "tempo" && ! _has_addon "rancher_logging"; then
+        _addon_selection="$_addon_selection rancher_logging"
     fi
-    if [ "$_cluster_issuer" = "y" ]; then
-        _has_cloudflare="$(echo "$_dns_yaml" | grep -c 'cloudflare:' || true)"
+    if _has_addon "rancher_logging" && ! _has_addon "rancher_monitoring"; then
+        _addon_selection="$_addon_selection rancher_monitoring"
+    fi
+    if _has_addon "rancher_istio" && ! _has_addon "rancher_monitoring"; then
+        _addon_selection="$_addon_selection rancher_monitoring"
+    fi
+
+    # source each selected addon's init.sh for config, then build yaml
+    for _addon in $_addon_selection; do
+        _addon_yaml=""
+        _addon_init="$_addons_dir/$_addon/init.sh"
+        if [ -f "$_addon_init" ]; then
+            . "$_addon_init"
+        fi
+        if [ -n "$_addon_yaml" ]; then
+            _addons_yaml="$_addons_yaml
+  $_addon:$_addon_yaml"
+        else
+            _addons_yaml="$_addons_yaml
+  $_addon: {}"
+        fi
+    done
+
+    # letsencrypt email (needed by cluster_issuer when no cloudflare)
+    if _has_addon "cluster_issuer"; then
+        _has_cloudflare="$(echo "$_addons_yaml" | grep -c 'cloudflare:' || true)"
         if [ "$_has_cloudflare" = "0" ]; then
             _email="$(_prompt "letsencrypt email" "")"
         fi
     fi
-    _argocd="$(_prompt_yn "argocd (GitOps continuous delivery)" "n")"
-    _flux="$(_prompt_yn "flux (GitOps toolkit)" "n")"
-    _olm="$(_prompt_yn "olm (operator lifecycle manager)" "n")"
-    _kanister="$(_prompt_yn "kanister (data backup/restore)" "n")"
-    _openebs="$(_prompt_yn "openebs (container storage)" "n")"
-    _longhorn="$(_prompt_yn "longhorn (distributed block storage)" "n")"
-    _vault="$(_prompt_yn "vault (secrets management)" "n")"
-    echo >&2
-
-    # build addons yaml
-    [ "$_kyverno" = "y" ] && _addons_yaml="$_addons_yaml  kyverno: {}"
-    [ "$_cluster_issuer" = "y" ] && _addons_yaml="$_addons_yaml
-  cluster_issuer: {}"
-    [ "$_reloader" = "y" ] && _addons_yaml="$_addons_yaml
-  reloader: {}"
-    [ "$_rancher" = "y" ] && _addons_yaml="$_addons_yaml
-  rancher:
-    admin_password: ref+env://RANCHER_PASSWORD"
-    [ "$_monitoring" = "y" ] && _addons_yaml="$_addons_yaml
-  rancher_monitoring: {}"
-    [ "$_logging" = "y" ] && _addons_yaml="$_addons_yaml
-  rancher_logging: {}"
-    [ "$_istio" = "y" ] && _addons_yaml="$_addons_yaml
-  rancher_istio: {}"
-    [ "$_tempo" = "y" ] && _addons_yaml="$_addons_yaml
-  tempo: {}"
-    if [ "$_external_dns" = "y" ] && [ -n "$_dns_yaml" ]; then
-        _addons_yaml="$_addons_yaml
-  external_dns:$_dns_yaml"
-    fi
-    [ "$_argocd" = "y" ] && _addons_yaml="$_addons_yaml
-  argocd: {}"
-    [ "$_flux" = "y" ] && _addons_yaml="$_addons_yaml
-  flux: {}"
-    [ "$_olm" = "y" ] && _addons_yaml="$_addons_yaml
-  olm: {}"
-    [ "$_kanister" = "y" ] && _addons_yaml="$_addons_yaml
-  kanister: {}"
-    [ "$_openebs" = "y" ] && _addons_yaml="$_addons_yaml
-  openebs: {}"
-    [ "$_longhorn" = "y" ] && _addons_yaml="$_addons_yaml
-  longhorn: {}"
-    [ "$_vault" = "y" ] && _addons_yaml="$_addons_yaml
-  vault: {}"
 
     # strip leading newline from addons block
     _addons_yaml="$(echo "$_addons_yaml" | sed '1{/^$/d}')"

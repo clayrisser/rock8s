@@ -10,7 +10,7 @@ NAME
        rock8s cluster apply
 
 SYNOPSIS
-       rock8s cluster apply [-h] [-o <format>] [--cluster <cluster>] [--update] [-y|--yes] [--skip-k3s] [--skip-nodes]
+       rock8s cluster apply [-h] [-o <format>] [--cluster <cluster>] [-y|--yes] [--skip-k3s] [--skip-nodes]
 
 DESCRIPTION
        create nodes, install and configure kubernetes cluster in a single command
@@ -24,9 +24,6 @@ OPTIONS
 
        -c, --cluster <cluster>
               cluster name
-
-       --update
-              update addons repository
 
        -y, --yes
               skip confirmation prompt
@@ -51,7 +48,6 @@ EOF
 _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
-    update=""
     yes="0"
     skip_nodes=""
     skip_k3s=""
@@ -84,10 +80,6 @@ _main() {
                 shift 2
                 ;;
             esac
-            ;;
-        --update)
-            update="1"
-            shift
             ;;
         -y | --yes)
             yes="1"
@@ -145,7 +137,6 @@ _main() {
     sh "$ROCK8S_LIBEXEC_PATH/cluster/addons.sh" \
         --output="$output" \
         --cluster="$cluster" \
-        $([ "$update" = "1" ] && echo "--update") \
         $([ "$yes" = "1" ] && echo "--yes") >/dev/null
     printf '{"cluster":"%s","provider":"%s"}\n' \
         "$cluster" "$(get_provider)" |

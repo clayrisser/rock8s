@@ -5,11 +5,13 @@ set -e
 export ROCK8S_VERSION="0.2.0"
 
 if [ -f "$(pwd)/lib/lib.sh" ]; then
-    : "${ROCK8S_LIB_PATH:=$(pwd)/lib}"
-    : "${ROCK8S_LIBEXEC_PATH:=$(pwd)/libexec}"
+    : "${ROCK8S_HOME:=$(pwd)}"
+    : "${ROCK8S_LIB_PATH:=$ROCK8S_HOME/lib}"
+    : "${ROCK8S_LIBEXEC_PATH:=$ROCK8S_HOME/libexec}"
     ROCK8S_DEBUG=1
 else
-    : "${ROCK8S_LIB_PATH:=/usr/lib/rock8s}"
+    : "${ROCK8S_HOME:=/usr/lib/rock8s}"
+    : "${ROCK8S_LIB_PATH:=$ROCK8S_HOME}"
     : "${ROCK8S_LIBEXEC_PATH:=/usr/libexec/rock8s}"
     ROCK8S_DEBUG=0
 fi
@@ -17,12 +19,12 @@ fi
 : "${ROCK8S_OUTPUT:=text}"
 : "${ROCK8S_CONFIG:=}"
 export ROCK8S_DEBUG
+export ROCK8S_HOME
 export ROCK8S_LIB_PATH
 export ROCK8S_LIBEXEC_PATH
 export ROCK8S_OUTPUT
 export ROCK8S_CACHE_HOME
 export ROCK8S_CONFIG
-export ANSIBLE_NOCOWS=1
 . "$ROCK8S_LIB_PATH/lib.sh"
 
 if [ "$(id -u)" = "0" ]; then

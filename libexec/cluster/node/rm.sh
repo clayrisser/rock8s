@@ -10,7 +10,7 @@ NAME
        rock8s cluster node rm
 
 SYNOPSIS
-       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] [-y|--yes] <node>
+       rock8s cluster node rm [-h] [-o <format>] [--cluster <cluster>] <node>
 
 DESCRIPTION
        remove a node from a kubernetes cluster
@@ -29,15 +29,9 @@ OPTIONS
        -c, --cluster <cluster>
               cluster name
 
-       -y, --yes
-              skip confirmation prompt
-
 EXAMPLE
-       # remove a node with confirmation
+       # remove a node from cluster
        rock8s cluster node rm --cluster mycluster worker-2
-
-       # remove a node without confirmation
-       rock8s cluster node rm --cluster mycluster --yes worker-3
 
 SEE ALSO
        rock8s cluster node --help
@@ -49,7 +43,6 @@ _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
     node=""
-    yes=""
     while test $# -gt 0; do
         case "$1" in
         -h | --help)
@@ -79,10 +72,6 @@ _main() {
                 shift 2
                 ;;
             esac
-            ;;
-        -y | --yes)
-            yes="1"
-            shift
             ;;
         -*)
             _help

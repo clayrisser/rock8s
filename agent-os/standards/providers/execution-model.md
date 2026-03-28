@@ -13,7 +13,7 @@ This ensures each cluster uses the provider code version from when it was last a
 ## Variable flow
 
 ```
-config.yaml → get_config_json → resolve_refs → jq merge → tfvars.sh (stdin JSON → stdout JSON) → terraform.tfvars.json
+rock8s.yaml → get_config_json → resolve_refs → jq merge → tfvars.sh (stdin JSON → stdout JSON) → terraform.tfvars.json
                                                           → variables.sh (sourced for provider secrets)
                                                           → TF_VAR_* exports (identity vars)
 ```

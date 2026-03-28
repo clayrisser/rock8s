@@ -106,28 +106,12 @@ get_entrypoint_ipv4() {
     echo "$_ENTRYPOINT_IPV4"
 }
 
-get_addons_repo() {
-    if [ -n "$_ADDONS_REPO" ]; then
-        echo "$_ADDONS_REPO"
-        return
-    fi
+get_addons_source_repo() {
     _CONFIG_JSON="$(get_config_json)"
-    _ADDONS_REPO="$(echo "$_CONFIG_JSON" | jq -r '.addons.repo // ""')"
-    if [ -z "$_ADDONS_REPO" ]; then
-        _ADDONS_REPO="https://gitlab.com/bitspur/rock8s/addons.git"
-    fi
-    echo "$_ADDONS_REPO"
+    echo "$(echo "$_CONFIG_JSON" | jq -r '.addons.source.repo // ""')"
 }
 
-get_addons_version() {
-    if [ -n "$_ADDONS_VERSION" ]; then
-        echo "$_ADDONS_VERSION"
-        return
-    fi
+get_addons_source_version() {
     _CONFIG_JSON="$(get_config_json)"
-    _ADDONS_VERSION="$(echo "$_CONFIG_JSON" | jq -r '.addons.version // ""')"
-    if [ -z "$_ADDONS_VERSION" ]; then
-        _ADDONS_VERSION="0.1.0"
-    fi
-    echo "$_ADDONS_VERSION"
+    echo "$(echo "$_CONFIG_JSON" | jq -r '.addons.source.version // ""')"
 }
