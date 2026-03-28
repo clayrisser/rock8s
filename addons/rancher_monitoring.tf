@@ -10,7 +10,7 @@ resource "kubernetes_namespace_v1" "rancher_monitoring" {
   }
 }
 
-module "rancher-monitoring" {
+module "rancher_monitoring" {
   source           = "./modules/rancher_monitoring"
   enabled          = var.rancher_monitoring != null
   create_namespace = false
@@ -20,7 +20,7 @@ module "rancher-monitoring" {
   depends_on = [
     module.ceph,
     module.rancher,
-    module.rancher-logging,
+    module.rancher_logging,
     module.tempo,
   ]
 }

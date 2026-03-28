@@ -34,7 +34,7 @@ providers/             # IaC per provider
 
 - All shell is POSIX `/bin/sh` — no bashisms
 - Config is a single YAML file (`rock8s.yaml`), checked into git
-- Secrets resolved at runtime via `ref+<scheme>://path` syntax
+- Secrets resolved at runtime via `ref+<scheme>://path` syntax; optional `.env` merge fills `ref+env` keys without overriding existing exports (see shell standards)
 - Cache follows XDG conventions (`~/.cache/rock8s/`); all local state is regenerable
 - OpenTofu state is offloaded to remote backends (S3, GCS, etc.)
 - Cluster infrastructure is purpose-based: master → worker

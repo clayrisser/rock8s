@@ -34,3 +34,18 @@ variable "chart_version" {
 variable "values" {
   default = ""
 }
+
+variable "capacitor_next_enabled" {
+  description = "Install Capacitor Next UI (https://github.com/gimlet-io/capacitor/tree/main/self-host/charts/capacitor-next) alongside Flux."
+  type        = bool
+  default     = true
+}
+
+variable "capacitor_next_chart_version" {
+  default = "0.14.0"
+}
+
+variable "capacitor_next_values" {
+  description = "Extra Helm values YAML merged after rock8s baseline (auth, ingress, etc.)."
+  default     = ""
+}

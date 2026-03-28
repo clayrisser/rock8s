@@ -1,6 +1,6 @@
 // TODO: add buckets
 
-module "rancher-logging" {
+module "rancher_logging" {
   source             = "./modules/rancher_logging"
   enabled            = local.rancher_logging
   rancher_cluster_id = local.rancher_cluster_id

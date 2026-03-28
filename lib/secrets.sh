@@ -105,13 +105,13 @@ resolve_refs() {
         printf '%s' "$input"
         return
     fi
-    tmpfile="$(mktemp)"
-    trap 'rm -f "$tmpfile"' EXIT
+    _tmpfile="$(mktemp)"
+    trap 'rm -f "$_tmpfile"' EXIT
     printf '%s' "$input" | jq -r '
         paths(strings) as $p |
         select(getpath($p) | startswith("ref+")) |
         ($p | map(tostring) | join("\t")) + "\t" + getpath($p)
-    ' >"$tmpfile"
+    ' >"$_tmpfile"
     result="$input"
     while IFS="$(printf '\t')" read -r line; do
         ref_value="${line##*	}"
@@ -129,8 +129,8 @@ resolve_refs() {
             print out
         }')"
         result="$(printf '%s' "$result" | jq --arg v "$resolved" "${jq_path} = \$v")"
-    done <"$tmpfile"
-    rm -f "$tmpfile"
+    done <"$_tmpfile"
+    rm -f "$_tmpfile"
     trap - EXIT
     printf '%s' "$result"
 }

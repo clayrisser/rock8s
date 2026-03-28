@@ -1,4 +1,4 @@
-module "cluster-issuer" {
+module "cluster_issuer" {
   source            = "./modules/cluster_issuer"
   enabled           = var.cluster_issuer != null
   letsencrypt_email = local.email

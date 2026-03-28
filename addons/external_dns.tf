@@ -1,4 +1,4 @@
-module "external-dns" {
+module "external_dns" {
   source  = "./modules/external_dns"
   enabled = local.external_dns
   default_targets = [

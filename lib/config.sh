@@ -35,12 +35,87 @@ get_cluster_config_file() {
     echo "$_CLUSTER_CONFIG_FILE"
 }
 
+# Load .env files for ref+env:// — never overrides variables already in the environment.
+# Merge order (later file wins for a key among file-sourced values): $PWD/.env,
+# <config-dir>/.env, path from ROCK8S_DOTENV (if set in the real environment).
+_rock8s_merge_dotenv() {
+    _cfg_rel="$1"
+    _d="$(dirname "$_cfg_rel")"
+    _b="$(basename "$_cfg_rel")"
+    _root="$(CDPATH= cd -- "$_d" && pwd)"
+    _cfg_abs="$_root/$_b"
+    export ROCK8S__DOTENV_CONFIG_ABS="$_cfg_abs"
+    eval "$(
+        python3 <<'PY'
+import os, shlex, re
+from pathlib import Path
+
+config_abs = os.environ["ROCK8S__DOTENV_CONFIG_ABS"]
+paths = []
+seen = set()
+
+
+def add(p):
+    if not p.is_file():
+        return
+    r = str(p.resolve())
+    if r in seen:
+        return
+    seen.add(r)
+    paths.append(p)
+
+
+add(Path.cwd() / ".env")
+add(Path(config_abs).parent / ".env")
+ex = os.environ.get("ROCK8S_DOTENV", "").strip()
+if ex:
+    add(Path(ex).expanduser())
+
+
+def parse_file(path):
+    with open(path, encoding="utf-8") as f:
+        for raw in f:
+            line = raw.rstrip("\n\r")
+            if not line.strip():
+                continue
+            if line.lstrip().startswith("#"):
+                continue
+            s = line.strip()
+            if s.startswith("export "):
+                s = s[7:].lstrip()
+            if "=" not in s:
+                continue
+            key, _, val = s.partition("=")
+            key = key.strip()
+            val = val.strip()
+            if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
+                continue
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
+                val = val[1:-1]
+            yield key, val
+
+
+merged = {}
+for p in paths:
+    for k, v in parse_file(p):
+        if k in os.environ:
+            continue
+        merged[k] = v
+
+for k, v in merged.items():
+    print(f"export {k}={shlex.quote(v)}")
+PY
+    )"
+    unset ROCK8S__DOTENV_CONFIG_ABS
+}
+
 get_config_json() {
     if [ -n "$_CONFIG_JSON" ]; then
         echo "$_CONFIG_JSON"
         return
     fi
     _CLUSTER_CONFIG_FILE="$(get_cluster_config_file)"
+    _rock8s_merge_dotenv "$_CLUSTER_CONFIG_FILE"
     _CONFIG_JSON="$(yaml2json <"$_CLUSTER_CONFIG_FILE")"
     _CONFIG_JSON="$(echo "$_CONFIG_JSON" | resolve_refs)"
     echo "$_CONFIG_JSON"
