@@ -167,8 +167,10 @@ _write_config() {
         if [ -n "$_lan_resource_group" ]; then
             echo "    resource_group: $_lan_resource_group"
         fi
-        echo "    ipv4:"
-        echo "      subnet: $lan_subnet"
+        if [ -n "$lan_subnet" ]; then
+            echo "    ipv4:"
+            echo "      subnet: $lan_subnet"
+        fi
         echo ""
         echo "masters:"
         echo "  - type: $master_type"
@@ -240,6 +242,7 @@ _main() {
     fi
     location=""
     image=""
+    lan_subnet=""
     . "$_provider_init"
 
     # --- network ---
@@ -247,7 +250,6 @@ _main() {
     entrypoint="$(_prompt "entrypoint (DNS hostname)" "cluster.example.com")"
     gateway="$(_prompt "LAN gateway IP (leave empty for WAN-only)" "")"
     lan_name="$(_prompt "LAN network name" "")"
-    lan_subnet="$(_prompt "LAN IPv4 subnet" "10.0.1.0/24")"
     echo >&2
 
     # --- state backend ---

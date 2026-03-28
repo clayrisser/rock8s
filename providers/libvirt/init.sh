@@ -5,6 +5,7 @@ _provider_yaml="  uri: $_cred_uri"
 
 location=""
 image=""
+lan_subnet="$(_prompt "LAN IPv4 subnet" "10.0.1.0/24")"
 
 master_type="$(_dialog_menu "Select master instance type" "medium" \
     small 1vCPU/2GB/20GB \

@@ -32,10 +32,6 @@ locals {
 
   vultr_region = lookup(local.region_map, var.location, var.location)
 
-  vpc_cidr_parts = split("/", var.network.lan.ipv4.subnet)
-  vpc_ip_block   = cidrhost(var.network.lan.ipv4.subnet, 0)
-  vpc_prefix     = tonumber(local.vpc_cidr_parts[1])
-
   cloud_init = <<-EOT
 #cloud-config
 users:

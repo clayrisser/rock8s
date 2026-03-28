@@ -3,11 +3,6 @@ locals {
   gateway_ip  = try(var.network.gateway, "")
   has_gateway = local.gateway_ip != ""
 
-  vpc_inbound_cidrs = compact(concat(
-    [var.network.lan.ipv4.subnet],
-    try(var.network.lan.ipv6.subnet, null) != null ? [var.network.lan.ipv6.subnet] : []
-  ))
-
   cloud_init = <<-EOT
 #cloud-config
 users:

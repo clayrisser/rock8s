@@ -18,7 +18,6 @@ data "openstack_networking_network_v2" "lan" {
 
 data "openstack_networking_subnet_v2" "lan" {
   network_id = data.openstack_networking_network_v2.lan.id
-  cidr       = var.network.lan.ipv4.subnet
 }
 
 resource "openstack_networking_secgroup_v2" "nodes" {
@@ -89,7 +88,7 @@ resource "openstack_networking_secgroup_rule_v2" "ingress_lan_tcp" {
   protocol          = "tcp"
   port_range_min    = 1
   port_range_max    = 65535
-  remote_ip_prefix  = var.network.lan.ipv4.subnet
+  remote_group_id   = openstack_networking_secgroup_v2.nodes[0].id
   security_group_id = openstack_networking_secgroup_v2.nodes[0].id
 }
 
@@ -100,7 +99,7 @@ resource "openstack_networking_secgroup_rule_v2" "ingress_lan_udp" {
   protocol          = "udp"
   port_range_min    = 1
   port_range_max    = 65535
-  remote_ip_prefix  = var.network.lan.ipv4.subnet
+  remote_group_id   = openstack_networking_secgroup_v2.nodes[0].id
   security_group_id = openstack_networking_secgroup_v2.nodes[0].id
 }
 
@@ -109,7 +108,7 @@ resource "openstack_networking_secgroup_rule_v2" "ingress_lan_icmp" {
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "icmp"
-  remote_ip_prefix  = var.network.lan.ipv4.subnet
+  remote_group_id   = openstack_networking_secgroup_v2.nodes[0].id
   security_group_id = openstack_networking_secgroup_v2.nodes[0].id
 }
 
