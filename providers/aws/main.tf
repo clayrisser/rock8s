@@ -2,15 +2,15 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-data "aws_ami" "debian" {
+data "aws_ami" "node" {
   for_each = local.ami_lookup_keys
 
   most_recent = true
-  owners      = ["136693071363"]
+  owners      = local.ami_owners_for_key[each.key]
 
   filter {
     name   = "name"
-    values = ["${split(":", each.key)[0]}-${split(":", each.key)[1] == "arm64" ? "arm64" : "amd64"}-*"]
+    values = [local.ami_name_for_key[each.key]]
   }
   filter {
     name   = "virtualization-type"
@@ -86,15 +86,12 @@ resource "aws_security_group" "nodes" {
     self        = true
   }
 
-  dynamic "ingress" {
-    for_each = local.has_gateway ? [] : [1]
-    content {
-      description = "SSH from public (WAN-only mode)"
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
+  ingress {
+    description = "SSH from public"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -116,7 +113,7 @@ resource "aws_security_group" "nodes" {
 resource "aws_instance" "nodes" {
   count = length(local.node_configs)
 
-  ami           = data.aws_ami.debian["${replace(coalesce(local.node_configs[count.index].image, var.image), ".", "-")}:${local.node_configs[count.index].arch}"].id
+  ami           = data.aws_ami.node["${replace(coalesce(local.node_configs[count.index].image, var.image), ".", "-")}:${local.node_configs[count.index].arch}"].id
   instance_type = local.node_configs[count.index].server_type
   key_name      = aws_key_pair.node.key_name
   user_data     = local.cloud_init

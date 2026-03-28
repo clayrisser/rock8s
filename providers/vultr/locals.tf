@@ -1,12 +1,13 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
+  cluster = var.cluster_name
 
   # Vultr OS list names must match exactly one entry (data.vultr_os).
   os_map = {
+    "debian-13"    = "Debian 13 x64 (trixie)"
     "debian-12"    = "Debian 12 x64 (bookworm)"
     "debian-11"    = "Debian 11 x64 (bullseye)"
+    "ubuntu-25.10" = "Ubuntu 25.10 x64"
+    "ubuntu-24.04" = "Ubuntu 24.04 LTS x64"
     "ubuntu-22.04" = "Ubuntu 22.04 LTS x64"
     "ubuntu-20.04" = "Ubuntu 20.04 LTS x64"
     "rocky-9"      = "Rocky Linux x64 9"

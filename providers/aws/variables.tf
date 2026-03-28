@@ -27,6 +27,13 @@ variable "cluster_name" {
 variable "image" {
   type    = string
   default = "debian-12"
+  validation {
+    condition = contains([
+      "debian-11", "debian-12", "debian-13",
+      "ubuntu-20.04", "ubuntu-22.04", "ubuntu-24.04", "ubuntu-25.10",
+    ], var.image)
+    error_message = "invalid image (see providers/aws/locals.tf ami_profile_for)"
+  }
 }
 
 variable "location" {

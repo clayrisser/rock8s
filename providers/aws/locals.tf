@@ -1,7 +1,5 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
+  cluster = var.cluster_name
 
   # Instance type → arch for validated node types; Graviton *g families are arm64.
   arch_map = {
@@ -92,6 +90,28 @@ EOT
     for c in local.node_configs :
     "${replace(coalesce(c.image, var.image), ".", "-")}:${c.arch}"
   ])
+
+  # Debian official (136693071363); Ubuntu (099720109477). Name patterns must match published AMIs.
+  ami_profile_for = {
+    "debian-11"    = { owners = ["136693071363"], name_tmpl = "debian-11-%s-*" }
+    "debian-12"    = { owners = ["136693071363"], name_tmpl = "debian-12-%s-*" }
+    "debian-13"    = { owners = ["136693071363"], name_tmpl = "debian-13-%s-*" }
+    "ubuntu-20-04" = { owners = ["099720109477"], name_tmpl = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-%s-server-*" }
+    "ubuntu-22-04" = { owners = ["099720109477"], name_tmpl = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-%s-server-*" }
+    "ubuntu-24-04" = { owners = ["099720109477"], name_tmpl = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-%s-server-*" }
+    "ubuntu-25-10" = { owners = ["099720109477"], name_tmpl = "ubuntu/images/hvm-ssd-gp3/ubuntu-questing-25.10-%s-server-*" }
+  }
+
+  ami_name_for_key = {
+    for k in local.ami_lookup_keys : k => format(
+      local.ami_profile_for[split(":", k)[0]].name_tmpl,
+      split(":", k)[1]
+    )
+  }
+
+  ami_owners_for_key = {
+    for k in local.ami_lookup_keys : k => local.ami_profile_for[split(":", k)[0]].owners
+  }
 
   node_public_ipv4s = {
     for idx, inst in aws_instance.nodes :

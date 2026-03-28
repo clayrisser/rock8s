@@ -14,8 +14,11 @@ location="$(_dialog_menu "Select region" "fra1" \
     syd1 Sydney)"
 
 image="$(_dialog_menu "Select image" "debian-12-x64" \
+    debian-13-x64 Debian_13 \
     debian-12-x64 Debian_12 \
-    ubuntu-24-04-x64 Ubuntu_24.04)"
+    ubuntu-25-10-x64 Ubuntu_25.10_latest \
+    ubuntu-24-04-x64 Ubuntu_24.04_LTS \
+    ubuntu-22-04-x64 Ubuntu_22.04_LTS)"
 
 master_type="$(_dialog_menu "Select master droplet size" "s-2vcpu-4gb" \
     s-2vcpu-4gb 2vCPU/4GB \

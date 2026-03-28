@@ -15,7 +15,14 @@ location="$(_dialog_menu "Select region" "westeurope" \
     southeastasia Southeast_Asia \
     japaneast Japan_East)"
 
-image="$(_prompt "image" "debian-12")"
+image="$(_dialog_menu "Select image" "debian-12" \
+    debian-13 Debian_13 \
+    debian-12 Debian_12 \
+    debian-11 Debian_11 \
+    ubuntu-25.10 Ubuntu_25.10_latest \
+    ubuntu-24.04 Ubuntu_24.04_LTS \
+    ubuntu-22.04 Ubuntu_22.04_LTS \
+    ubuntu-20.04 Ubuntu_20.04_LTS)"
 
 master_type="$(_dialog_menu "Select master VM size" "Standard_B2s" \
     Standard_B2s 2vCPU/4GB \

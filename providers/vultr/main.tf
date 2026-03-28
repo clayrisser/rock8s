@@ -65,7 +65,7 @@ resource "vultr_firewall_rule" "egress_icmp" {
 }
 
 resource "vultr_firewall_rule" "ssh_public" {
-  count             = var.purpose == "master" && !local.has_gateway ? 1 : 0
+  count             = var.purpose == "master" ? 1 : 0
   firewall_group_id = vultr_firewall_group.default[0].id
   protocol          = "tcp"
   ip_type           = "v4"

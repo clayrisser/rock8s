@@ -51,14 +51,11 @@ resource "hcloud_firewall" "default" {
     protocol        = "esp"
     destination_ips = ["0.0.0.0/0", "::/0"]
   }
-  dynamic "rule" {
-    for_each = local.has_gateway ? [] : [1]
-    content {
-      direction  = "in"
-      protocol   = "tcp"
-      port       = "22"
-      source_ips = ["0.0.0.0/0", "::/0"]
-    }
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
+    source_ips = ["0.0.0.0/0", "::/0"]
   }
 
   labels = {

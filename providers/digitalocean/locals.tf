@@ -1,7 +1,5 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
+  cluster = var.cluster_name
 
   cloud_init = <<-EOT
 #cloud-config

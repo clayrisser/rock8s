@@ -1,8 +1,6 @@
 locals {
-  cluster     = var.cluster_name
-  gateway_ip  = try(var.network.gateway, "")
-  has_gateway = local.gateway_ip != ""
-  zone        = "${var.location}-b"
+  cluster = var.cluster_name
+  zone    = "${var.location}-b"
 
   node_tags = ["${var.cluster_name}-node"]
 
@@ -55,8 +53,11 @@ EOT
   }
 
   image_map = {
+    "debian-13"    = "debian-cloud/debian-13"
     "debian-12"    = "debian-cloud/debian-12"
     "debian-11"    = "debian-cloud/debian-11"
+    "ubuntu-25.10" = "ubuntu-os-cloud/ubuntu-2510"
+    "ubuntu-24.04" = "ubuntu-os-cloud/ubuntu-2404-lts"
     "ubuntu-22.04" = "ubuntu-os-cloud/ubuntu-2204-lts"
     "ubuntu-20.04" = "ubuntu-os-cloud/ubuntu-2004-lts"
     "centos-7"     = "centos-cloud/centos-7"

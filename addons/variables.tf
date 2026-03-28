@@ -140,6 +140,11 @@ variable "longhorn" {
   default = null
 }
 
+# Pool/range lives in network.lan.metallb (init / YAML); addons apply does not deploy MetalLB yet.
+variable "metallb" {
+  default = null
+}
+
 variable "registries" {
   type = map(object({
     username = optional(string)

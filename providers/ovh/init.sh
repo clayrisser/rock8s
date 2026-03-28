@@ -17,7 +17,7 @@ location="$(_dialog_menu "Select region" "GRA7" \
     UK1 London \
     DE1 Frankfurt)"
 
-image="$(_prompt "image" "Debian 12")"
+image="$(_prompt "image" "Debian 13")"
 
 master_type="$(_dialog_menu "Select master instance type" "b2-7" \
     b2-7 2vCPU/7GB \

@@ -143,6 +143,32 @@ _has_addon() {
     return 1
 }
 
+# Default: suggested range from calculate_metallb when non-empty. Empty result omits network.lan.metallb.
+# CLI: Enter accepts suggestion; "-" skips. Dialog: clear field and OK to skip.
+_prompt_metallb_range() {
+    _mb_def="$1"
+    if [ "$_YES" = "1" ]; then
+        echo "$_mb_def"
+        return
+    fi
+    if command -v dialog >/dev/null 2>&1 && [ -t 0 ]; then
+        _result=$(dialog --stdout --inputbox "MetalLB IP pool (clear field to omit from config)" 0 60 "$_mb_def") || exit 0
+        echo "$_result"
+        return
+    fi
+    if [ -n "$_mb_def" ]; then
+        printf "  MetalLB IP range [Enter=%s, or override, '-' to skip]: " "$_mb_def" >&2
+    else
+        printf "  MetalLB IP range (empty=skip): " >&2
+    fi
+    read -r _mb_v
+    case "$_mb_v" in
+    -) echo "" ;;
+    "") [ -n "$_mb_def" ] && echo "$_mb_def" || echo "" ;;
+    *) echo "$_mb_v" ;;
+    esac
+}
+
 _write_config() {
     _out="$1"
     {
@@ -159,9 +185,6 @@ _write_config() {
         echo ""
         echo "network:"
         echo "  entrypoint: $entrypoint"
-        if [ -n "$gateway" ]; then
-            echo "  gateway: $gateway"
-        fi
         echo "  lan:"
         echo "    name: $lan_name"
         if [ -n "$_lan_resource_group" ]; then
@@ -170,6 +193,9 @@ _write_config() {
         if [ -n "$lan_subnet" ]; then
             echo "    ipv4:"
             echo "      subnet: $lan_subnet"
+        fi
+        if [ -n "$lan_metallb" ]; then
+            echo "    metallb: $lan_metallb"
         fi
         echo ""
         echo "masters:"
@@ -243,12 +269,12 @@ _main() {
     location=""
     image=""
     lan_subnet=""
+    lan_metallb=""
     . "$_provider_init"
 
     # --- network ---
     printf "${BLUE}network${NC}\n" >&2
     entrypoint="$(_prompt "entrypoint (DNS hostname)" "cluster.example.com")"
-    gateway="$(_prompt "LAN gateway IP (leave empty for WAN-only)" "")"
     lan_name="$(_prompt "LAN network name" "")"
     echo >&2
 
@@ -334,6 +360,16 @@ _main() {
     fi
     if _has_addon "rancher_istio" && ! _has_addon "rancher_monitoring"; then
         _addon_selection="$_addon_selection rancher_monitoring"
+    fi
+
+    if _has_addon "metallb"; then
+        printf "${BLUE}metallb${NC}\n" >&2
+        _metallb_suggested=""
+        if [ -n "$lan_subnet" ]; then
+            _metallb_suggested="$(calculate_metallb "$lan_subnet")"
+        fi
+        lan_metallb="$(_prompt_metallb_range "$_metallb_suggested")"
+        echo >&2
     fi
 
     # source each selected addon's init.sh for config, then build yaml
