@@ -12,7 +12,7 @@ NAME
        rock8s cluster addons
 
 SYNOPSIS
-       rock8s cluster addons [-h] [-o <format>] [-y|--yes] [--cluster <cluster>] [--kubeconfig <path>] [--update]
+       rock8s cluster addons [-h] [-o <format>] [-y|--yes] [--cluster <cluster>] [--kubeconfig <path>]
 
 DESCRIPTION
        configure cluster addons for an existing kubernetes cluster
@@ -33,9 +33,6 @@ OPTIONS
        -y, --yes
               automatically approve operations
 
-       --update
-              update addons repository
-
 EXAMPLE
        # configure addons for a cluster with automatic approval
        rock8s cluster addons --cluster mycluster --yes
@@ -54,7 +51,6 @@ _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
     yes="0"
-    update=""
     kubeconfig=""
     while test $# -gt 0; do
         case "$1" in
@@ -102,10 +98,6 @@ _main() {
             yes="1"
             shift
             ;;
-        --update)
-            update="1"
-            shift
-            ;;
         -*)
             _help
             exit 1
@@ -123,23 +115,30 @@ _main() {
     cluster_dir="$(get_cluster_dir)"
     addons_dir="$cluster_dir/addons"
     mkdir -p "$addons_dir"
-    addons_repo="$(get_addons_repo)"
-    addons_version="$(get_addons_version)"
-    if [ ! -d "$addons_dir/terraform" ]; then
-        rm -rf "$addons_dir/terraform"
-        git clone --depth 1 --branch "$addons_version" "$addons_repo" "$addons_dir/terraform" >&2
-    else
-        cd "$addons_dir/terraform"
-        if [ "$update" = "1" ]; then
-            git pull >&2
-        else
-            git remote update origin --prune >/dev/null 2>&1
-            local_rev="$(git rev-parse @)"
-            remote_rev="$(git rev-parse @{u} 2>/dev/null || echo "")"
-            if [ -n "$remote_rev" ] && [ "$local_rev" != "$remote_rev" ]; then
-                git pull >&2
-            fi
+    _addons_repo="$(get_addons_source_repo)"
+    _addons_version="$(get_addons_source_version)"
+    : "${_addons_repo:=https://gitlab.com/bitspur/rock8s/rock8s.git}"
+    if [ -n "$_addons_version" ]; then
+        _cache_key="${_addons_repo}@${_addons_version}"
+        _cached_key=""
+        if [ -f "$addons_dir/.source" ]; then
+            _cached_key="$(cat "$addons_dir/.source")"
         fi
+        if [ ! -d "$addons_dir/repo" ] || [ "$_cached_key" != "$_cache_key" ]; then
+            rm -rf "$addons_dir/repo"
+            git clone --depth 1 --branch "$_addons_version" \
+                "$_addons_repo" "$addons_dir/repo" >&2
+            echo "$_cache_key" >"$addons_dir/.source"
+        fi
+        rm -rf "$addons_dir/terraform"
+        if [ -d "$addons_dir/repo/addons" ]; then
+            cp -r "$addons_dir/repo/addons" "$addons_dir/terraform"
+        else
+            cp -r "$addons_dir/repo" "$addons_dir/terraform"
+        fi
+    else
+        rm -rf "$addons_dir/terraform" "$addons_dir/repo" "$addons_dir/.source"
+        cp -r "$ROCK8S_HOME/addons" "$addons_dir/terraform"
     fi
     export TF_VAR_cluster_name="$cluster"
     export TF_VAR_entrypoint="$(get_entrypoint)"
@@ -153,7 +152,7 @@ _main() {
     if [ -n "$lan_metallb" ]; then
         config_json=$(echo "$config_json" | jq --arg range "$lan_metallb" 'if .addons.metallb != null and .addons.metallb != false then .addons.metallb.address_range //= $range else . end')
     fi
-    echo "$config_json" | jq 'del(.addons.version, .addons.repo) | .addons' >"$addons_dir/terraform.tfvars.json"
+    echo "$config_json" | jq '.addons | del(.source)' >"$addons_dir/terraform.tfvars.json"
     chmod 600 "$addons_dir/terraform.tfvars.json"
     cd "$addons_dir/terraform"
     state_key="$(get_state_key "$cluster" "addons")"

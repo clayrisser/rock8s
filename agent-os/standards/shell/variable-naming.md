@@ -7,9 +7,12 @@ Exported variables prefixed with `ROCK8S_`:
 ```sh
 ROCK8S_CACHE_HOME
 ROCK8S_CLUSTER
-ROCK8S_OUTPUT
-ROCK8S_LIB_PATH
+ROCK8S_CONFIG
 ROCK8S_DEBUG
+ROCK8S_LIB_PATH
+ROCK8S_LIBEXEC_PATH
+ROCK8S_OUTPUT
+ROCK8S_VERSION
 ```
 
 ## Script-level variables
@@ -66,4 +69,3 @@ Use parameter expansion with `:` assignment:
 ## Infrastructure variables
 
 - `TF_VAR_*` for OpenTofu variables
-- `ANSIBLE_*` for Ansible environment

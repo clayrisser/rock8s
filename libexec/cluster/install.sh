@@ -10,7 +10,7 @@ NAME
        rock8s cluster install
 
 SYNOPSIS
-       rock8s cluster install [-h] [-o <format>] [--cluster <cluster>] [-y|--yes]
+       rock8s cluster install [-h] [-o <format>] [--cluster <cluster>]
 
 DESCRIPTION
        install kubernetes cluster using k3s
@@ -25,12 +25,9 @@ OPTIONS
        -c, --cluster <cluster>
               cluster name
 
-       -y, --yes
-              skip confirmation prompt
-
 EXAMPLE
-       # install kubernetes on existing nodes with automatic approval
-       rock8s cluster install --cluster mycluster --yes
+       # install kubernetes on existing nodes
+       rock8s cluster install --cluster mycluster
 
 SEE ALSO
        rock8s cluster apply --help
@@ -42,7 +39,6 @@ EOF
 _main() {
     output="${ROCK8S_OUTPUT}"
     cluster="$ROCK8S_CLUSTER"
-    yes="0"
     while test $# -gt 0; do
         case "$1" in
         -h | --help)
@@ -72,10 +68,6 @@ _main() {
                 shift 2
                 ;;
             esac
-            ;;
-        -y | --yes)
-            yes="1"
-            shift
             ;;
         -*)
             _help

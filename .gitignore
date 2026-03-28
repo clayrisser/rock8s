@@ -2,10 +2,6 @@
 /man
 /.build
 /backups
-/addons
-
-# ansible
-*.retry
 
 # opentofu
 **/.terraform/*

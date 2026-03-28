@@ -43,6 +43,8 @@ install: build
 	@chmod -R 755 $(DESTDIR)$(LIBEXECDIR)
 	@cp -r providers/* $(DESTDIR)$(LIBDIR)/providers/
 	@chmod -R 755 $(DESTDIR)$(LIBDIR)/providers
+	@cp -r addons/* $(DESTDIR)$(LIBDIR)/addons/
+	@chmod -R 755 $(DESTDIR)$(LIBDIR)/addons
 	@install -m 644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	@install -m 644 LICENSE $(DESTDIR)$(DOCDIR)/LICENSE
 	@install -m 644 $(MAN1_DIR)/*.1 $(DESTDIR)$(MANDIR)/man1/

@@ -36,7 +36,7 @@ providers/             # IaC per provider
 - Config is a single YAML file (`rock8s.yaml`), checked into git
 - Secrets resolved at runtime via `ref+<scheme>://path` syntax
 - Cache follows XDG conventions (`~/.cache/rock8s/`); all local state is regenerable
-- Terraform state is offloaded to remote backends (S3, GCS, etc.)
+- OpenTofu state is offloaded to remote backends (S3, GCS, etc.)
 - Cluster infrastructure is purpose-based: master → worker
 - Provider code is copied per-apply for reproducibility
 - Gateway/firewall is external — not managed by rock8s

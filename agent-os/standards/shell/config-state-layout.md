@@ -16,7 +16,7 @@ ROCK8S_CACHE_HOME   → ~/.cache/rock8s          # local cache (fully regenerabl
 
 ## Cache hierarchy
 
-All local data is cached and regenerable. Terraform state is offloaded to remote backends (S3, GCS, etc.) defined in config.
+All local data is cached and regenerable. OpenTofu state is offloaded to remote backends (S3, GCS, etc.) defined in config.
 
 ```
 $ROCK8S_CACHE_HOME/

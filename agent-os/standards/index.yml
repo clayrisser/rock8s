@@ -12,7 +12,7 @@ global:
 
 providers:
   addon-registry:
-    description: Snake_case addon IDs, config shape, default set, and GitLab heuristics
+    description: Snake_case addon IDs, config shape, addon source overrides, and container registries
   execution-model:
     description: Provider code copy, tfvars.sh/variables.sh flow, OpenTofu migration
   purpose-based-infra:
