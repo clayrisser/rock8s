@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: rock8s
+
+# Untagged builds: 0.2.1-SNAPSHOT-<shortsha>. Tag pushes use the tag.
+snapshot:
+  version_template: '{{ incpatch .Version }}-SNAPSHOT-{{ .ShortCommit }}'
+
+# Stage rock8s.sh + lib/ + libexec/ + providers/ + addons/ + manpages into
+# build/usr/{bin,lib/rock8s,libexec/rock8s,share/...}. nfpms below
+# tree-copies each subtree into the package.
+before:
+  hooks:
+    - make build
+
+# No Go binary to build — goreleaser OSS has no `prebuilt` builder, so skip
+# the build phase entirely and let nfpms consume the staged build/ tree.
+builds:
+  - id: rock8s
+    skip: true
+
+archives:
+  - id: rock8s
+    name_template: 'rock8s_{{ .Version }}_all'
+    formats: [tar.gz]
+    meta: true
+    files:
+      - src: build/usr/bin
+        dst: bin
+      - src: build/usr/lib/rock8s
+        dst: lib/rock8s
+      - src: build/usr/libexec/rock8s
+        dst: libexec/rock8s
+      - src: build/usr/share/man/man1
+        dst: share/man/man1
+      - README.md
+      - LICENSE*
+
+nfpms:
+  - id: rock8s
+    package_name: rock8s
+    file_name_template: '{{ .PackageName }}_{{ .Version }}_all'
+    meta: true
+    homepage: https://gitlab.com/bitspur/rock8s/rock8s
+    maintainer: Clay Risser <clayrisser@gmail.com>
+    description: |-
+      rock8s — universal kubernetes cluster CLI.
+      Creates and manages production kubernetes clusters across multiple
+      cloud providers (aws, azure, digitalocean, gcp, hetzner, libvirt,
+      ovh, proxmox, vultr) using k3s/k3sup + opentofu. Includes addons for
+      argocd, ceph, cert-manager, external-dns, flux, kanister, kyverno,
+      longhorn, metallb, olm, openebs, rancher (istio/logging/monitoring),
+      reloader, tempo, traefik, and vault.
+    license: Apache-2.0
+    section: admin
+    formats: [deb, rpm]
+    # Hard runtime deps — used by the core dispatcher and lib/*.sh helpers.
+    dependencies:
+      - kubectl
+      - jq
+      - curl
+      - openssh-client
+    # Soft deps — provider-specific (aws/hetzner/vultr CLIs, terraform
+    # for non-tofu users, k3sup for the install path). The user installs
+    # only what their chosen provider needs.
+    recommends:
+      - opentofu
+      - k3sup
+    suggests:
+      - awscli
+      - hcloud-cli
+      - vultr-cli
+      - terraform
+      - helm
+    contents:
+      - src: build/usr/bin
+        dst: /usr/bin
+        type: tree
+      - src: build/usr/lib/rock8s
+        dst: /usr/lib/rock8s
+        type: tree
+      - src: build/usr/libexec/rock8s
+        dst: /usr/libexec/rock8s
+        type: tree
+      - src: build/usr/share/man/man1
+        dst: /usr/share/man/man1
+        type: tree
+      - src: build/usr/share/doc/rock8s
+        dst: /usr/share/doc/rock8s
+        type: tree
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'

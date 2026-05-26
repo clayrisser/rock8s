@@ -2,6 +2,9 @@
 /.env
 /man
 /.build
+/.make
+/build
+/dist
 /backups
 
 # opentofu
